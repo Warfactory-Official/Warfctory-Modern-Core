@@ -1,12 +1,10 @@
 {
   "required": true,
-  "package": "com.example.examplemod.mixin",
+  "package": "com.norwood.wfcore.mixin",
   "compatibilityLevel": "JAVA_17",
-  "minVersion": "0.8",
+  "refmap": "mixins.wfcore.refmap.json",
   "mixins": [
     "DummyMixin"
-  ],
-  "client": [
   ],
   "injectors": {
     "defaultRequire": 1

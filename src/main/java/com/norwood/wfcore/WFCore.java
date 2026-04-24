@@ -1,4 +1,4 @@
-package com.example.examplemod;
+package com.norwood.wfcore;
 
 import com.gregtechceu.gtceu.api.GTCEuAPI;
 import com.gregtechceu.gtceu.api.data.chemical.material.event.MaterialEvent;
@@ -22,15 +22,15 @@ import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-@Mod(ExampleMod.MOD_ID)
+@Mod(WFCore.MOD_ID)
 @SuppressWarnings("removal")
-public class ExampleMod {
+public class WFCore {
 
-    public static final String MOD_ID = "examplemod";
+    public static final String MOD_ID = "wfcore";
     public static final Logger LOGGER = LogManager.getLogger();
-    public static GTRegistrate EXAMPLE_REGISTRATE = GTRegistrate.create(ExampleMod.MOD_ID);
+    public static GTRegistrate EXAMPLE_REGISTRATE = GTRegistrate.create(WFCore.MOD_ID);
 
-    public ExampleMod() {
+    public WFCore() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
         modEventBus.addListener(this::commonSetup);
@@ -81,7 +81,7 @@ public class ExampleMod {
      * @param event
      */
     private void addMaterialRegistries(MaterialRegistryEvent event) {
-        GTCEuAPI.materialManager.createRegistry(ExampleMod.MOD_ID);
+        GTCEuAPI.materialManager.createRegistry(WFCore.MOD_ID);
     }
 
     /**

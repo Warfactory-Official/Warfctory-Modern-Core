@@ -1,4 +1,4 @@
-package com.example.examplemod.mixin;
+package com.norwood.wfcore.mixin;
 
 import net.minecraft.world.level.levelgen.WorldgenRandom;
 
