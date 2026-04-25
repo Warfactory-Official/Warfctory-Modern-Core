@@ -41,6 +41,3 @@ Example Description
         versionRange = "[${gtceu_version},)"
         ordering = "AFTER"
         side = "BOTH"
-
-[[mixins]]
-    config = "${mod_id}.mixins.json"

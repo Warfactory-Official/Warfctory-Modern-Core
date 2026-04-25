@@ -29,7 +29,6 @@ public abstract class SuperbWarfareInvMixin {
      */
     @Overwrite(remap = false)
     public int getContainerSize() {
-        WFCore.LOGGER.info("getContainerSize");
         var type = computed().vehicleContainerType;
         if (type == null) return 0;
         return computed().vehicleContainerType.getSize();
