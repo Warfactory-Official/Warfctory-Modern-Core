@@ -6,6 +6,7 @@ import com.atsuishio.superbwarfare.init.ModMenuTypes;
 import com.atsuishio.superbwarfare.menu.VehicleMenu;
 import com.norwood.wfcore.SuperbFuelOverride;
 import com.norwood.wfcore.capabilities.SyncedEntityFuelStorage;
+import com.norwood.wfcore.handlers.WFCoreFuelHandler;
 import com.norwood.wfcore.serializer.WFCoreSerializers;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -28,6 +29,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = VehicleEntity.class)
@@ -38,6 +40,7 @@ public abstract class SuperbWarfareInvMixin extends Entity {
     static {
         System.out.println("DEBUG: Mixin For Superb Loaded Successfully!");
     }
+    @Shadow(remap = false) public abstract boolean hasEnergyStorage();
 
     @Unique
     protected SyncedEntityFuelStorage wfcore$fluidTank;
@@ -120,4 +123,22 @@ public abstract class SuperbWarfareInvMixin extends Entity {
         }
         return null;
     }
+
+
+
+    @Redirect(
+            method = "baseTick",
+            at = @At(value = "INVOKE", target = "Lcom/atsuishio/superbwarfare/entity/vehicle/base/VehicleEntity;hasEnergyStorage()Z"),
+            remap = false
+    )
+    private boolean wfcore$redirectFuelBlock(VehicleEntity instance) {
+        if (instance.tickCount % 20 == 0) {
+            WFCoreFuelHandler.handleVehicleRefueling(instance, computed().getId());
+        }
+
+        return false;
+    }
+
+
+
 }
