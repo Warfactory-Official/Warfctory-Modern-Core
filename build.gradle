@@ -174,11 +174,17 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
 
     // Required deps for Superb Warfare
-    modImplementation("top.theillusivec4.curios:curios-forge:5.14.1+1.20.1")
-    modImplementation("software.bernie.geckolib:geckolib-forge-1.20.1:4.4.9")
+    modImplementation("top.theillusivec4.curios:curios-forge:5.14.1+1.20.1") {
+        exclude group: "org.spongepowered", module: "mixin"
+    }
+    modImplementation("software.bernie.geckolib:geckolib-forge-1.20.1:4.4.9") {
+        exclude group: "org.spongepowered", module: "mixin"
+    }
 
     //The Mixined
-    modImplementation("curse.maven:superb-warfare-1218165:7292685")
+    modImplementation("curse.maven:superb-warfare-1218165:7292685") {
+        exclude group: "org.spongepowered", module: "mixin"
+    }
 }
 
 tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).configure {
@@ -189,6 +195,7 @@ tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.Shadow
 // See com.example.examplemod.mixin.DummyMixin for information about mixins
 mixin {
     add sourceSets.main, "mixins.${mod_id}.refmap.json"
+    config "${mod_id}.mixins.json"
 }
 
 tasks.named('processResources', ProcessResources).configure {
