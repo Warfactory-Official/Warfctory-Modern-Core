@@ -4,24 +4,78 @@ import com.atsuishio.superbwarfare.data.vehicle.DefaultVehicleData;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.atsuishio.superbwarfare.init.ModMenuTypes;
 import com.atsuishio.superbwarfare.menu.VehicleMenu;
-import com.norwood.wfcore.WFCore;
+import com.norwood.wfcore.SuperbFuelOverride;
+import com.norwood.wfcore.capabilities.SyncedEntityFuelStorage;
+import com.norwood.wfcore.serializer.WFCoreSerializers;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.EntityDataAccessor;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.Container;
+import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.level.Level;
+import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.IFluidTank;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = VehicleEntity.class)
-public abstract class SuperbWarfareInvMixin {
+public abstract class SuperbWarfareInvMixin extends Entity {
+    @Unique
+    public static final EntityDataAccessor<FluidStack> FUEL = SynchedEntityData.defineId(VehicleEntity.class, WFCoreSerializers.FLUID_STACK_ENTITY_DATA_SERIALIZER);
+
     static {
         System.out.println("DEBUG: Mixin For Superb Loaded Successfully!");
     }
 
-    @Shadow(remap = false) public abstract DefaultVehicleData computed();
+    @Unique
+    protected SyncedEntityFuelStorage wfcore$fluidTank;
+    @Unique
+    protected LazyOptional<IFluidTank> wfcore$fuel;
+
+    public SuperbWarfareInvMixin(EntityType<?> entityType, Level level) {
+        super(entityType, level);
+    }
+
+    @Shadow(remap = false)
+    public abstract DefaultVehicleData computed();
+
+    @Inject(method = "<init>", at = @At("TAIL"))
+    private void wfcore$setFluidTank(EntityType<?> type, Level level, CallbackInfo ci) {
+        this.wfcore$fluidTank = new SyncedEntityFuelStorage(SuperbFuelOverride.overrideDataMap.get(computed().getId()).MaxFuel(), (VehicleEntity) (Object) this);
+        wfcore$fuel = LazyOptional.of(() -> wfcore$fluidTank);
+    }
+
+
+    @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
+    private void wfcore$writeFuelNbt(CompoundTag compound, CallbackInfo ci) {
+        if (wfcore$fluidTank != null) {
+            compound.put("WFCoreFuel", wfcore$fluidTank.writeToNBT(new CompoundTag()));
+        }
+    }
+
+    @Inject(method = "readAdditionalSaveData", at = @At("TAIL"))
+    private void wfcore$readFuelNbt(CompoundTag compound, CallbackInfo ci) {
+        if (wfcore$fluidTank != null && compound.contains("WFCoreFuel")) {
+            wfcore$fluidTank.readFromNBT(compound.getCompound("WFCoreFuel"));
+        }
+    }
+
+    @Unique
+    public EntityDataAccessor<FluidStack> getFuelAccessor() {
+        return FUEL;
+    }
 
     /**
      * @author MrNorwood
@@ -33,6 +87,7 @@ public abstract class SuperbWarfareInvMixin {
         if (type == null) return 0;
         return computed().vehicleContainerType.getSize();
     }
+
 
     /**
      * @author MrNorwood

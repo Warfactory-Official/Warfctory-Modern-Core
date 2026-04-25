@@ -1,5 +1,6 @@
 package com.norwood.wfcore.capabilities;
 
+import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraftforge.fluids.FluidStack;
@@ -7,11 +8,14 @@ import net.minecraftforge.fluids.capability.templates.FluidTank;
 import org.jetbrains.annotations.NotNull;
 
 public class SyncedEntityFuelStorage extends FluidTank {
-    public SyncedEntityFuelStorage(int capacity) {
+    public SyncedEntityFuelStorage(int capacity, VehicleEntity vehicle) {
         super(capacity);
+        this.vehicleEntity = vehicle;
+        this.entityData = vehicle.getEntityData();
     }
 
     protected SynchedEntityData entityData;
+    protected VehicleEntity vehicleEntity;
     protected EntityDataAccessor<FluidStack> fluidDataAccessor;
 
     @Override

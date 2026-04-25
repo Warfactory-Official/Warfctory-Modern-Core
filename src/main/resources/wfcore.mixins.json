@@ -5,7 +5,6 @@
   "compatibilityLevel": "JAVA_13",
   "refmap": "mixins.wfcore.refmap.json",
   "mixins": [
-    "DummyMixin",
     "SuperbWarfareInvMixin"
   ],
   "injectors": {
