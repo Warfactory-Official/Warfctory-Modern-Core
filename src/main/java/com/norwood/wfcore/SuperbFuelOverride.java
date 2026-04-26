@@ -10,8 +10,8 @@ public class SuperbFuelOverride {
    public final static Map<String, OverrideData > overrideDataMap = new HashMap<>();
    public record OverrideData(
            int MaxFuel,
-           Fluid fluid,
-           float consumption
+           Map<Fluid,Float> fluidConsumptionMap
+
    ){}
     static {
 

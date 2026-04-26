@@ -5,7 +5,8 @@
   "compatibilityLevel": "JAVA_13",
   "refmap": "mixins.wfcore.refmap.json",
   "mixins": [
-    "SuperbWarfareInvMixin"
+    "SuperbWarfareInvMixin",
+    "VehicleEntitySetEnergyInvoker"
   ],
   "injectors": {
     "defaultRequire": 1

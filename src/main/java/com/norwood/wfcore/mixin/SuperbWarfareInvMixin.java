@@ -4,6 +4,7 @@ import com.atsuishio.superbwarfare.data.vehicle.DefaultVehicleData;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.atsuishio.superbwarfare.init.ModMenuTypes;
 import com.atsuishio.superbwarfare.menu.VehicleMenu;
+import com.norwood.wfcore.IVehicleFuelTank;
 import com.norwood.wfcore.SuperbFuelOverride;
 import com.norwood.wfcore.capabilities.SyncedEntityFuelStorage;
 import com.norwood.wfcore.handlers.WFCoreFuelHandler;
@@ -33,7 +34,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = VehicleEntity.class)
-public abstract class SuperbWarfareInvMixin extends Entity {
+public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFuelTank {
     @Unique
     public static final EntityDataAccessor<FluidStack> FUEL = SynchedEntityData.defineId(VehicleEntity.class, WFCoreSerializers.FLUID_STACK_ENTITY_DATA_SERIALIZER);
 
@@ -46,6 +47,12 @@ public abstract class SuperbWarfareInvMixin extends Entity {
     protected SyncedEntityFuelStorage wfcore$fluidTank;
     @Unique
     protected LazyOptional<IFluidTank> wfcore$fuel;
+
+    @Override
+    public SyncedEntityFuelStorage getFluidTank() {
+        return this.wfcore$fluidTank;
+    }
+
 
     public SuperbWarfareInvMixin(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -138,6 +145,8 @@ public abstract class SuperbWarfareInvMixin extends Entity {
 
         return false;
     }
+
+
 
 
 
