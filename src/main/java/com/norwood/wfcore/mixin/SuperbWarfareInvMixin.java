@@ -21,7 +21,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.fluids.FluidStack;
-import net.minecraftforge.fluids.IFluidTank;
+import net.minecraftforge.fluids.capability.IFluidHandler;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
@@ -32,39 +32,58 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(value = VehicleEntity.class)
 public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFuelTank {
+
     @Unique
-    public static final EntityDataAccessor<FluidStack> FUEL = SynchedEntityData.defineId(VehicleEntity.class, WFCoreSerializers.FLUID_STACK_ENTITY_DATA_SERIALIZER);
+    private static final EntityDataAccessor<FluidStack> FUEL = SynchedEntityData.defineId(VehicleEntity.class, WFCoreSerializers.FLUID_STACK_ENTITY_DATA_SERIALIZER);
+    @Unique
+    private static final int ENERGY_TO_FLUID_RATIO = 10;
 
     static {
         System.out.println("DEBUG: Mixin For Superb Loaded Successfully!");
     }
-    @Shadow(remap = false) public abstract boolean hasEnergyStorage();
 
     @Unique
     protected SyncedEntityFuelStorage wfcore$fluidTank;
     @Unique
-    protected LazyOptional<IFluidTank> wfcore$fuel;
+    protected LazyOptional<IFluidHandler> wfcore$fuel;
+    public SuperbWarfareInvMixin(EntityType<?> entityType, Level level) {
+        super(entityType, level);
+    }
+
+    @Inject(method = "defineSynchedData", at = @At("TAIL"))
+    private void wfcore$defineFluidData(CallbackInfo ci) {
+        this.getEntityData().define(FUEL, FluidStack.EMPTY);
+    }
+
+    @Shadow(remap = false)
+    public abstract boolean hasEnergyStorage();
+
+    @Shadow(remap = false)
+    public abstract DefaultVehicleData computed();
 
     @Override
     public SyncedEntityFuelStorage getFluidTank() {
         return this.wfcore$fluidTank;
     }
 
-
-    public SuperbWarfareInvMixin(EntityType<?> entityType, Level level) {
-        super(entityType, level);
+    @Unique
+    public EntityDataAccessor<FluidStack> getFuelAccessor() {
+        return FUEL;
     }
-
-    @Shadow(remap = false)
-    public abstract DefaultVehicleData computed();
 
     @Inject(method = "<init>", at = @At("TAIL"))
     private void wfcore$setFluidTank(EntityType<?> type, Level level, CallbackInfo ci) {
-        this.wfcore$fluidTank = new SyncedEntityFuelStorage(SuperbFuelOverride.overrideDataMap.get(computed().getId()).MaxFuel(), (VehicleEntity) (Object) this);
-        wfcore$fuel = LazyOptional.of(() -> wfcore$fluidTank);
+        int capacity = 4000;
+        if (SuperbFuelOverride.overrideDataMap.containsKey(computed().getId())) {
+            capacity = SuperbFuelOverride.overrideDataMap.get(computed().getId()).MaxFuel();
+        }
+
+        this.wfcore$fluidTank = new SyncedEntityFuelStorage(capacity, (VehicleEntity) (Object) this);
+        this.wfcore$fuel = LazyOptional.of(() -> wfcore$fluidTank);
     }
 
 
@@ -82,26 +101,20 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
         }
     }
 
-    @Unique
-    public EntityDataAccessor<FluidStack> getFuelAccessor() {
-        return FUEL;
-    }
-
     /**
      * @author MrNorwood
-     * @reason Bruh
+     * @reason Removing hardcoded limits
      */
     @Overwrite(remap = false)
     public int getContainerSize() {
         var type = computed().vehicleContainerType;
         if (type == null) return 0;
-        return computed().vehicleContainerType.getSize();
+        return type.getSize();
     }
-
 
     /**
      * @author MrNorwood
-     * @reason Restore inventory size functionality
+     * @reason Restoring commented code
      */
     @Overwrite(remap = false)
     public @Nullable AbstractContainerMenu createMenu(int pContainerId, @NotNull Inventory pPlayerInventory, Player pPlayer) {
@@ -126,12 +139,10 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
             };
             if (menu == null) return null;
 
-            return new VehicleMenu(menu, pContainerId, pPlayerInventory, (Container) this, type.getRow(), type.getCol(), upgrade);
+            return new VehicleMenu(menu, pContainerId, pPlayerInventory, (Container) (Object) this, type.getRow(), type.getCol(), upgrade);
         }
         return null;
     }
-
-
 
     @Redirect(
             method = "baseTick",
@@ -142,12 +153,46 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
         if (instance.tickCount % 20 == 0) {
             WFCoreFuelHandler.handleVehicleRefueling(instance, computed().getId());
         }
-
         return false;
     }
 
+    @Inject(method = "getEnergy", at = @At("HEAD"), cancellable = true, remap = false)
+    private void wfcore$getFluidAsEnergy(CallbackInfoReturnable<Integer> cir) {
+        if (this.wfcore$fluidTank != null) {
+            cir.setReturnValue(this.wfcore$fluidTank.getFluidAmount() * ENERGY_TO_FLUID_RATIO);
+        }
+    }
 
+    @Inject(method = "getMaxEnergy", at = @At("HEAD"), cancellable = true, remap = false)
+    private void wfcore$getMaxFluidAsEnergy(CallbackInfoReturnable<Integer> cir) {
+        if (this.wfcore$fluidTank != null) {
+            cir.setReturnValue(this.wfcore$fluidTank.getCapacity() * ENERGY_TO_FLUID_RATIO);
+        }
+    }
 
+    @Inject(method = "consumeEnergy", at = @At("HEAD"), cancellable = true, remap = false)
+    private void wfcore$consumeFluidAsEnergy(int amount, CallbackInfo ci) {
+        if (this.wfcore$fluidTank != null) {
+            int mbToDrain = (int) Math.ceil((double) amount / ENERGY_TO_FLUID_RATIO);
+            if (mbToDrain > 0) {
+                this.wfcore$fluidTank.drain(mbToDrain, IFluidHandler.FluidAction.EXECUTE);
+            }
+            ci.cancel();
+        }
+    }
 
+    @Inject(method = "setEnergy", at = @At("HEAD"), cancellable = true, remap = false)
+    private void wfcore$setFluidAsEnergy(int amount, CallbackInfo ci) {
+        if (this.wfcore$fluidTank != null) {
+            int targetMb = amount / ENERGY_TO_FLUID_RATIO;
+            int currentMb = this.wfcore$fluidTank.getFluidAmount();
 
+            if (targetMb > currentMb) {
+                this.wfcore$fluidTank.fill(new FluidStack(this.wfcore$fluidTank.getFluid(), targetMb - currentMb), IFluidHandler.FluidAction.EXECUTE);
+            } else if (targetMb < currentMb) {
+                this.wfcore$fluidTank.drain(currentMb - targetMb, IFluidHandler.FluidAction.EXECUTE);
+            }
+            ci.cancel();
+        }
+    }
 }
