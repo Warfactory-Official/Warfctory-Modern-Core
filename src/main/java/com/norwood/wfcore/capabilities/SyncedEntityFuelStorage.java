@@ -1,6 +1,7 @@
 package com.norwood.wfcore.capabilities;
 
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
+import com.norwood.wfcore.SuperbFuelOverride;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraftforge.fluids.FluidStack;
@@ -49,4 +50,19 @@ public class SyncedEntityFuelStorage extends FluidTank {
 
 
 
+    @Override
+    public boolean isFluidValid(FluidStack stack) {
+        if (stack.isEmpty()) return false;
+        String id = vehicleEntity.computed().getId();
+        var override = SuperbFuelOverride.overrideDataMap.get(id);
+
+        if (override != null) {
+            return override.fluidConsumptionMap().containsKey(stack.getFluid());
+        }
+
+        return false;
+    }
+
 }
+
+

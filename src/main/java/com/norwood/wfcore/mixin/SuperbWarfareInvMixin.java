@@ -50,6 +50,7 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
     protected SyncedEntityFuelStorage wfcore$fluidTank;
     @Unique
     protected LazyOptional<IFluidHandler> wfcore$fuel;
+
     public SuperbWarfareInvMixin(EntityType<?> entityType, Level level) {
         super(entityType, level);
     }
@@ -173,9 +174,23 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
     @Inject(method = "consumeEnergy", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$consumeFluidAsEnergy(int amount, CallbackInfo ci) {
         if (this.wfcore$fluidTank != null) {
-            int mbToDrain = (int) Math.ceil((double) amount / ENERGY_TO_FLUID_RATIO);
-            if (mbToDrain > 0) {
-                this.wfcore$fluidTank.drain(mbToDrain, IFluidHandler.FluidAction.EXECUTE);
+            FluidStack currentFluid = this.wfcore$fluidTank.getFluid();
+
+            if (!currentFluid.isEmpty()) {
+                String id = computed().getId();
+                float efficiency = 1.0f;
+
+                var override = SuperbFuelOverride.overrideDataMap.get(id);
+                if (override != null) {
+                    efficiency = override.fluidConsumptionMap().getOrDefault(currentFluid.getFluid(), 1.0f);
+                }
+
+                double effectiveRatio = ENERGY_TO_FLUID_RATIO * efficiency;
+                int mbToDrain = (int) Math.ceil(amount / effectiveRatio);
+
+                if (mbToDrain > 0) {
+                    this.wfcore$fluidTank.drain(mbToDrain, IFluidHandler.FluidAction.EXECUTE);
+                }
             }
             ci.cancel();
         }
