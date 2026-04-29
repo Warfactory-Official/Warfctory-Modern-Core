@@ -1,28 +1,35 @@
 package com.norwood.wfcore.capabilities;
 
-import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
-import com.norwood.wfcore.SuperbFuelOverride;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.templates.FluidTank;
+
+import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
+import com.norwood.wfcore.SuperbFuelOverride;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 public class SyncedEntityFuelStorage extends FluidTank {
-    public SyncedEntityFuelStorage(int capacity, VehicleEntity vehicle) {
+
+    public SyncedEntityFuelStorage(int capacity, VehicleEntity vehicle,
+                                   EntityDataAccessor<FluidStack> fluidDataAccessor) {
         super(capacity);
         this.vehicleEntity = vehicle;
         this.entityData = vehicle.getEntityData();
+        this.fluidDataAccessor = fluidDataAccessor;
     }
 
+    @Nullable
     protected SynchedEntityData entityData;
-    protected VehicleEntity vehicleEntity;
-    protected EntityDataAccessor<FluidStack> fluidDataAccessor;
+    protected final VehicleEntity vehicleEntity;
+    @Nullable
+    protected final EntityDataAccessor<FluidStack> fluidDataAccessor;
 
     @Override
     public int fill(FluidStack resource, FluidAction action) {
         int filled = super.fill(resource, action);
-        if (action.execute() && filled > 0) {
+        if (action.execute() && filled > 0 && entityData != null && fluidDataAccessor != null) {
             entityData.set(fluidDataAccessor, this.fluid);
         }
         return filled;
@@ -31,7 +38,7 @@ public class SyncedEntityFuelStorage extends FluidTank {
     @Override
     public @NotNull FluidStack drain(int maxDrain, FluidAction action) {
         FluidStack drained = super.drain(maxDrain, action);
-        if (action.execute() && !drained.isEmpty()) {
+        if (action.execute() && !drained.isEmpty() && entityData != null && fluidDataAccessor != null) {
             entityData.set(fluidDataAccessor, this.fluid);
         }
         return drained;
@@ -39,22 +46,29 @@ public class SyncedEntityFuelStorage extends FluidTank {
 
     @Override
     public @NotNull FluidStack getFluid() {
-        return entityData.get(fluidDataAccessor);
+        if (entityData != null && fluidDataAccessor != null) {
+            return entityData.get(fluidDataAccessor);
+        }
+        return this.fluid;
     }
 
     @Override
     public void setFluid(FluidStack stack) {
-        this.fluid = stack;
-        entityData.set(fluidDataAccessor, stack);
+        super.setFluid(stack);
+        if (entityData != null && fluidDataAccessor != null) {
+            entityData.set(fluidDataAccessor, stack);
+        }
     }
-
-
 
     @Override
     public boolean isFluidValid(FluidStack stack) {
         if (stack.isEmpty()) return false;
-        String id = vehicleEntity.computed().getId();
-        var override = SuperbFuelOverride.overrideDataMap.get(id);
+        var data = vehicleEntity.computed();
+        if (data == null) {
+            return false;
+        }
+        String id = data.getId();
+        var override = SuperbFuelOverride.getOverride(id);
 
         if (override != null) {
             return override.fluidConsumptionMap().containsKey(stack.getFluid());
@@ -62,7 +76,4 @@ public class SyncedEntityFuelStorage extends FluidTank {
 
         return false;
     }
-
 }
-
-

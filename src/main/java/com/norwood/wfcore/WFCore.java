@@ -9,20 +9,19 @@ import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
 import com.gregtechceu.gtceu.api.registry.registrate.GTRegistrate;
 import com.gregtechceu.gtceu.api.sound.SoundEntry;
 
-import com.norwood.wfcore.serializer.WFCoreSerializers;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegisterEvent;
+
+import com.norwood.wfcore.config.WFCoreConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -61,13 +60,13 @@ public class WFCore {
 
     private void onRegister(RegisterEvent event) {
         event.register(ForgeRegistries.Keys.ENTITY_DATA_SERIALIZERS, x -> {
-            x.register( new ResourceLocation(MOD_ID, "superb_fluid_stack"), FLUID_STACK_ENTITY_DATA_SERIALIZER);
+            x.register(new ResourceLocation(MOD_ID, "superb_fluid_stack"), FLUID_STACK_ENTITY_DATA_SERIALIZER);
         });
-
     }
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
+            WFCoreConfig.load();
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");
             LOGGER.info("Look, I found a {}!", Items.DIAMOND);
         });

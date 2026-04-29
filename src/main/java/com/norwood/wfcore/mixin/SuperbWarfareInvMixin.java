@@ -1,14 +1,5 @@
 package com.norwood.wfcore.mixin;
 
-import com.atsuishio.superbwarfare.data.vehicle.DefaultVehicleData;
-import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
-import com.atsuishio.superbwarfare.init.ModMenuTypes;
-import com.atsuishio.superbwarfare.menu.VehicleMenu;
-import com.norwood.wfcore.IVehicleFuelTank;
-import com.norwood.wfcore.SuperbFuelOverride;
-import com.norwood.wfcore.capabilities.SyncedEntityFuelStorage;
-import com.norwood.wfcore.handlers.WFCoreFuelHandler;
-import com.norwood.wfcore.serializer.WFCoreSerializers;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -22,6 +13,17 @@ import net.minecraft.world.level.Level;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
+
+import com.atsuishio.superbwarfare.data.vehicle.DefaultVehicleData;
+import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
+import com.atsuishio.superbwarfare.init.ModMenuTypes;
+import com.atsuishio.superbwarfare.menu.VehicleMenu;
+import com.norwood.wfcore.IVehicleFuelTank;
+import com.norwood.wfcore.SuperbFuelOverride;
+import com.norwood.wfcore.capabilities.SyncedEntityFuelStorage;
+import com.norwood.wfcore.config.WFCoreConfig;
+import com.norwood.wfcore.handlers.WFCoreFuelHandler;
+import com.norwood.wfcore.serializer.WFCoreSerializers;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
@@ -38,18 +40,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFuelTank {
 
     @Unique
-    private static final EntityDataAccessor<FluidStack> FUEL = SynchedEntityData.defineId(VehicleEntity.class, WFCoreSerializers.FLUID_STACK_ENTITY_DATA_SERIALIZER);
-    @Unique
-    private static final int ENERGY_TO_FLUID_RATIO = 10;
-
-    static {
-        System.out.println("DEBUG: Mixin For Superb Loaded Successfully!");
-    }
+    private static final EntityDataAccessor<FluidStack> FUEL = SynchedEntityData.defineId(VehicleEntity.class,
+            WFCoreSerializers.FLUID_STACK_ENTITY_DATA_SERIALIZER);
 
     @Unique
     protected SyncedEntityFuelStorage wfcore$fluidTank;
     @Unique
     protected LazyOptional<IFluidHandler> wfcore$fuel;
+    @Unique
+    protected boolean wfcore$usesFluidFuel;
+    @Unique
+    @Nullable
+    protected String wfcore$vehicleId;
 
     public SuperbWarfareInvMixin(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -78,15 +80,19 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
 
     @Inject(method = "<init>", at = @At("TAIL"))
     private void wfcore$setFluidTank(EntityType<?> type, Level level, CallbackInfo ci) {
-        int capacity = 4000;
-        if (SuperbFuelOverride.overrideDataMap.containsKey(computed().getId())) {
-            capacity = SuperbFuelOverride.overrideDataMap.get(computed().getId()).MaxFuel();
+        this.wfcore$vehicleId = wfcore$getVehicleId();
+        var override = this.wfcore$vehicleId == null ? null : SuperbFuelOverride.getOverride(this.wfcore$vehicleId);
+        if (override == null) {
+            this.wfcore$usesFluidFuel = false;
+            this.wfcore$fluidTank = null;
+            this.wfcore$fuel = LazyOptional.empty();
+            return;
         }
 
-        this.wfcore$fluidTank = new SyncedEntityFuelStorage(capacity, (VehicleEntity) (Object) this);
+        this.wfcore$usesFluidFuel = true;
+        this.wfcore$fluidTank = new SyncedEntityFuelStorage(override.maxFuel(), (VehicleEntity) (Object) this, FUEL);
         this.wfcore$fuel = LazyOptional.of(() -> wfcore$fluidTank);
     }
-
 
     @Inject(method = "addAdditionalSaveData", at = @At("TAIL"))
     private void wfcore$writeFuelNbt(CompoundTag compound, CallbackInfo ci) {
@@ -118,7 +124,8 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
      * @reason Restoring commented code
      */
     @Overwrite(remap = false)
-    public @Nullable AbstractContainerMenu createMenu(int pContainerId, @NotNull Inventory pPlayerInventory, Player pPlayer) {
+    public @Nullable AbstractContainerMenu createMenu(int pContainerId, @NotNull Inventory pPlayerInventory,
+                                                      Player pPlayer) {
         if (!pPlayer.isSpectator()) {
             var computed = computed();
             var type = computed.vehicleContainerType;
@@ -126,66 +133,71 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
 
             var upgrade = computed.hasUpgradeSlots;
             var menu = switch (type) {
-                case MINI ->
-                        upgrade ? ModMenuTypes.VEHICLE_MENU_MINI_UPGRADE.get() : ModMenuTypes.VEHICLE_MENU_MINI.get();
-                case SMALL ->
-                        upgrade ? ModMenuTypes.VEHICLE_MENU_SMALL_UPGRADE.get() : ModMenuTypes.VEHICLE_MENU_SMALL.get();
-                case MEDIUM ->
-                        upgrade ? ModMenuTypes.VEHICLE_MENU_MEDIUM_UPGRADE.get() : ModMenuTypes.VEHICLE_MENU_MEDIUM.get();
-                case LARGE ->
-                        upgrade ? ModMenuTypes.VEHICLE_MENU_LARGE_UPGRADE.get() : ModMenuTypes.VEHICLE_MENU_LARGE.get();
-                case HUGE ->
-                        upgrade ? ModMenuTypes.VEHICLE_MENU_HUGE_UPGRADE.get() : ModMenuTypes.VEHICLE_MENU_HUGE.get();
+                case MINI -> upgrade ? ModMenuTypes.VEHICLE_MENU_MINI_UPGRADE.get() :
+                        ModMenuTypes.VEHICLE_MENU_MINI.get();
+                case SMALL -> upgrade ? ModMenuTypes.VEHICLE_MENU_SMALL_UPGRADE.get() :
+                        ModMenuTypes.VEHICLE_MENU_SMALL.get();
+                case MEDIUM -> upgrade ? ModMenuTypes.VEHICLE_MENU_MEDIUM_UPGRADE.get() :
+                        ModMenuTypes.VEHICLE_MENU_MEDIUM.get();
+                case LARGE -> upgrade ? ModMenuTypes.VEHICLE_MENU_LARGE_UPGRADE.get() :
+                        ModMenuTypes.VEHICLE_MENU_LARGE.get();
+                case HUGE -> upgrade ? ModMenuTypes.VEHICLE_MENU_HUGE_UPGRADE.get() :
+                        ModMenuTypes.VEHICLE_MENU_HUGE.get();
                 default -> null;
             };
             if (menu == null) return null;
 
-            return new VehicleMenu(menu, pContainerId, pPlayerInventory, (Container) (Object) this, type.getRow(), type.getCol(), upgrade);
+            return new VehicleMenu(menu, pContainerId, pPlayerInventory, (Container) (Object) this, type.getRow(),
+                    type.getCol(), upgrade);
         }
         return null;
     }
 
     @Redirect(
-            method = "baseTick",
-            at = @At(value = "INVOKE", target = "Lcom/atsuishio/superbwarfare/entity/vehicle/base/VehicleEntity;hasEnergyStorage()Z"),
-            remap = false
-    )
+              method = "baseTick",
+              at = @At(value = "INVOKE",
+                       target = "Lcom/atsuishio/superbwarfare/entity/vehicle/base/VehicleEntity;hasEnergyStorage()Z"),
+              remap = false)
     private boolean wfcore$redirectFuelBlock(VehicleEntity instance) {
-        if (instance.tickCount % 20 == 0) {
-            WFCoreFuelHandler.handleVehicleRefueling(instance, computed().getId());
+        String vehicleId = this.wfcore$vehicleId;
+        if (vehicleId == null) {
+            return false;
+        }
+        if (instance.tickCount % WFCoreConfig.getRefuelIntervalTicks() == 0) {
+            WFCoreFuelHandler.handleVehicleRefueling(instance, vehicleId);
         }
         return false;
     }
 
     @Inject(method = "getEnergy", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$getFluidAsEnergy(CallbackInfoReturnable<Integer> cir) {
-        if (this.wfcore$fluidTank != null) {
-            cir.setReturnValue(this.wfcore$fluidTank.getFluidAmount() * ENERGY_TO_FLUID_RATIO);
+        if (this.wfcore$usesFluidFuel && this.wfcore$fluidTank != null) {
+            cir.setReturnValue(this.wfcore$fluidTank.getFluidAmount() * WFCoreConfig.getEnergyToFluidRatio());
         }
     }
 
     @Inject(method = "getMaxEnergy", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$getMaxFluidAsEnergy(CallbackInfoReturnable<Integer> cir) {
-        if (this.wfcore$fluidTank != null) {
-            cir.setReturnValue(this.wfcore$fluidTank.getCapacity() * ENERGY_TO_FLUID_RATIO);
+        if (this.wfcore$usesFluidFuel && this.wfcore$fluidTank != null) {
+            cir.setReturnValue(this.wfcore$fluidTank.getCapacity() * WFCoreConfig.getEnergyToFluidRatio());
         }
     }
 
     @Inject(method = "consumeEnergy", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$consumeFluidAsEnergy(int amount, CallbackInfo ci) {
-        if (this.wfcore$fluidTank != null) {
+        if (this.wfcore$usesFluidFuel && this.wfcore$fluidTank != null) {
             FluidStack currentFluid = this.wfcore$fluidTank.getFluid();
 
             if (!currentFluid.isEmpty()) {
-                String id = computed().getId();
+                String id = this.wfcore$vehicleId;
                 float efficiency = 1.0f;
 
-                var override = SuperbFuelOverride.overrideDataMap.get(id);
+                var override = id == null ? null : SuperbFuelOverride.getOverride(id);
                 if (override != null) {
                     efficiency = override.fluidConsumptionMap().getOrDefault(currentFluid.getFluid(), 1.0f);
                 }
 
-                double effectiveRatio = ENERGY_TO_FLUID_RATIO * efficiency;
+                double effectiveRatio = WFCoreConfig.getEnergyToFluidRatio() * Math.max(0.0001d, efficiency);
                 int mbToDrain = (int) Math.ceil(amount / effectiveRatio);
 
                 if (mbToDrain > 0) {
@@ -198,16 +210,26 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
 
     @Inject(method = "setEnergy", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$setFluidAsEnergy(int amount, CallbackInfo ci) {
-        if (this.wfcore$fluidTank != null) {
-            int targetMb = amount / ENERGY_TO_FLUID_RATIO;
+        if (this.wfcore$usesFluidFuel && this.wfcore$fluidTank != null) {
+            int targetMb = amount / WFCoreConfig.getEnergyToFluidRatio();
             int currentMb = this.wfcore$fluidTank.getFluidAmount();
+            FluidStack currentFluid = this.wfcore$fluidTank.getFluid();
 
-            if (targetMb > currentMb) {
-                this.wfcore$fluidTank.fill(new FluidStack(this.wfcore$fluidTank.getFluid(), targetMb - currentMb), IFluidHandler.FluidAction.EXECUTE);
+            if (targetMb > currentMb && !currentFluid.isEmpty()) {
+                FluidStack refill = currentFluid.copy();
+                refill.setAmount(targetMb - currentMb);
+                this.wfcore$fluidTank.fill(refill, IFluidHandler.FluidAction.EXECUTE);
             } else if (targetMb < currentMb) {
                 this.wfcore$fluidTank.drain(currentMb - targetMb, IFluidHandler.FluidAction.EXECUTE);
             }
             ci.cancel();
         }
+    }
+
+    @Unique
+    @Nullable
+    private String wfcore$getVehicleId() {
+        var data = computed();
+        return data == null ? null : data.getId();
     }
 }
