@@ -9,6 +9,8 @@ import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
 import com.gregtechceu.gtceu.api.registry.registrate.GTRegistrate;
 import com.gregtechceu.gtceu.api.sound.SoundEntry;
 
+import com.lowdragmc.lowdraglib.gui.factory.UIFactory;
+
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.common.MinecraftForge;
@@ -20,6 +22,7 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegisterEvent;
 
 import com.norwood.wfcore.config.WFCoreConfig;
+import com.norwood.wfcore.gui.VehicleUIFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -74,6 +77,7 @@ public class WFCore {
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             WFCoreConfig.load();
+            UIFactory.register(VehicleUIFactory.INSTANCE);
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");
             LOGGER.info("Look, I found a {}!", Items.DIAMOND);
         });

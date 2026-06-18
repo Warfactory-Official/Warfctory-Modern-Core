@@ -7,13 +7,13 @@ import net.minecraftforge.fluids.capability.IFluidHandler;
 
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.norwood.wfcore.IVehicleFuelTank;
-import com.norwood.wfcore.SuperbFuelOverride;
+import com.norwood.wfcore.SuperbOverrides;
 import com.norwood.wfcore.mixin.VehicleEntitySetEnergyInvoker;
 
 public class WFCoreFuelHandler {
 
     public static void handleVehicleRefueling(VehicleEntity instance, String id) {
-        var override = SuperbFuelOverride.getOverride(id);
+        var override = SuperbOverrides.getOverride(id);
         if (override != null) {
             var fuelTank = ((IVehicleFuelTank) instance).getFluidTank();
             if (fuelTank == null) {

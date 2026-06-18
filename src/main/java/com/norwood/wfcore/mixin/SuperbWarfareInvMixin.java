@@ -1,8 +1,12 @@
 package com.norwood.wfcore.mixin;
 
+import com.lowdragmc.lowdraglib.gui.modular.IUIHolder;
+import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.Entity;
@@ -20,9 +24,12 @@ import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.atsuishio.superbwarfare.init.ModMenuTypes;
 import com.atsuishio.superbwarfare.menu.VehicleMenu;
 import com.norwood.wfcore.IVehicleFuelTank;
-import com.norwood.wfcore.SuperbFuelOverride;
+import com.norwood.wfcore.IWFCoreVehicleUI;
+import com.norwood.wfcore.SuperbOverrides;
 import com.norwood.wfcore.capabilities.SyncedEntityFuelStorage;
 import com.norwood.wfcore.config.WFCoreConfig;
+import com.norwood.wfcore.gui.VehicleStorageUI;
+import com.norwood.wfcore.gui.VehicleUIFactory;
 import com.norwood.wfcore.handlers.WFCoreFuelHandler;
 import com.norwood.wfcore.serializer.WFCoreSerializers;
 import org.jetbrains.annotations.NotNull;
@@ -37,10 +44,14 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.OptionalInt;
+
 // Container and MenuProvider are declared here (the target VehicleEntity already implements both)
 // so the Mixin annotation processor can resolve and remap the getContainerSize/createMenu injectors.
 @Mixin(value = VehicleEntity.class)
-public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFuelTank, Container, MenuProvider {
+public abstract class SuperbWarfareInvMixin extends Entity
+                                            implements IVehicleFuelTank, Container, MenuProvider, IUIHolder,
+                                            IWFCoreVehicleUI {
 
     @Unique
     private static final EntityDataAccessor<FluidStack> FUEL = SynchedEntityData.defineId(VehicleEntity.class,
@@ -55,6 +66,12 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
     @Unique
     @Nullable
     protected String wfcore$vehicleId;
+    @Unique
+    protected boolean wfcore$usesModularStorage;
+    @Unique
+    protected int wfcore$uiSlots = -1;
+    @Unique
+    protected int wfcore$uiCols = -1;
 
     public SuperbWarfareInvMixin(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -84,8 +101,10 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
     @Inject(method = "<init>", at = @At("TAIL"))
     private void wfcore$setFluidTank(EntityType<?> type, Level level, CallbackInfo ci) {
         this.wfcore$vehicleId = wfcore$getVehicleId();
-        var override = this.wfcore$vehicleId == null ? null : SuperbFuelOverride.getOverride(this.wfcore$vehicleId);
-        if (override == null) {
+        var override = this.wfcore$vehicleId == null ? null : SuperbOverrides.getOverride(this.wfcore$vehicleId);
+        this.wfcore$usesModularStorage = override != null && override.hasStorageOverride();
+
+        if (override == null || !override.hasFuelOverride()) {
             this.wfcore$usesFluidFuel = false;
             this.wfcore$fluidTank = null;
             this.wfcore$fuel = LazyOptional.empty();
@@ -126,9 +145,18 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
      */
     @Overwrite(remap = false)
     public int getContainerSize() {
-        var type = computed().vehicleContainerType;
-        if (type == null) return 0;
-        return type.getSize();
+        var data = computed();
+        if (data == null) return 0;
+
+        // Read the override by id directly (not the cached wfcore$vehicleId, which is still null when the
+        // `items` field initializer first calls this during construction).
+        var override = SuperbOverrides.getOverride(data.getId());
+        if (override != null && override.hasStorageOverride()) {
+            return override.storageSize();
+        }
+
+        var type = data.vehicleContainerType;
+        return type == null ? 0 : type.getSize();
     }
 
     /**
@@ -213,7 +241,7 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
                 String id = this.wfcore$vehicleId;
                 float efficiency = 1.0f;
 
-                var override = id == null ? null : SuperbFuelOverride.getOverride(id);
+                var override = id == null ? null : SuperbOverrides.getOverride(id);
                 if (override != null) {
                     efficiency = override.fluidConsumptionMap().getOrDefault(currentFluid.getFluid(), 1.0f);
                 }
@@ -252,5 +280,64 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
     private String wfcore$getVehicleId() {
         var data = computed();
         return data == null ? null : data.getId();
+    }
+
+    // ----- WFCore ModularUI storage (only for vehicles with a configured storageSize) -----
+
+    /**
+     * For configured vehicles, open the resizable WFCore ModularUI instead of Superb Warfare's fixed-bucket menu.
+     * Redirects the {@code player.openMenu(this)} calls in {@code openCustomInventoryScreen} and {@code interact}.
+     * Unconfigured vehicles fall through to the vanilla {@code openMenu} path (native SBW menu, unchanged).
+     */
+    @Redirect(
+              method = { "openCustomInventoryScreen", "interact" },
+              at = @At(value = "INVOKE",
+                       target = "Lnet/minecraft/world/entity/player/Player;openMenu(Lnet/minecraft/world/MenuProvider;)Ljava/util/OptionalInt;"))
+    private OptionalInt wfcore$openVehicleStorageUI(Player player, MenuProvider provider) {
+        if (this.wfcore$usesModularStorage) {
+            if (player instanceof ServerPlayer serverPlayer) {
+                VehicleUIFactory.INSTANCE.openUI((VehicleEntity) (Object) this, serverPlayer);
+            }
+            return OptionalInt.empty();
+        }
+        return player.openMenu(provider);
+    }
+
+    @Override
+    public ModularUI createUI(Player entityPlayer) {
+        boolean client = this.level().isClientSide;
+        int slots = (client && this.wfcore$uiSlots >= 0) ? this.wfcore$uiSlots : this.getContainerSize();
+        int cols = this.wfcore$uiColumns();
+        return VehicleStorageUI.build((VehicleEntity) (Object) this, entityPlayer, slots, cols);
+    }
+
+    @Override
+    public boolean isInvalid() {
+        return this.isRemoved();
+    }
+
+    @Override
+    public boolean isRemote() {
+        return this.level().isClientSide;
+    }
+
+    @Override
+    public void markAsDirty() {
+        // Entity item data is persisted on world/chunk save via addAdditionalSaveData; no per-change dirtying needed.
+    }
+
+    @Override
+    public void wfcore$setSyncedUiSize(int slots, int cols) {
+        this.wfcore$uiSlots = slots;
+        this.wfcore$uiCols = cols;
+    }
+
+    @Override
+    public int wfcore$uiColumns() {
+        if (this.level().isClientSide && this.wfcore$uiCols > 0) {
+            return this.wfcore$uiCols;
+        }
+        var override = this.wfcore$vehicleId == null ? null : SuperbOverrides.getOverride(this.wfcore$vehicleId);
+        return override != null ? override.columnsOrDefault() : 9;
     }
 }
