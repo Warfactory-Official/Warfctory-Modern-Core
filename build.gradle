@@ -1,12 +1,5 @@
-buildscript {
-    repositories {
-        maven { url = 'https://repo.spongepowered.org/repository/maven-public/' }
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'org.spongepowered:mixingradle:0.7-SNAPSHOT'
-    }
-}
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+import net.neoforged.moddevgradle.legacyforge.dsl.ObfuscationExtension
 
 plugins {
     id "idea"
@@ -124,9 +117,14 @@ legacyForge {
             sourceSet(sourceSets.main)
         }
     }
+
 }
 
 jar {
+    // The shaded + reobfuscated jar (shadowJar -> reobfShadowJar) is the published artifact and
+    // takes the empty classifier. Move the plain jar (and its auto-created reobfJar) aside so the
+    // two reobf outputs do not collide on build/libs/<name>.jar.
+    archiveClassifier.set('slim')
     manifest.attributes([
             "MixinConfigs": "wfcore.mixins.json"
     ])
@@ -137,7 +135,6 @@ apply from: "$rootDir/gradle/scripts/spotless.gradle"
 dependencies {
     compileOnly("org.jetbrains:annotations:26.0.1")
 
-    shade("it.unimi.dsi:fastutil:8.5.15")
     shade("org.yaml:snakeyaml:2.2")
 
 
@@ -169,21 +166,23 @@ dependencies {
     }
 }
 
-tasks.named('shadowJar', com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar).configure {
+tasks.named('shadowJar', ShadowJar).configure {
     configurations = [project.configurations.shade]
     archiveClassifier.set('')
+    manifest.from(tasks.named('jar').get().manifest)
+
+    from(layout.buildDirectory.file("mixin/mixins.${mod_id}.refmap.json"))
 }
+
+
+def reobfShadowJar = extensions.getByType(ObfuscationExtension)
+        .reobfuscate(tasks.named('shadowJar', ShadowJar), sourceSets.main)
 
 tasks.named('assemble').configure {
-    dependsOn(tasks.named('shadowJar'))
+    dependsOn(reobfShadowJar)
 }
-
-def reobfShadowJarTask = tasks.findByName('reobfShadowJar')
-if (reobfShadowJarTask != null) {
-    reobfShadowJarTask.dependsOn(tasks.named('shadowJar'))
-    tasks.named('build').configure {
-        dependsOn(reobfShadowJarTask)
-    }
+tasks.named('build').configure {
+    dependsOn(reobfShadowJar)
 }
 
 mixin {

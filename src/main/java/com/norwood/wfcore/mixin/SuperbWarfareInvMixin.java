@@ -4,6 +4,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.Container;
+import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Inventory;
@@ -36,8 +37,10 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+// Container and MenuProvider are declared here (the target VehicleEntity already implements both)
+// so the Mixin annotation processor can resolve and remap the getContainerSize/createMenu injectors.
 @Mixin(value = VehicleEntity.class)
-public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFuelTank {
+public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFuelTank, Container, MenuProvider {
 
     @Unique
     private static final EntityDataAccessor<FluidStack> FUEL = SynchedEntityData.defineId(VehicleEntity.class,
@@ -109,6 +112,15 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
     }
 
     /**
+     * Replace the hardcoded container size with the configured vehicle container size.
+     *
+     * <p>
+     * {@code remap = false} keeps the annotation processor from trying to remap the method (it
+     * cannot, because the method is inherited from the {@link Container} interface rather than the
+     * mixin's superclass). The mixin declares {@code implements Container} so that the build's
+     * reobfuscation step renames this declaration to its SRG name for production, while the named
+     * declaration matches the named dev runtime directly.
+     *
      * @author MrNorwood
      * @reason Removing hardcoded limits
      */
@@ -120,6 +132,13 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
     }
 
     /**
+     * Restore the vehicle inventory menu (commented out upstream).
+     *
+     * <p>
+     * {@code remap = false} for the same reason as {@link #getContainerSize()}: {@code createMenu}
+     * is inherited from {@link MenuProvider}, so remapping is handled by the build's reobfuscation
+     * step (driven by the {@code implements MenuProvider} declaration) rather than the refmap.
+     *
      * @author MrNorwood
      * @reason Restoring commented code
      */
@@ -153,11 +172,13 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
         return null;
     }
 
+    // method = "baseTick" is the vanilla Entity#baseTick and must be remapped (default remap = true);
+    // only the @At target (superbwarfare's hasEnergyStorage) keeps remap = false.
     @Redirect(
               method = "baseTick",
               at = @At(value = "INVOKE",
-                       target = "Lcom/atsuishio/superbwarfare/entity/vehicle/base/VehicleEntity;hasEnergyStorage()Z"),
-              remap = false)
+                       target = "Lcom/atsuishio/superbwarfare/entity/vehicle/base/VehicleEntity;hasEnergyStorage()Z",
+                       remap = false))
     private boolean wfcore$redirectFuelBlock(VehicleEntity instance) {
         String vehicleId = this.wfcore$vehicleId;
         if (vehicleId == null) {

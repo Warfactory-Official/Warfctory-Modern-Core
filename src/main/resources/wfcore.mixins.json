@@ -8,6 +8,9 @@
     "SuperbWarfareInvMixin",
     "VehicleEntitySetEnergyInvoker"
   ],
+  "client": [
+    "NamePlateMixin"
+  ],
   "injectors": {
     "defaultRequire": 1
   }

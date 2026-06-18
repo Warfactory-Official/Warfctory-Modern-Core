@@ -9,13 +9,11 @@ import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
 import com.gregtechceu.gtceu.api.registry.registrate.GTRegistrate;
 import com.gregtechceu.gtceu.api.sound.SoundEntry;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -40,7 +38,6 @@ public class WFCore {
 
         modEventBus.addListener(this::onRegister);
         modEventBus.addListener(this::commonSetup);
-        modEventBus.addListener(this::clientSetup);
 
         modEventBus.addListener(this::addMaterialRegistries);
         modEventBus.addListener(this::addMaterials);
@@ -58,6 +55,16 @@ public class WFCore {
         EXAMPLE_REGISTRATE.registerRegistrate();
     }
 
+    /**
+     * Create a ResourceLocation in the format "modid:path"
+     *
+     * @param path
+     * @return ResourceLocation with the namespace of your mod
+     */
+    public static ResourceLocation id(String path) {
+        return new ResourceLocation(MOD_ID, path);
+    }
+
     private void onRegister(RegisterEvent event) {
         event.register(ForgeRegistries.Keys.ENTITY_DATA_SERIALIZERS, x -> {
             x.register(new ResourceLocation(MOD_ID, "superb_fluid_stack"), FLUID_STACK_ENTITY_DATA_SERIALIZER);
@@ -72,25 +79,11 @@ public class WFCore {
         });
     }
 
-    private void clientSetup(final FMLClientSetupEvent event) {
-        LOGGER.info("Hey, we're on Minecraft version {}!", Minecraft.getInstance().getLaunchedVersion());
-    }
-
-    /**
-     * Create a ResourceLocation in the format "modid:path"
-     *
-     * @param path
-     * @return ResourceLocation with the namespace of your mod
-     */
-    public static ResourceLocation id(String path) {
-        return new ResourceLocation(MOD_ID, path);
-    }
-
     /**
      * Create a material manager for your mod using GT's API.
      * You MUST have this if you have custom materials.
      * Remember to register them not to GT's namespace, but your own.
-     * 
+     *
      * @param event
      */
     private void addMaterialRegistries(MaterialRegistryEvent event) {
@@ -100,7 +93,7 @@ public class WFCore {
     /**
      * You will also need this for registering custom materials
      * Call init() from your Material class(es) here
-     * 
+     *
      * @param event
      */
     private void addMaterials(MaterialEvent event) {
@@ -109,7 +102,7 @@ public class WFCore {
 
     /**
      * (Optional) Used to modify pre-existing materials from GregTech
-     * 
+     *
      * @param event
      */
     private void modifyMaterials(PostMaterialEvent event) {
@@ -119,7 +112,7 @@ public class WFCore {
     /**
      * Used to register your own new RecipeTypes.
      * Call init() from your RecipeType class(es) here
-     * 
+     *
      * @param event
      */
     private void registerRecipeTypes(GTCEuAPI.RegisterEvent<ResourceLocation, GTRecipeType> event) {
@@ -129,7 +122,7 @@ public class WFCore {
     /**
      * Used to register your own new machines.
      * Call init() from your Machine class(es) here
-     * 
+     *
      * @param event
      */
     private void registerMachines(GTCEuAPI.RegisterEvent<ResourceLocation, MachineDefinition> event) {
@@ -139,7 +132,7 @@ public class WFCore {
     /**
      * Used to register your own new sounds
      * Call init from your Sound class(es) here
-     * 
+     *
      * @param event
      */
     public void registerSounds(GTCEuAPI.RegisterEvent<ResourceLocation, SoundEntry> event) {
