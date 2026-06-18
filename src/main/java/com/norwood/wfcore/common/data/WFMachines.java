@@ -20,10 +20,12 @@ import net.minecraft.world.level.block.Blocks;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
+import com.norwood.wfcore.common.machine.LightGroundVehicleFactoryMachine;
 import com.norwood.wfcore.common.machine.PrinterMachine;
 import com.norwood.wfcore.common.machine.RadarBlockEntity;
 import com.norwood.wfcore.common.machine.RadarMachine;
 import com.norwood.wfcore.common.machine.RadarStructure;
+import com.norwood.wfcore.common.machine.VehicleFactoryBlockEntity;
 
 import static com.gregtechceu.gtceu.api.pattern.Predicates.abilities;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.any;
@@ -37,6 +39,7 @@ public class WFMachines {
 
     public static MachineDefinition PRINTER;
     public static MultiblockMachineDefinition RADAR;
+    public static MultiblockMachineDefinition LIGHT_GROUND_VEHICLE_FACTORY;
 
     public static void init() {
         PRINTER = EXAMPLE_REGISTRATE.machine("printer", holder -> new PrinterMachine(holder, GTValues.LV))
@@ -78,6 +81,35 @@ public class WFMachines {
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
                         WFCore.id("block/multiblock/radar"))
                 .tooltips(Component.translatable("wfcore.machine.radar.tooltip"))
+                .register();
+
+        LIGHT_GROUND_VEHICLE_FACTORY = EXAMPLE_REGISTRATE
+                .multiblock("light_ground_vehicle_factory", LightGroundVehicleFactoryMachine::new,
+                        MetaMachineBlock::new, MetaMachineItem::new, VehicleFactoryBlockEntity::new)
+                .rotationState(RotationState.NON_Y_AXIS)
+                .langValue("MV Light Ground Vehicle Factory")
+                .recipeType(VehicleFactoryRecipes.VEHICLE_ASSEMBLER)
+                .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
+                .pattern(definition -> FactoryBlockPattern.start(
+                        RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
+                        .aisle("KKKKKKKK", "KKKKKKKK", "KKKKKKKK", "KKKCKKKK")
+                        .aisle("KKKKKKKK", "K      K", "K      K", "KKKKKKKK")
+                        .aisle("KKKKKKKK", "K      K", "K      K", "KKKKKKKK")
+                        .aisle("KKKKKKKK", "K      K", "K      K", "KKKKKKKK")
+                        .aisle("KKKKKKKK", "K      K", "K      K", "KKKKKKKK")
+                        .aisle("KKKKKKKK", "K      K", "K      K", "KKKKKKKK")
+                        .aisle("KKKKKKKK", "K      K", "K      K", "KKKKKKKK")
+                        .aisle("KKKKKKKK", "KKKKKKKK", "KKKKKKKK", "KKKKKKKK")
+                        .where('C', controller(blocks(definition.getBlock())))
+                        .where('K', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()).setMinGlobalLimited(40)
+                                .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1).setMaxGlobalLimited(2))
+                                .or(abilities(PartAbility.IMPORT_ITEMS).setMaxGlobalLimited(4))
+                                .or(abilities(PartAbility.IMPORT_FLUIDS).setMaxGlobalLimited(4)))
+                        .where(' ', any())
+                        .build())
+                .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
+                        WFCore.id("block/multiblock/vehicle_factory"))
+                .tooltips(Component.translatable("wfcore.machine.vehicle_factory.tooltip"))
                 .register();
     }
 

@@ -125,7 +125,7 @@ public class WFCore {
      * @param event
      */
     private void registerRecipeTypes(GTCEuAPI.RegisterEvent<ResourceLocation, GTRecipeType> event) {
-        // CustomRecipeTypes.init();
+        com.norwood.wfcore.common.data.VehicleFactoryRecipes.init();
     }
 
     /**
