@@ -7,7 +7,7 @@ plugins {
     id "maven-publish"
     id 'net.neoforged.moddev.legacyforge' version '2.0.91'
     id 'com.diffplug.spotless' version '7.0.2'
-    id 'com.github.johnrengelman.shadow' version '8.1.1'
+    id 'com.gradleup.shadow' version '8.3.6'
 }
 
 sourceSets {
@@ -68,7 +68,10 @@ repositories {
 version = mod_version
 group = maven_group
 base { archivesName = archives_base_name }
-java { sourceCompatibility = targetCompatibility = JavaVersion.VERSION_17 }
+java {
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_21
+    toolchain { languageVersion = JavaLanguageVersion.of(21) }
+}
 
 configurations {
     shade
@@ -136,6 +139,7 @@ dependencies {
     compileOnly("org.jetbrains:annotations:26.0.1")
 
     shade("org.yaml:snakeyaml:2.2")
+    shade("org.apache.commons:commons-math3:3.6.1")
 
 
     annotationProcessor('org.spongepowered:mixin:0.8.5:processor')
@@ -171,6 +175,8 @@ tasks.named('shadowJar', ShadowJar).configure {
     configurations = [project.configurations.shade]
     archiveClassifier.set('')
     manifest.from(tasks.named('jar').get().manifest)
+
+    relocate 'org.apache.commons.math3', 'wfcore.shadow.commons.math3'
 
     from(layout.buildDirectory.file("mixin/mixins.${mod_id}.refmap.json"))
 }
@@ -213,6 +219,6 @@ tasks.named('processResources', ProcessResources).configure {
 tasks.named('jar', Jar).configure { finalizedBy 'reobfJar' }
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
-    options.release.set(17)
+    options.release.set(21)
     options.compilerArgs << "-Aquiet=true"
 }

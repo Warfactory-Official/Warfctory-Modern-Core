@@ -1,6 +1,5 @@
 package com.norwood.wfcore;
 
-
 public interface IWFCoreVehicleUI {
 
     /**

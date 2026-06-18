@@ -54,8 +54,12 @@ public class WFCore {
         // If we want to use annotations to register event listeners,
         // we need to register our object like this!
         MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.radar.RadarRegistryHandler());
+        MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.radar.Retrofitter.INSTANCE);
 
         EXAMPLE_REGISTRATE.registerRegistrate();
+
+        com.norwood.wfcore.common.data.WFContent.init();
     }
 
     /**
@@ -77,6 +81,7 @@ public class WFCore {
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             WFCoreConfig.load();
+            com.norwood.wfcore.radar.RadarConfig.load();
             UIFactory.register(VehicleUIFactory.INSTANCE);
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");
             LOGGER.info("Look, I found a {}!", Items.DIAMOND);
@@ -101,7 +106,7 @@ public class WFCore {
      * @param event
      */
     private void addMaterials(MaterialEvent event) {
-        // CustomMaterials.init();
+        com.norwood.wfcore.common.data.WFMaterials.init();
     }
 
     /**
@@ -130,7 +135,7 @@ public class WFCore {
      * @param event
      */
     private void registerMachines(GTCEuAPI.RegisterEvent<ResourceLocation, MachineDefinition> event) {
-        // CustomMachines.init();
+        com.norwood.wfcore.common.data.WFMachines.init();
     }
 
     /**

@@ -1,0 +1,6 @@
+{
+  "wfcore.machine.radar.name": "Radar",
+  "wfcore.machine.radar.tooltip": "Finds enemy bases by clustering nearby machines and players. Needs sky access and Y >= 100. Requires EV power.",
+  "wfcore.gui.radar.start_scan": "Start Scan",
+  "wfcore.machine.printer.tooltip": "Prints a written report of bases found in radar scan data."
+}
