@@ -1,7 +1,27 @@
 {
   "wfcore.machine.radar.name": "Radar",
-  "wfcore.machine.radar.tooltip": "Finds enemy bases by clustering nearby machines and players. Needs sky access and Y >= 100. Requires EV power.",
+  "wfcore.machine.radar.tooltip": "Finds enemy bases by clustering nearby machines and players. Needs sky access and Y >= 100. Requires EV power and computation from a Mainframe (via a Computation Reception Hatch).",
   "wfcore.gui.radar.start_scan": "Start Scan",
   "wfcore.machine.printer.tooltip": "Prints a written report of bases found in radar scan data.",
-  "wfcore.machine.vehicle_factory.tooltip": "Assembles a vehicle and deploys it in front of the factory. Recipes are programmable (KubeJS/GroovyScript); the recipe's output item is the vehicle."
+  "wfcore.machine.vehicle_factory.tooltip": "Assembles a vehicle and deploys it in front of the factory. Recipes are programmable (KubeJS); the recipe's output item is the vehicle.",
+
+  "wfcore.machine.large_transformer.tooltip": "Converts DC EU to/from AC EU, cooled by coolant. Needs one AC Input and one AC Output hatch, plus DC energy hatches and a coolant input.",
+  "wfcore.machine.mainframe.tooltip": "Provides computation (CWU/t) to research units and radars. CPUs supply compute, RAM caps throughput, coolers fight heat. Output it through a Computation Transmission Hatch.",
+  "wfcore.machine.research_unit.tooltip": "Runs research using materials, power and computation. Completed research is written to a data stick.",
+
+  "wfcore.gui.transformer.dc_to_ac": "Mode: DC → AC (output)",
+  "wfcore.gui.transformer.ac_to_dc": "Mode: AC → DC (input)",
+  "wfcore.gui.transformer.no_ac_out": "No AC Output hatch",
+  "wfcore.gui.transformer.no_ac_in": "No AC Input hatch",
+
+  "wfcore.gui.mainframe.energy": "Energy: %s / %s EU/t",
+  "wfcore.gui.mainframe.computation": "Computation: %s / %s CWU/t",
+  "wfcore.gui.mainframe.heat": "Heat: %s C",
+
+  "wfcore.gui.research.start": "Start / Cancel",
+
+  "wfcore.research.basic_electronics.name": "Basic Electronics",
+  "wfcore.research.advanced_circuits.name": "Advanced Circuits",
+  "wfcore.research.radar_systems.name": "Radar Systems",
+  "wfcore.research.vehicle_engineering.name": "Vehicle Engineering"
 }

@@ -2,6 +2,9 @@ package com.norwood.wfcore.common.machine;
 
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.IEnergyContainer;
+import com.gregtechceu.gtceu.api.capability.IOpticalComputationProvider;
+import com.gregtechceu.gtceu.api.capability.IOpticalComputationReceiver;
+import com.gregtechceu.gtceu.api.capability.forge.GTCapability;
 import com.gregtechceu.gtceu.api.capability.recipe.EURecipeCapability;
 import com.gregtechceu.gtceu.api.capability.recipe.IO;
 import com.gregtechceu.gtceu.api.gui.GuiTextures;
@@ -45,11 +48,14 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Radar multiblock controller (EU only; the 1.12.2 computation requirement is intentionally dropped).
- * Snapshots online players + registered machines, runs DBSCAN to find bases, and writes the scan
- * UUID onto a data stick for the printer to read back.
+ * Radar multiblock controller. Snapshots online players + registered machines, runs DBSCAN to find bases,
+ * and writes the scan UUID onto a data stick for the printer to read back. Scanning is gated on computation:
+ * the radar needs a Computation Data Reception hatch fed (over an optical pipe) by a mainframe, and stalls
+ * without burning energy when the CWU runs short.
  */
-public class RadarMachine extends MultiblockControllerMachine implements IFancyUIMachine {
+public class RadarMachine extends MultiblockControllerMachine implements IFancyUIMachine, IOpticalComputationReceiver {
+
+    private static final int BASE_CWUT = 4;
 
     public static final ManagedFieldHolder MANAGED_FIELD_HOLDER = new ManagedFieldHolder(RadarMachine.class,
             MultiblockControllerMachine.MANAGED_FIELD_HOLDER);
@@ -69,6 +75,8 @@ public class RadarMachine extends MultiblockControllerMachine implements IFancyU
 
     @Nullable
     protected EnergyContainerList energyContainer;
+    @Nullable
+    protected IOpticalComputationProvider computationProvider;
     @Nullable
     protected TickableSubscription tickSub;
     @Nullable
@@ -96,7 +104,10 @@ public class RadarMachine extends MultiblockControllerMachine implements IFancyU
     public void onStructureFormed() {
         super.onStructureFormed();
         List<IEnergyContainer> containers = new ArrayList<>();
+        this.computationProvider = null;
         for (IMultiPart part : getParts()) {
+            part.self().holder.self().getCapability(GTCapability.CAPABILITY_COMPUTATION_PROVIDER)
+                    .ifPresent(p -> this.computationProvider = p);
             for (var handlerList : part.getRecipeHandlers()) {
                 if (!handlerList.isValid(IO.IN)) {
                     continue;
@@ -118,6 +129,7 @@ public class RadarMachine extends MultiblockControllerMachine implements IFancyU
     public void onStructureInvalid() {
         super.onStructureInvalid();
         this.energyContainer = null;
+        this.computationProvider = null;
         this.isActive = false;
         this.scanProgress = 0;
         if (tickSub != null) {
@@ -141,7 +153,12 @@ public class RadarMachine extends MultiblockControllerMachine implements IFancyU
             animAdvancing = false; // power loss mid-scan: freeze the dish where it is
             return;
         }
+        if (!hasComputation()) {
+            animAdvancing = false; // not enough CWU: stall without burning energy
+            return;
+        }
         drainEnergy(false);
+        requestCWU(false);
         animAdvancing = true; // powered and scanning: keep spinning
 
         if (scanProgress <= targetTicks) {
@@ -169,6 +186,25 @@ public class RadarMachine extends MultiblockControllerMachine implements IFancyU
             return true;
         }
         return false;
+    }
+
+    /** Required CWU/t rises with voltage tier (EV=4, IV=8, LuV=16, ...). */
+    public int getRequiredCWUt() {
+        int tier = Math.max(GTValues.EV, voltageTier);
+        return BASE_CWUT << (tier - GTValues.EV);
+    }
+
+    private int requestCWU(boolean simulate) {
+        return computationProvider == null ? 0 : computationProvider.requestCWUt(getRequiredCWUt(), simulate);
+    }
+
+    public boolean hasComputation() {
+        return requestCWU(true) >= getRequiredCWUt();
+    }
+
+    @Override
+    public IOpticalComputationProvider getComputationProvider() {
+        return computationProvider;
     }
 
     public void startScan() {
@@ -220,7 +256,8 @@ public class RadarMachine extends MultiblockControllerMachine implements IFancyU
     }
 
     public boolean canScan() {
-        return isFormed() && !isActive && hasDataStick() && isCorrectY() && hasSkylightAccess() && drainEnergy(true);
+        return isFormed() && !isActive && hasDataStick() && isCorrectY() && hasSkylightAccess() && drainEnergy(true) &&
+                hasComputation();
     }
 
     public boolean hasDataStick() {

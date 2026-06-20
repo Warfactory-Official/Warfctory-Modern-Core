@@ -1,0 +1,100 @@
+package com.norwood.wfcore.common.machine.compute;
+
+import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
+import com.gregtechceu.gtceu.api.machine.multiblock.part.MultiblockPartMachine;
+
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.fluids.capability.IFluidHandler;
+
+import com.norwood.wfcore.common.fluid.CoolantRegistry;
+
+/**
+ * A mainframe cooling component. A passive cooler bleeds heat to ambient; a liquid cooler drains the
+ * mainframe's shared coolant for far stronger active cooling.
+ */
+public class CoolingPartMachine extends MultiblockPartMachine implements ICooler {
+
+    private final boolean isLiquid;
+
+    public CoolingPartMachine(IMachineBlockEntity holder, boolean isLiquid) {
+        super(holder);
+        this.isLiquid = isLiquid;
+    }
+
+    @Override
+    public boolean isLiquid() {
+        return isLiquid;
+    }
+
+    @Override
+    public double getPassiveCoolingRate(double currentTemp, double thermalMass, double ambient) {
+        if (isLiquid || currentTemp <= ambient) return 0;
+        double coolingCoefficient = 0.01;
+        return (coolingCoefficient * (currentTemp - ambient)) / thermalMass;
+    }
+
+    @Override
+    public double getMaxActiveCoolingRate(double thermalMass, IFluidHandler coolantIn) {
+        if (!isLiquid || coolantIn == null) return 0;
+        FluidStack stack = coolantIn.drain(1, IFluidHandler.FluidAction.SIMULATE);
+        if (stack.isEmpty()) return 0;
+        CoolantRegistry.CoolantSettings settings = CoolantRegistry.get(stack.getFluid());
+        if (settings == null) return 0;
+        // 100mB is the max per tick per hatch
+        return (100 * settings.heatCapacity()) / thermalMass;
+    }
+
+    @Override
+    public int getFluidUsagePerTick() {
+        return isLiquid ? 100 : 0;
+    }
+
+    @Override
+    public double executeActiveCooling(double percentage, double thermalMass, IFluidHandler in, IFluidHandler out) {
+        if (!isLiquid || percentage <= 0 || in == null) return 0;
+
+        for (int i = 0; i < in.getTanks(); i++) {
+            FluidStack stack = in.getFluidInTank(i);
+            if (stack.isEmpty()) continue;
+
+            CoolantRegistry.CoolantSettings settings = CoolantRegistry.get(stack.getFluid());
+            if (settings == null) continue;
+
+            int amountToDrain = Math.min((int) Math.ceil(100 * percentage), stack.getAmount());
+            if (amountToDrain <= 0) continue;
+
+            FluidStack drainTarget = new FluidStack(stack.getFluid(), amountToDrain);
+
+            if (settings.hotVariant() != null && out != null) {
+                FluidStack hotStack = new FluidStack(settings.hotVariant(), amountToDrain);
+                if (out.fill(hotStack, IFluidHandler.FluidAction.SIMULATE) == amountToDrain) {
+                    FluidStack drained = in.drain(drainTarget, IFluidHandler.FluidAction.EXECUTE);
+                    if (!drained.isEmpty() && drained.getAmount() > 0) {
+                        hotStack.setAmount(drained.getAmount());
+                        out.fill(hotStack, IFluidHandler.FluidAction.EXECUTE);
+                        return (drained.getAmount() * settings.heatCapacity()) / thermalMass;
+                    }
+                }
+            } else {
+                FluidStack drained = in.drain(drainTarget, IFluidHandler.FluidAction.EXECUTE);
+                if (!drained.isEmpty() && drained.getAmount() > 0) {
+                    return (drained.getAmount() * settings.heatCapacity()) / thermalMass;
+                }
+            }
+        }
+        return 0;
+    }
+
+    @Override
+    public boolean shouldOpenUI(Player player, InteractionHand hand, BlockHitResult hit) {
+        return false;
+    }
+
+    @Override
+    public boolean canShared() {
+        return false;
+    }
+}

@@ -156,6 +156,10 @@ dependencies {
     modImplementation("dev.toma.configuration:configuration-forge-${minecraft_version}:${configuration_version}")
     modImplementation("curse.maven:modularui-624243:7904175")
 
+    // KubeJS (research authoring). Compile-only: the modpack provides KubeJS + Rhino + Architectury at runtime.
+    modCompileOnly("curse.maven:kubejs-238086:5853326") { transitive = false }
+    modCompileOnly("curse.maven:rhino-416294:6186971") { transitive = false }
+
     compileOnly 'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
 

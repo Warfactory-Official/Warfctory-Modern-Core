@@ -41,6 +41,7 @@ public class WFCore {
 
         modEventBus.addListener(this::onRegister);
         modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener(com.norwood.wfcore.common.capability.WFCapabilities::register);
 
         modEventBus.addListener(this::addMaterialRegistries);
         modEventBus.addListener(this::addMaterials);
@@ -82,6 +83,10 @@ public class WFCore {
         event.enqueueWork(() -> {
             WFCoreConfig.load();
             com.norwood.wfcore.radar.RadarConfig.load();
+            com.norwood.wfcore.common.fluid.CoolantRegistry.register();
+            com.norwood.wfcore.common.compute.CPURegistry.register();
+            com.norwood.wfcore.common.compute.RAMRegistry.register();
+            com.norwood.wfcore.common.research.WFResearches.register();
             UIFactory.register(VehicleUIFactory.INSTANCE);
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");
             LOGGER.info("Look, I found a {}!", Items.DIAMOND);
