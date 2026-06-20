@@ -63,6 +63,9 @@ public class RadarMachine extends MultiblockControllerMachine implements IFancyU
     protected boolean isActive;
     @Persisted
     protected boolean finished;
+    /** Client-synced: whether the dish should be spinning (false = stalled for power, freeze in place). */
+    @DescSynced
+    protected boolean animAdvancing = true;
 
     @Nullable
     protected EnergyContainerList energyContainer;
@@ -126,14 +129,20 @@ public class RadarMachine extends MultiblockControllerMachine implements IFancyU
     //////////////////// scan logic ////////////////////
 
     protected void tickRadar() {
-        if (isRemote() || !isFormed() || !isActive) {
+        if (isRemote() || !isFormed()) {
+            return;
+        }
+        if (!isActive) {
+            animAdvancing = true; // idle loops freely
             return;
         }
         int targetTicks = getScanDurationTicks();
         if (!drainEnergy(true)) {
+            animAdvancing = false; // power loss mid-scan: freeze the dish where it is
             return;
         }
         drainEnergy(false);
+        animAdvancing = true; // powered and scanning: keep spinning
 
         if (scanProgress <= targetTicks) {
             scanProgress++;
@@ -218,9 +227,14 @@ public class RadarMachine extends MultiblockControllerMachine implements IFancyU
         return !dataStickInv.getStackInSlot(0).isEmpty();
     }
 
-    /** Client-synced scanning state, used to drive the GeckoLib animation. */
+    /** Client-synced scanning state, used to pick the GeckoLib animation (running vs idle). */
     public boolean isScanning() {
         return isActive;
+    }
+
+    /** Client-synced: whether the spin clock advances; false freezes the dish in place on power loss. */
+    public boolean isAnimAdvancing() {
+        return animAdvancing;
     }
 
     private boolean isCorrectY() {

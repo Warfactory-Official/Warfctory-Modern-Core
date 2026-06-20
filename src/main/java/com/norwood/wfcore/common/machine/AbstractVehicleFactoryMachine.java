@@ -94,6 +94,22 @@ public abstract class AbstractVehicleFactoryMachine extends WorkableElectricMult
     }
 
     /**
+     * Whether a craft is in progress (running or stalled waiting for power), used to pick the GeckoLib
+     * animation. The working loop is kept selected while waiting so a power stall freezes it in place
+     * rather than dropping to idle.
+     */
+    public boolean isCrafting() {
+        var logic = getRecipeLogic();
+        return logic != null && (logic.isWorking() || logic.isWaiting());
+    }
+
+    /** Whether the working animation clock advances; false (waiting for power) freezes it in place. */
+    public boolean isAnimAdvancing() {
+        var logic = getRecipeLogic();
+        return logic != null && logic.isWorking();
+    }
+
+    /**
      * Spawn the vehicle encoded by {@code vehicleItem} at {@code pos}. Return true only if it was
      * spawned (the output item is then consumed); false to keep retrying (e.g. area obstructed).
      */

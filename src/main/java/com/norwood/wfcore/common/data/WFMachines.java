@@ -52,7 +52,6 @@ public class WFMachines {
 
         RADAR = EXAMPLE_REGISTRATE.multiblock("radar", RadarMachine::new,
                 MetaMachineBlock::new, MetaMachineItem::new, RadarBlockEntity::new)
-                .rotationState(RotationState.NON_Y_AXIS)
                 .langValue("Radar")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> {
@@ -86,7 +85,6 @@ public class WFMachines {
         LIGHT_GROUND_VEHICLE_FACTORY = EXAMPLE_REGISTRATE
                 .multiblock("light_ground_vehicle_factory", LightGroundVehicleFactoryMachine::new,
                         MetaMachineBlock::new, MetaMachineItem::new, VehicleFactoryBlockEntity::new)
-                .rotationState(RotationState.NON_Y_AXIS)
                 .langValue("MV Light Ground Vehicle Factory")
                 .recipeType(VehicleFactoryRecipes.VEHICLE_ASSEMBLER)
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)

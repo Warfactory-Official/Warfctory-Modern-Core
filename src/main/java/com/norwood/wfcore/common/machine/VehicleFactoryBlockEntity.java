@@ -11,12 +11,13 @@ import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache
 import software.bernie.geckolib.core.animation.AnimatableManager;
 import software.bernie.geckolib.core.animation.AnimationController;
 import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
+import software.bernie.geckolib.util.RenderUtils;
 
 /**
- * GeckoLib block entity for the vehicle factories. Animation follows the machine's working state;
- * the geo model/texture/animation assets are authored by hand.
+ * GeckoLib block entity for the vehicle factories. Animation follows the machine's working state via a
+ * {@link MachineAnimator}: the working loop freezes in place when the recipe stalls for power and only
+ * settles to idle once the loop completes. The geo model/texture/animation assets are authored by hand.
  */
 public class VehicleFactoryBlockEntity extends MetaMachineBlockEntity implements GeoBlockEntity {
 
@@ -24,6 +25,7 @@ public class VehicleFactoryBlockEntity extends MetaMachineBlockEntity implements
     private static final RawAnimation WORKING = RawAnimation.begin().thenLoop("working");
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+    private final MachineAnimator animator = new MachineAnimator();
 
     public VehicleFactoryBlockEntity(BlockEntityType<?> type, BlockPos pos, BlockState blockState) {
         super(type, pos, blockState);
@@ -32,10 +34,20 @@ public class VehicleFactoryBlockEntity extends MetaMachineBlockEntity implements
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
         controllers.add(new AnimationController<>(this, "controller", state -> {
-            boolean working = getMetaMachine() instanceof AbstractVehicleFactoryMachine factory && factory.isWorking();
-            state.getController().setAnimation(working ? WORKING : IDLE);
-            return PlayState.CONTINUE;
+            boolean crafting = getMetaMachine() instanceof AbstractVehicleFactoryMachine factory &&
+                    factory.isCrafting();
+            return animator.handle(state,
+                    crafting ? "working" : "idle",
+                    crafting ? WORKING : IDLE,
+                    crafting ? MachineAnimator.Transition.SNAP : MachineAnimator.Transition.FINISH_LOOP);
         }));
+    }
+
+    @Override
+    public double getTick(Object entity) {
+        boolean advancing = !(getMetaMachine() instanceof AbstractVehicleFactoryMachine factory) ||
+                factory.isAnimAdvancing();
+        return animator.tick(RenderUtils.getCurrentTick(), advancing);
     }
 
     @Override
