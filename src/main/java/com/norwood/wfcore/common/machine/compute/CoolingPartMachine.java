@@ -9,6 +9,7 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 
+import com.norwood.wfcore.common.cover.CoolingFanCover;
 import com.norwood.wfcore.common.fluid.CoolantRegistry;
 
 /**
@@ -32,8 +33,19 @@ public class CoolingPartMachine extends MultiblockPartMachine implements ICooler
     @Override
     public double getPassiveCoolingRate(double currentTemp, double thermalMass, double ambient) {
         if (isLiquid || currentTemp <= ambient) return 0;
-        double coolingCoefficient = 0.01;
+        // A cooling-fan cover on the exposed face boosts passive cooling proportionally to its tier
+        // (LV..EV -> tier 1..4); a bare fan hatch bleeds heat slowly.
+        int fanTier = getFanTier();
+        double coolingCoefficient = (fanTier > 0) ? 0.05 * fanTier : 0.01;
         return (coolingCoefficient * (currentTemp - ambient)) / thermalMass;
+    }
+
+    private int getFanTier() {
+        if (getLevel() == null) return 0;
+        if (getCoverContainer().getCoverAtSide(getFrontFacing()) instanceof CoolingFanCover fan) {
+            return fan.getTier();
+        }
+        return 0;
     }
 
     @Override

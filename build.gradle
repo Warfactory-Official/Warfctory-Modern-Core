@@ -173,6 +173,11 @@ dependencies {
     modImplementation("curse.maven:superb-warfare-1218165:7292685") {
         exclude group: "org.spongepowered", module: "mixin"
     }
+
+    // WarForge (research sharing + chunk reinforcer integration). Compile-only against the named 1.20.1 jar
+    // (built from ../WarForge-Remaintained via its `jar` task); the modpack provides WarForge at runtime.
+    // Optional dependency — the integration is gated on the mod being loaded.
+    compileOnly files("../WarForge-Remaintained/build/libs/warforge-remaintained-2.1.0.jar")
 }
 
 tasks.named('shadowJar', ShadowJar).configure {

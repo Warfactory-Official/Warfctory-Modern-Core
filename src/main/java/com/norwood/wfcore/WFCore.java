@@ -33,6 +33,7 @@ import static com.norwood.wfcore.serializer.WFCoreSerializers.FLUID_STACK_ENTITY
 public class WFCore {
 
     public static final String MOD_ID = "wfcore";
+    public static final boolean DEBUG = true;
     public static final Logger LOGGER = LogManager.getLogger();
     public static GTRegistrate EXAMPLE_REGISTRATE = GTRegistrate.create(WFCore.MOD_ID);
 
@@ -131,6 +132,7 @@ public class WFCore {
      */
     private void registerRecipeTypes(GTCEuAPI.RegisterEvent<ResourceLocation, GTRecipeType> event) {
         com.norwood.wfcore.common.data.VehicleFactoryRecipes.init();
+        com.norwood.wfcore.common.data.WFRecipeTypes.init();
     }
 
     /**

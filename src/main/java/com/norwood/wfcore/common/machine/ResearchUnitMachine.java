@@ -7,32 +7,36 @@ import com.gregtechceu.gtceu.api.capability.IOpticalComputationReceiver;
 import com.gregtechceu.gtceu.api.capability.forge.GTCapability;
 import com.gregtechceu.gtceu.api.capability.recipe.EURecipeCapability;
 import com.gregtechceu.gtceu.api.capability.recipe.IO;
-import com.gregtechceu.gtceu.api.gui.GuiTextures;
-import com.gregtechceu.gtceu.api.gui.widget.SlotWidget;
+import com.gregtechceu.gtceu.api.capability.recipe.ItemRecipeCapability;
 import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
+import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
-import com.gregtechceu.gtceu.api.machine.feature.IFancyUIMachine;
+import com.gregtechceu.gtceu.api.machine.feature.IInteractedMachine;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
-import com.gregtechceu.gtceu.api.machine.trait.NotifiableItemStackHandler;
 import com.gregtechceu.gtceu.api.misc.EnergyContainerList;
 import com.gregtechceu.gtceu.common.data.GTItems;
 
-import com.lowdragmc.lowdraglib.gui.util.ClickData;
-import com.lowdragmc.lowdraglib.gui.widget.ButtonWidget;
-import com.lowdragmc.lowdraglib.gui.widget.DraggableScrollableWidgetGroup;
-import com.lowdragmc.lowdraglib.gui.widget.LabelWidget;
-import com.lowdragmc.lowdraglib.gui.widget.Widget;
-import com.lowdragmc.lowdraglib.gui.widget.WidgetGroup;
+import com.lowdragmc.lowdraglib.syncdata.ITagSerializable;
 import com.lowdragmc.lowdraglib.syncdata.annotation.DescSynced;
 import com.lowdragmc.lowdraglib.syncdata.annotation.Persisted;
 import com.lowdragmc.lowdraglib.syncdata.field.ManagedFieldHolder;
 
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraftforge.items.IItemHandlerModifiable;
 
+import brachy.modularui.factory.BlockEntityUIFactory;
 import com.norwood.wfcore.api.research.Research;
 import com.norwood.wfcore.api.research.ResearchRegistry;
 import com.norwood.wfcore.api.research.ResearchState;
@@ -40,52 +44,64 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
- * 3x3x3 research multiblock. Runs Factorio-style research: each run consumes materials (from the controller's
- * input slots) + CWU (from a Computation Reception Hatch wired to a Mainframe) at a constant power draw,
- * advancing completion one run at a time. Completed researches are written as research-id data sticks into the
- * output slot, and existing research data sticks placed in the input slot are recognised on import (plain
- * GregTech data IO).
+ * 3x3x3 research multiblock. In CONTROL mode it presents the research tree and runs Factorio-style research:
+ * each run consumes materials (from an Item Input Bus) + CWU (from a Computation Reception Hatch wired to a
+ * Mainframe) at a constant power draw, advancing completion one run at a time. SLAVE units placed within a
+ * short radius of a CONTROL unit lend it parallel research slots (toggle the mode with a screwdriver).
  *
  * <p>
- * TODO(warforge): the 1.12.2 build also bridged research/data access to WarForge factions
- * (FactionLibraryAccess + an Assembly Line mixin), so any machine in a faction's claimed territory could share
- * the blueprint library. WarForge is not ported to 1.20.1 yet; rework this to honour faction library access
- * once it is. For now this falls back to plain GregTech data IO (local data sticks + Data Access Hatches).
+ * The faction-wide blueprint sharing from the 1.12.2 build is ported in
+ * {@code com.norwood.wfcore.integration.warforge} (FactionLibraryAccess + the Assembly Line research mixin): a
+ * research unit holding any data here lets the owning faction's Assembly Lines run research-gated recipes
+ * anywhere in their loaded claims. Completion is recorded in this controller's {@link ResearchState} (which
+ * unlocks downstream nodes), and externally-completed research is imported by recognising research data sticks
+ * in the input bus.
  */
 public class ResearchUnitMachine extends MultiblockControllerMachine
-                                 implements IOpticalComputationReceiver, IControllable, IFancyUIMachine {
+                                 implements IOpticalComputationReceiver, IControllable, IInteractedMachine {
 
     public static final ManagedFieldHolder MANAGED_FIELD_HOLDER = new ManagedFieldHolder(ResearchUnitMachine.class,
             MultiblockControllerMachine.MANAGED_FIELD_HOLDER);
 
+    public enum Mode {
+        CONTROL,
+        SLAVE
+    }
+
     private static final int QUEUE_SIZE = 3;
-    private static final int CAPACITY = 1; // TODO(slaves): SLAVE units adding parallel slots not yet ported
-    private static final String STICK_KEY = "wfcore_research";
+    private static final int CLUSTER_SCAN_RADIUS = 4;
+    private static final int MAX_SLAVES = 16;
+    public static final String STICK_KEY = "wfcore_research";
 
-    @Persisted
-    protected final NotifiableItemStackHandler materialsInv;
-    @Persisted
-    protected final NotifiableItemStackHandler dataInv;
-
+    private final List<IItemHandlerModifiable> inputInventories = new ArrayList<>();
     private final ResearchState state = new ResearchState();
     private final List<Job> jobs = new ArrayList<>();
 
     @Persisted
     @DescSynced
     private boolean isWorkingEnabled = true;
+    @Persisted
     @DescSynced
+    private boolean slaveMode = false;
+    @DescSynced
+    private int slaveCount;
+    /** Client snapshot of {@link #state} + queue (parsed lazily by the research-tree GUI). */
+    @DescSynced
+    private final ResearchSyncData researchSync = new ResearchSyncData();
+
+    // server-side: which research the GUI side-panel buttons act on (last clicked node)
     private String selectedResearchId = "";
-    @DescSynced
-    private String activeResearchId = "";
-    @DescSynced
-    private float activeProgress;
-    @DescSynced
-    private boolean selectedComplete;
-    @DescSynced
-    private boolean selectedUnlocked;
+
+    // client-only parse cache of researchSync
+    private CompoundTag parsedFrom;
+    private final ResearchState clientState = new ResearchState();
+    private final List<String> clientQueue = new ArrayList<>();
+    private final Map<String, Float> clientProgress = new HashMap<>();
 
     private IEnergyContainer energyContainer = new EnergyContainerList(new ArrayList<>());
     @Nullable
@@ -96,9 +112,6 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
 
     public ResearchUnitMachine(IMachineBlockEntity holder) {
         super(holder);
-        this.materialsInv = new NotifiableItemStackHandler(this, 9, IO.IN);
-        this.dataInv = new NotifiableItemStackHandler(this, 2, IO.NONE)
-                .setFilter(s -> s.is(GTItems.TOOL_DATA_STICK.asItem()));
     }
 
     @Override
@@ -112,6 +125,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     public void onStructureFormed() {
         super.onStructureFormed();
         List<IEnergyContainer> energy = new ArrayList<>();
+        this.inputInventories.clear();
         this.computationProvider = null;
         for (IMultiPart part : getParts()) {
             part.self().holder.self().getCapability(GTCapability.CAPABILITY_COMPUTATION_PROVIDER)
@@ -122,9 +136,14 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
                         .filter(IEnergyContainer.class::isInstance)
                         .map(IEnergyContainer.class::cast)
                         .forEach(energy::add);
+                handlerList.getCapability(ItemRecipeCapability.CAP).stream()
+                        .filter(IItemHandlerModifiable.class::isInstance)
+                        .map(IItemHandlerModifiable.class::cast)
+                        .forEach(inputInventories::add);
             }
         }
         this.energyContainer = new EnergyContainerList(energy);
+        pushResearchSync();
         if (!isRemote()) {
             tickSub = subscribeServerTick(this::tickResearch);
         }
@@ -134,6 +153,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     public void onStructureInvalid() {
         super.onStructureInvalid();
         this.energyContainer = new EnergyContainerList(new ArrayList<>());
+        this.inputInventories.clear();
         this.computationProvider = null;
         this.jobs.clear();
         if (tickSub != null) {
@@ -148,49 +168,108 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         return computationProvider;
     }
 
+    //////////////////// slave/control clustering ////////////////////
+
+    public Mode getMode() {
+        return slaveMode ? Mode.SLAVE : Mode.CONTROL;
+    }
+
+    /** Parallel research slots = 1 (the CONTROL itself) + one per adjacent formed SLAVE unit. */
+    public int getJobCapacity() {
+        return 1 + slaveCount;
+    }
+
+    public int getSlaveCount() {
+        return slaveCount;
+    }
+
+    /**
+     * Scans a cubic {@value CLUSTER_SCAN_RADIUS}-block radius for formed SLAVE research units and counts them
+     * (up to {@value MAX_SLAVES}). Only a CONTROL unit scans; a SLAVE just passively lends its slot.
+     */
+    private void recomputeSlaveCount() {
+        if (slaveMode || getLevel() == null) {
+            this.slaveCount = 0;
+            return;
+        }
+        int slaves = 0;
+        BlockPos origin = getPos();
+        for (int dx = -CLUSTER_SCAN_RADIUS; dx <= CLUSTER_SCAN_RADIUS && slaves < MAX_SLAVES; dx++) {
+            for (int dy = -CLUSTER_SCAN_RADIUS; dy <= CLUSTER_SCAN_RADIUS && slaves < MAX_SLAVES; dy++) {
+                for (int dz = -CLUSTER_SCAN_RADIUS; dz <= CLUSTER_SCAN_RADIUS && slaves < MAX_SLAVES; dz++) {
+                    if (dx == 0 && dy == 0 && dz == 0) continue;
+                    if (MetaMachine.getMachine(getLevel(),
+                            origin.offset(dx, dy, dz)) instanceof ResearchUnitMachine unit && unit != this &&
+                            unit.slaveMode && unit.isFormed()) {
+                        slaves++;
+                    }
+                }
+            }
+        }
+        this.slaveCount = slaves;
+    }
+
+    /** Screwdriver toggles CONTROL &lt;-&gt; SLAVE. Becoming a SLAVE clears any queued research. */
+    @Override
+    protected InteractionResult onScrewdriverClick(Player player, InteractionHand hand, Direction gridSide,
+                                                   BlockHitResult hitResult) {
+        if (isRemote()) return InteractionResult.SUCCESS;
+        this.slaveMode = !slaveMode;
+        if (slaveMode) jobs.clear();
+        recomputeSlaveCount();
+        pushResearchSync();
+        markDirty();
+        player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+                slaveMode ? "wfcore.gui.research.slave_mode" : "wfcore.gui.research.control_mode"), true);
+        return InteractionResult.CONSUME;
+    }
+
     //////////////////// ticking ////////////////////
 
     protected void tickResearch() {
         if (isRemote() || !isFormed()) return;
         if (++tickCounter % 40 == 0) {
+            recomputeSlaveCount();
             importCompletedFromSticks();
         }
-        if (!isWorkingEnabled || jobs.isEmpty()) {
-            activeResearchId = "";
-            activeProgress = 0;
+        // SLAVE units only lend parallel slots to an adjacent CONTROL; they never process themselves.
+        if (slaveMode || !isWorkingEnabled || jobs.isEmpty()) {
             return;
         }
 
-        int activeCount = Math.min(jobs.size(), CAPACITY);
+        // only the first `capacity` queued researches run concurrently; the rest wait their turn
+        int activeCount = Math.min(jobs.size(), getJobCapacity());
+        boolean changed = false;
         for (int i = activeCount - 1; i >= 0; i--) {
             Job job = jobs.get(i);
             Research research = ResearchRegistry.get(job.researchId);
             if (research == null) {
                 jobs.remove(i);
+                changed = true;
                 continue;
             }
-            processJob(job, research);
+            if (processJob(job, research)) changed = true;
             if (state.isComplete(job.researchId)) {
                 completeResearch(research);
                 jobs.remove(i);
+                changed = true;
             }
         }
-        Job head = jobs.isEmpty() ? null : jobs.get(0);
-        activeResearchId = head == null ? "" : head.researchId;
-        activeProgress = head == null ? 0 : state.getProgress(head.researchId);
+        if (changed || tickCounter % 10 == 0) pushResearchSync();
     }
 
-    private void processJob(Job job, Research research) {
+    /** Advances a job one tick; returns true if it made progress (so the client snapshot is refreshed). */
+    private boolean processJob(Job job, Research research) {
         boolean needsCompute = research.getCwuPerRun() > 0;
         if (needsCompute && (computationProvider == null || computationProvider.requestCWUt(
                 (int) Math.min(research.getCwuPerRun(), Integer.MAX_VALUE), true) <= 0)) {
-            return; // no computation - stall without consuming items/energy
+            return false; // no computation - stall without consuming items/energy
         }
         if (!job.materialsConsumed) {
-            if (!consumeMaterials(research.getItemsPerRun())) return;
+            if (!consumeMaterials(research.getItemsPerRun())) return false;
             job.materialsConsumed = true;
         }
-        if (!drawEnergy(research.getEut(), false)) return;
+        if (!drawEnergy(research.getEut(), false)) return false;
 
         if (needsCompute) {
             long remaining = research.getCwuPerRun() - job.accumulatedCWU;
@@ -208,34 +287,28 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
             job.elapsedTicks = 0;
             job.materialsConsumed = false;
         }
+        return true;
     }
 
     private void completeResearch(Research research) {
         state.setCompletedRuns(research.getId(), research.getRunsRequired());
         state.setPartialCWU(research.getId(), 0);
-        if (research.hasBlueprint()) {
-            writeResearchDataStick(research.getId());
-        }
+        // TODO(warforge): write a research data stick / publish to the faction library once WarForge is ported.
     }
 
-    //////////////////// data stick IO (plain GT data IO) ////////////////////
-
-    private void writeResearchDataStick(String researchId) {
-        if (!dataInv.getStackInSlot(1).isEmpty()) return;
-        ItemStack stick = GTItems.TOOL_DATA_STICK.asStack();
-        stick.getOrCreateTag().putString(STICK_KEY, researchId);
-        dataInv.setStackInSlot(1, stick);
-    }
-
+    /** Marks any research whose data stick is present in the input bus as complete (external import). */
     private void importCompletedFromSticks() {
-        for (int slot = 0; slot < dataInv.getSlots(); slot++) {
-            ItemStack stack = dataInv.getStackInSlot(slot);
-            if (stack.isEmpty() || !stack.hasTag()) continue;
-            String id = stack.getTag().getString(STICK_KEY);
-            if (id.isEmpty()) continue;
-            Research research = ResearchRegistry.get(id);
-            if (research != null && !state.isComplete(id)) {
-                state.setCompletedRuns(id, research.getRunsRequired());
+        for (IItemHandlerModifiable inv : inputInventories) {
+            for (int slot = 0; slot < inv.getSlots(); slot++) {
+                ItemStack stack = inv.getStackInSlot(slot);
+                if (stack.isEmpty() || !stack.is(GTItems.TOOL_DATA_STICK.asItem()) || !stack.hasTag()) continue;
+                String id = stack.getTag().getString(STICK_KEY);
+                if (id.isEmpty()) continue;
+                Research research = ResearchRegistry.get(id);
+                if (research != null && !state.isComplete(id)) {
+                    state.setCompletedRuns(id, research.getRunsRequired());
+                    pushResearchSync();
+                }
             }
         }
     }
@@ -244,8 +317,6 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
 
     public void setSelected(String researchId) {
         this.selectedResearchId = researchId == null ? "" : researchId;
-        this.selectedComplete = state.isComplete(selectedResearchId);
-        this.selectedUnlocked = state.isUnlocked(selectedResearchId);
     }
 
     public void toggleSelected() {
@@ -263,13 +334,14 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     }
 
     public boolean enqueue(String researchId) {
-        if (!isFormed() || researchId == null) return false;
+        if (slaveMode || !isFormed() || researchId == null) return false;
         Research research = ResearchRegistry.get(researchId);
         if (research == null || state.isComplete(researchId) || !state.isUnlocked(researchId)) return false;
         if (isResearching(researchId) || jobs.size() >= QUEUE_SIZE) return false;
         Job job = new Job(researchId);
         job.accumulatedCWU = state.getPartialCWU(researchId);
         jobs.add(job);
+        pushResearchSync();
         return true;
     }
 
@@ -278,13 +350,14 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
             if (jobs.get(i).researchId.equals(researchId)) {
                 state.setPartialCWU(researchId, jobs.get(i).accumulatedCWU);
                 jobs.remove(i);
+                pushResearchSync();
                 return true;
             }
         }
         return false;
     }
 
-    //////////////////// helpers ////////////////////
+    //////////////////// material helpers (read from the input bus) ////////////////////
 
     private boolean consumeMaterials(List<ItemStack> costs) {
         if (costs.isEmpty()) return true;
@@ -299,18 +372,22 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
 
     private int countMaterial(ItemStack target) {
         int count = 0;
-        for (int i = 0; i < materialsInv.getSlots(); i++) {
-            ItemStack slot = materialsInv.getStackInSlot(i);
-            if (!slot.isEmpty() && ItemStack.isSameItemSameTags(slot, target)) count += slot.getCount();
+        for (IItemHandlerModifiable inv : inputInventories) {
+            for (int i = 0; i < inv.getSlots(); i++) {
+                ItemStack slot = inv.getStackInSlot(i);
+                if (!slot.isEmpty() && ItemStack.isSameItemSameTags(slot, target)) count += slot.getCount();
+            }
         }
         return count;
     }
 
     private void extractMaterial(ItemStack target, int amount) {
-        for (int i = 0; i < materialsInv.getSlots() && amount > 0; i++) {
-            ItemStack slot = materialsInv.getStackInSlot(i);
-            if (!slot.isEmpty() && ItemStack.isSameItemSameTags(slot, target)) {
-                amount -= materialsInv.storage.extractItem(i, amount, false).getCount();
+        for (IItemHandlerModifiable inv : inputInventories) {
+            for (int i = 0; i < inv.getSlots() && amount > 0; i++) {
+                ItemStack slot = inv.getStackInSlot(i);
+                if (!slot.isEmpty() && ItemStack.isSameItemSameTags(slot, target)) {
+                    amount -= inv.extractItem(i, amount, false).getCount();
+                }
             }
         }
     }
@@ -336,6 +413,81 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         this.isWorkingEnabled = workingEnabled;
     }
 
+    //////////////////// client snapshot for the research-tree GUI ////////////////////
+
+    /** Rebuilds the {@link #researchSync} snapshot (state + queue) sent to clients for the tree GUI. */
+    private void pushResearchSync() {
+        CompoundTag tag = new CompoundTag();
+        tag.put("state", state.serializeNBT());
+        ListTag queue = new ListTag();
+        for (Job job : jobs) {
+            CompoundTag entry = new CompoundTag();
+            entry.putString("id", job.researchId);
+            entry.putFloat("p", state.getProgress(job.researchId));
+            queue.add(entry);
+        }
+        tag.put("queue", queue);
+        this.researchSync.tag = tag;
+    }
+
+    private void ensureParsed() {
+        if (researchSync.tag == parsedFrom) return;
+        parsedFrom = researchSync.tag;
+        clientState.deserializeNBT(researchSync.tag.getCompound("state"));
+        clientQueue.clear();
+        clientProgress.clear();
+        ListTag queue = researchSync.tag.getList("queue", Tag.TAG_COMPOUND);
+        for (int i = 0; i < queue.size(); i++) {
+            CompoundTag entry = queue.getCompound(i);
+            String id = entry.getString("id");
+            clientQueue.add(id);
+            clientProgress.put(id, entry.getFloat("p"));
+        }
+    }
+
+    /** Research progress for the GUI: the live state on the server, the synced snapshot on the client. */
+    public ResearchState getResearchState() {
+        if (!isRemote()) return state;
+        ensureParsed();
+        return clientState;
+    }
+
+    public List<String> getClientQueue() {
+        ensureParsed();
+        return clientQueue;
+    }
+
+    public float getClientProgress(String researchId) {
+        ensureParsed();
+        return clientProgress.getOrDefault(researchId, 0f);
+    }
+
+    public boolean isQueuedClient(String researchId) {
+        ensureParsed();
+        return clientQueue.contains(researchId);
+    }
+
+    public boolean isActiveClient(String researchId) {
+        ensureParsed();
+        int idx = clientQueue.indexOf(researchId);
+        return idx >= 0 && idx < getJobCapacity();
+    }
+
+    //////////////////// interaction (open the brachy research-tree GUI) ////////////////////
+
+    @Override
+    public InteractionResult onUse(BlockState blockState, Level level, BlockPos pos, Player player,
+                                   InteractionHand hand, BlockHitResult hit) {
+        if (player.isShiftKeyDown()) return InteractionResult.PASS;
+        if (!isRemote()) {
+            pushResearchSync();
+            if (getHolder().self() instanceof ResearchUnitBlockEntity be) {
+                BlockEntityUIFactory.INSTANCE.open(player, be);
+            }
+        }
+        return InteractionResult.SUCCESS;
+    }
+
     //////////////////// persistence ////////////////////
 
     @Override
@@ -356,91 +508,23 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         for (int i = 0; i < jobList.size(); i++) {
             jobs.add(Job.fromNBT(jobList.getCompound(i)));
         }
+        pushResearchSync();
     }
 
-    //////////////////// UI ////////////////////
+    /** LDLib-syncable wrapper around the client research snapshot tag (state + queue). */
+    public static final class ResearchSyncData implements ITagSerializable<CompoundTag> {
 
-    public void addDisplayText(List<net.minecraft.network.chat.Component> textList) {
-        if (!isFormed()) {
-            textList.add(net.minecraft.network.chat.Component.translatable("gtceu.multiblock.invalid_structure"));
-            return;
+        private CompoundTag tag = new CompoundTag();
+
+        @Override
+        public CompoundTag serializeNBT() {
+            return tag;
         }
-        if (!activeResearchId.isEmpty()) {
-            Research r = ResearchRegistry.get(activeResearchId);
-            String name = r == null ? activeResearchId : net.minecraft.network.chat.Component
-                    .translatable(r.getNameKey()).getString();
-            textList.add(net.minecraft.network.chat.Component.literal(
-                    String.format("§bResearching %s (%.0f%%)", name, activeProgress * 100)));
-        } else {
-            textList.add(net.minecraft.network.chat.Component.translatable("gtceu.multiblock.idling"));
+
+        @Override
+        public void deserializeNBT(CompoundTag nbt) {
+            this.tag = nbt;
         }
-    }
-
-    @Override
-    public Widget createUIWidget() {
-        WidgetGroup group = new WidgetGroup(0, 0, 200, 140);
-
-        DraggableScrollableWidgetGroup list = new DraggableScrollableWidgetGroup(4, 4, 88, 100)
-                .setBackground(GuiTextures.DISPLAY);
-        int y = 2;
-        for (Research research : ResearchRegistry.all()) {
-            String id = research.getId();
-            list.addWidget(new ButtonWidget(2, y, 82, 14, GuiTextures.BUTTON, d -> onSelect(d, id)));
-            list.addWidget(new LabelWidget(5, y + 3, research.getNameKey()));
-            y += 16;
-        }
-        group.addWidget(list);
-
-        group.addWidget(new LabelWidget(96, 6, this::getDetailName));
-        group.addWidget(new LabelWidget(96, 18, this::getDetailStats).setTextColor(-1));
-        group.addWidget(new LabelWidget(96, 30, this::getDetailState).setTextColor(-1));
-        group.addWidget(new LabelWidget(96, 42, this::getActiveText).setTextColor(-1));
-        group.addWidget(new ButtonWidget(96, 56, 60, 18, GuiTextures.BUTTON, this::onStartCancel)
-                .setHoverTooltips("wfcore.gui.research.start"));
-        group.addWidget(new LabelWidget(102, 61, "wfcore.gui.research.start"));
-
-        // material input grid (3x3) + data sticks
-        for (int i = 0; i < 9; i++) {
-            int sx = 4 + (i % 3) * 18;
-            int sy = 110 + (i / 3) * 0; // single row to keep compact
-            group.addWidget(new SlotWidget(materialsInv, i, 4 + i * 18, 110).setBackgroundTexture(GuiTextures.SLOT));
-        }
-        group.addWidget(new SlotWidget(dataInv, 0, 168, 92).setBackgroundTexture(GuiTextures.SLOT));
-        group.addWidget(new SlotWidget(dataInv, 1, 168, 112).setBackgroundTexture(GuiTextures.SLOT));
-        return group;
-    }
-
-    private void onSelect(ClickData data, String id) {
-        if (isRemote()) return;
-        setSelected(id);
-    }
-
-    private void onStartCancel(ClickData data) {
-        if (isRemote()) return;
-        toggleSelected();
-    }
-
-    private String getDetailName() {
-        Research r = ResearchRegistry.get(selectedResearchId);
-        return r == null ? "§7-" : net.minecraft.network.chat.Component.translatable(r.getNameKey()).getString();
-    }
-
-    private String getDetailStats() {
-        Research r = ResearchRegistry.get(selectedResearchId);
-        if (r == null) return "";
-        return String.format("§7%d runs · %d CWU · %d EU/t", r.getRunsRequired(), r.getTotalCWU(), r.getEut());
-    }
-
-    private String getDetailState() {
-        if (selectedResearchId.isEmpty()) return "";
-        if (selectedComplete) return "§aComplete";
-        if (!selectedUnlocked) return "§cLocked";
-        return isResearching(selectedResearchId) ? "§eQueued" : "§bReady";
-    }
-
-    private String getActiveText() {
-        if (activeResearchId.isEmpty()) return "";
-        return String.format("§b%.0f%%", activeProgress * 100);
     }
 
     //////////////////// job ////////////////////

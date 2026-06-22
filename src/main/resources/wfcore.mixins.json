@@ -6,10 +6,14 @@
   "refmap": "mixins.wfcore.refmap.json",
   "mixins": [
     "SuperbWarfareInvMixin",
-    "VehicleEntitySetEnergyInvoker"
+    "VehicleEntitySetEnergyInvoker",
+    "DataAccessHatchResearchShareMixin"
   ],
   "client": [
-    "NamePlateMixin"
+    "NamePlateMixin",
+    "DebugRemover",
+    "GuiDebugRemover",
+    "ForgeDebugTextRemover"
   ],
   "injectors": {
     "defaultRequire": 1

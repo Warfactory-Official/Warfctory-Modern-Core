@@ -41,3 +41,11 @@ Example Description
         versionRange = "[${gtceu_version},)"
         ordering = "AFTER"
         side = "BOTH"
+    # Optional: enables WarForge faction integration (research sharing + chunk reinforcer).
+    # Must load before WFCore so its capabilities are registered first.
+    [[dependencies.${mod_id}]]
+        modId = "warforge"
+        mandatory = false
+        versionRange = "*"
+        ordering = "AFTER"
+        side = "BOTH"

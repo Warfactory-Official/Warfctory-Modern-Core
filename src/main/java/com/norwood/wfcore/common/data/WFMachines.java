@@ -1,5 +1,6 @@
 package com.norwood.wfcore.common.data;
 
+import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
 import com.gregtechceu.gtceu.api.data.RotationState;
@@ -12,7 +13,10 @@ import com.gregtechceu.gtceu.api.machine.MultiblockMachineDefinition;
 import com.gregtechceu.gtceu.api.machine.multiblock.PartAbility;
 import com.gregtechceu.gtceu.api.pattern.FactoryBlockPattern;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
+import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
+import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
+import com.gregtechceu.gtceu.utils.GTUtil;
 
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.Block;
@@ -22,6 +26,9 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
 import com.norwood.wfcore.common.machine.ACHatchBlockEntity;
 import com.norwood.wfcore.common.machine.ACHatchPartMachine;
+import com.norwood.wfcore.common.machine.ChunkReinforcerBlockEntity;
+import com.norwood.wfcore.common.machine.ChunkReinforcerMachine;
+import com.norwood.wfcore.common.machine.LargeBlastFurnaceMachine;
 import com.norwood.wfcore.common.machine.LargeTransformerMachine;
 import com.norwood.wfcore.common.machine.LightGroundVehicleFactoryMachine;
 import com.norwood.wfcore.common.machine.MainframeMachine;
@@ -29,18 +36,23 @@ import com.norwood.wfcore.common.machine.PrinterMachine;
 import com.norwood.wfcore.common.machine.RadarBlockEntity;
 import com.norwood.wfcore.common.machine.RadarMachine;
 import com.norwood.wfcore.common.machine.RadarStructure;
+import com.norwood.wfcore.common.machine.ResearchUnitBlockEntity;
 import com.norwood.wfcore.common.machine.ResearchUnitMachine;
 import com.norwood.wfcore.common.machine.VehicleFactoryBlockEntity;
 import com.norwood.wfcore.common.machine.compute.CPUSlotPartMachine;
 import com.norwood.wfcore.common.machine.compute.CoolingPartMachine;
 import com.norwood.wfcore.common.machine.compute.RAMSlotPartMachine;
+import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 
 import static com.gregtechceu.gtceu.api.pattern.Predicates.abilities;
+import static com.gregtechceu.gtceu.api.pattern.Predicates.air;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.any;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.blocks;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.controller;
+import static com.gregtechceu.gtceu.api.pattern.Predicates.custom;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.frames;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.states;
+import static com.gregtechceu.gtceu.common.data.models.GTMachineModels.createWorkableCasingMachineModel;
 import static com.norwood.wfcore.WFCore.EXAMPLE_REGISTRATE;
 
 public class WFMachines {
@@ -53,10 +65,16 @@ public class WFMachines {
     public static MachineDefinition COOLING_FAN;
     public static MachineDefinition COOLING_LIQUID;
     public static MultiblockMachineDefinition LARGE_TRANSFORMER;
+    public static MultiblockMachineDefinition LARGE_BLAST_FURNACE;
     public static MultiblockMachineDefinition MAINFRAME;
     public static MultiblockMachineDefinition RESEARCH_UNIT;
     public static MultiblockMachineDefinition RADAR;
     public static MultiblockMachineDefinition LIGHT_GROUND_VEHICLE_FACTORY;
+    public static MultiblockMachineDefinition CHUNK_REINFORCER_LV;
+    public static MultiblockMachineDefinition CHUNK_REINFORCER_MV;
+    public static MultiblockMachineDefinition CHUNK_REINFORCER_HV;
+    public static MultiblockMachineDefinition CHUNK_REINFORCER_EV;
+    public static MultiblockMachineDefinition CHUNK_REINFORCER_IV;
 
     public static void init() {
         AC_INPUT_HATCH = EXAMPLE_REGISTRATE.machine("ac_input_hatch",
@@ -146,7 +164,8 @@ public class WFMachines {
                 .tooltips(Component.translatable("wfcore.machine.mainframe.tooltip"))
                 .register();
 
-        RESEARCH_UNIT = EXAMPLE_REGISTRATE.multiblock("research_unit", ResearchUnitMachine::new)
+        RESEARCH_UNIT = EXAMPLE_REGISTRATE.multiblock("research_unit", ResearchUnitMachine::new,
+                MetaMachineBlock::new, MetaMachineItem::new, ResearchUnitBlockEntity::new)
                 .langValue("Research Unit")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
@@ -157,6 +176,7 @@ public class WFMachines {
                         .where('S', controller(blocks(definition.getBlock())))
                         .where('X', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()).setMinGlobalLimited(8)
                                 .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1))
+                                .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1))
                                 .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMinGlobalLimited(1)))
                         .build())
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
@@ -183,6 +203,35 @@ public class WFMachines {
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
                         WFCore.id("block/multiblock/large_transformer"))
                 .tooltips(Component.translatable("wfcore.machine.large_transformer.tooltip"))
+                .register();
+
+        LARGE_BLAST_FURNACE = EXAMPLE_REGISTRATE
+                .multiblock("large_blast_furnace", LargeBlastFurnaceMachine::new)
+                .langValue("Large Blast Furnace")
+                .rotationState(RotationState.NON_Y_AXIS)
+                .recipeType(WFRecipeTypes.LARGE_BLAST_FURNACE)
+                .appearanceBlock(GTBlocks.CASING_PRIMITIVE_BRICKS)
+                .pattern(definition -> FactoryBlockPattern.start(
+                        RelativeDirection.RIGHT, RelativeDirection.UP, RelativeDirection.BACK)
+                        .aisle("#XXX#", "#XXX#", "#XXX#", "#####", "#####", "#####", "#####")
+                        .aisle("XXXXX", "X&&&X", "XX#XX", "#XXX#", "##X##", "##X##", "#XXX#")
+                        .aisle("XXXXX", "X&&&X", "X###X", "#X#X#", "#X#X#", "#X#X#", "#X#X#")
+                        .aisle("XXXXX", "X&&&X", "XX#XX", "#XXX#", "##X##", "##X##", "#XXX#")
+                        .aisle("#XXX#", "#XYX#", "#XXX#", "#####", "#####", "#####", "#####")
+                        .where('X', blocks(GTBlocks.CASING_PRIMITIVE_BRICKS.get())
+                                .or(abilities(PartAbility.IMPORT_ITEMS))
+                                .or(abilities(PartAbility.EXPORT_ITEMS))
+                                .or(abilities(PartAbility.EXPORT_FLUIDS)))
+                        .where('#', air())
+                        .where('&', air().or(custom(bws -> GTUtil.isBlockSnow(bws.getBlockState()), null)))
+                        .where('Y', controller(blocks(definition.getBlock())))
+                        .build())
+                .model(createWorkableCasingMachineModel(
+                        GTCEu.id("block/casings/solid/machine_primitive_bricks"),
+                        GTCEu.id("block/multiblock/primitive_blast_furnace"))
+                        .andThen(b -> b.addDynamicRenderer(DynamicRenderHelper::createPBFLavaRender)))
+                .hasBER(true)
+                .tooltips(Component.translatable("wfcore.machine.large_blast_furnace.tooltip"))
                 .register();
 
         RADAR = EXAMPLE_REGISTRATE.multiblock("radar", RadarMachine::new,
@@ -244,6 +293,45 @@ public class WFMachines {
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
                         WFCore.id("block/multiblock/vehicle_factory"))
                 .tooltips(Component.translatable("wfcore.machine.vehicle_factory.tooltip"))
+                .register();
+
+        // WarForge integration: only register when WarForge is present, so the warforge-referencing classes
+        // are never loaded otherwise.
+        if (WarforgeIntegration.isLoaded()) {
+            CHUNK_REINFORCER_LV = registerChunkReinforcer("chunk_reinforcer_lv", GTValues.LV, 1, 2,
+                    "Basic Chunk Reinforcer (LV)");
+            CHUNK_REINFORCER_MV = registerChunkReinforcer("chunk_reinforcer_mv", GTValues.MV, 1, 3,
+                    "Hardened Chunk Reinforcer (MV)");
+            CHUNK_REINFORCER_HV = registerChunkReinforcer("chunk_reinforcer_hv", GTValues.HV, 2, 4,
+                    "Fortified Chunk Reinforcer (HV)");
+            CHUNK_REINFORCER_EV = registerChunkReinforcer("chunk_reinforcer_ev", GTValues.EV, 2, 6,
+                    "Advanced Chunk Reinforcer (EV)");
+            CHUNK_REINFORCER_IV = registerChunkReinforcer("chunk_reinforcer_iv", GTValues.IV, 3, 8,
+                    "Bastion Chunk Reinforcer (IV)");
+        }
+    }
+
+    /** A food-burning 3x3x3 multiblock that reinforces a faction's nearby claimed chunks against sieges. */
+    private static MultiblockMachineDefinition registerChunkReinforcer(String name, int tier, int radius,
+                                                                       int bonus, String langValue) {
+        return EXAMPLE_REGISTRATE.multiblock(name,
+                holder -> new ChunkReinforcerMachine(holder, tier, radius, bonus),
+                MetaMachineBlock::new, MetaMachineItem::new, ChunkReinforcerBlockEntity::new)
+                .langValue(langValue)
+                .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
+                .pattern(definition -> FactoryBlockPattern.start(
+                        RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
+                        .aisle("XXX", "XSX", "XXX")
+                        .aisle("XXX", "XXX", "XXX")
+                        .aisle("XXX", "XXX", "XXX")
+                        .where('S', controller(blocks(definition.getBlock())))
+                        .where('X', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()).setMinGlobalLimited(8)
+                                .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1)))
+                        .build())
+                .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
+                        WFCore.id("block/multiblock/research_unit"))
+                .tooltips(Component.translatable("wfcore.machine.chunk_reinforcer.tooltip1"),
+                        Component.translatable("wfcore.machine.chunk_reinforcer.tooltip2", radius, bonus))
                 .register();
     }
 

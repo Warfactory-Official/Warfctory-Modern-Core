@@ -33,6 +33,7 @@ public class WfCoreAddon implements IGTAddon {
     @Override
     public void addRecipes(Consumer<FinishedRecipe> provider) {
         com.norwood.wfcore.common.data.VehicleFactoryRecipes.addDefaultRecipes(provider);
+        com.norwood.wfcore.common.data.WFRecipeTypes.addDefaultRecipes(provider);
     }
 
     @Override
