@@ -16,6 +16,7 @@ import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.machine.trait.NotifiableItemStackHandler;
 import com.gregtechceu.gtceu.api.misc.EnergyContainerList;
+import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
@@ -30,6 +31,7 @@ import com.lowdragmc.lowdraglib.syncdata.annotation.Persisted;
 import com.lowdragmc.lowdraglib.syncdata.field.ManagedFieldHolder;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
@@ -37,13 +39,17 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.phys.Vec3;
 
 import com.norwood.wfcore.WFCore;
+import com.norwood.wfcore.client.render.gltf.AnimTransition;
+import com.norwood.wfcore.client.render.gltf.IAnimatedMachine;
 import com.norwood.wfcore.radar.RadarClustering;
 import com.norwood.wfcore.radar.data.RadarScanData;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -53,7 +59,8 @@ import java.util.UUID;
  * the radar needs a Computation Data Reception hatch fed (over an optical pipe) by a mainframe, and stalls
  * without burning energy when the CWU runs short.
  */
-public class RadarMachine extends MultiblockControllerMachine implements IFancyUIMachine, IOpticalComputationReceiver {
+public class RadarMachine extends MultiblockControllerMachine
+                          implements IFancyUIMachine, IOpticalComputationReceiver, IAnimatedMachine {
 
     private static final int BASE_CWUT = 4;
 
@@ -272,6 +279,95 @@ public class RadarMachine extends MultiblockControllerMachine implements IFancyU
     /** Client-synced: whether the spin clock advances; false freezes the dish in place on power loss. */
     public boolean isAnimAdvancing() {
         return animAdvancing;
+    }
+
+    //////////////////// animated model (mcgltf) ////////////////////
+
+    @Override
+    public String getAnimState() {
+        return isScanning() ? "running" : "idle";
+    }
+
+    @Override
+    public boolean isAnimationRunning() {
+        return isAnimAdvancing();
+    }
+
+    @Override
+    public AnimTransition getAnimTransition(String from, String to) {
+        // spin up instantly, but play the dish's rotation out to its loop end before settling to idle
+        return "running".equals(to) ? AnimTransition.SNAP : AnimTransition.FINISH_LOOP;
+    }
+
+    @Override
+    public Vec3 getModelTransform() {
+        return switch (getFrontFacing()) {
+            case WEST -> new Vec3(-3, 10, 1);
+            case EAST -> new Vec3(4, 10, 0);
+            case NORTH -> new Vec3(0, 10, -3);
+            case SOUTH -> new Vec3(1, 10, 4);
+            default -> Vec3.ZERO;
+        };
+    }
+
+    @Override
+    public boolean shouldRenderModel() {
+        return isFormed();
+    }
+
+    /**
+     * The upper dish/tower blocks (structure layers >= 22) the GLTF model visually replaces. Computed
+     * client-side from the controller position + facing and {@link RadarStructure#AISLES}; fully
+     * deterministic, so no server sync is needed. Offsets are laid out along the same relative directions
+     * the pattern is built with ({@code start(FRONT, UP, RIGHT)}).
+     */
+    @Override
+    public Collection<BlockPos> getHiddenBlocks() {
+        final int animatedLayer = 22;
+        String[][] aisles = RadarStructure.AISLES;
+
+        int cChar = -1, cString = -1, cAisle = -1;
+        outer:
+        for (int a = 0; a < aisles.length; a++) {
+            for (int s = 0; s < aisles[a].length; s++) {
+                int idx = aisles[a][s].indexOf('A');
+                if (idx >= 0) {
+                    cAisle = a;
+                    cString = s;
+                    cChar = idx;
+                    break outer;
+                }
+            }
+        }
+        if (cChar < 0) {
+            return List.of();
+        }
+
+        Direction front = getFrontFacing();
+        Direction up = getUpwardsFacing();
+        boolean flipped = isFlipped();
+        Direction charDir = RelativeDirection.FRONT.getRelative(front, up, flipped);
+        Direction stringDir = RelativeDirection.UP.getRelative(front, up, flipped);
+        Direction aisleDir = RelativeDirection.RIGHT.getRelative(front, up, flipped);
+
+        BlockPos controller = getPos();
+        List<BlockPos> hidden = new ArrayList<>();
+        for (int a = 0; a < aisles.length; a++) {
+            for (int s = animatedLayer; s < aisles[a].length; s++) {
+                String layer = aisles[a][s];
+                for (int c = 0; c < layer.length(); c++) {
+                    char ch = layer.charAt(c);
+                    if (ch == ' ' || ch == 'A') {
+                        continue;
+                    }
+                    hidden.add(controller
+                            .relative(charDir, c - cChar)
+                            .relative(stringDir, s - cString)
+                            .relative(aisleDir, a - cAisle));
+                }
+            }
+        }
+        return hidden;
     }
 
     private boolean isCorrectY() {

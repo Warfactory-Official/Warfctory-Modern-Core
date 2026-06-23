@@ -5,26 +5,32 @@ import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
+import com.modularmods.mcgltf.MCglTF;
 import com.norwood.wfcore.WFCore;
-import com.norwood.wfcore.client.renderer.RadarGeoRenderer;
-import com.norwood.wfcore.client.renderer.VehicleFactoryGeoRenderer;
+import com.norwood.wfcore.client.render.gltf.GltfMachineRenderer;
+import com.norwood.wfcore.client.render.gltf.MachineGltfModel;
 import com.norwood.wfcore.common.data.WFMachines;
 import com.norwood.wfcore.common.machine.RadarBlockEntity;
-import com.norwood.wfcore.common.machine.VehicleFactoryBlockEntity;
 
 @Mod.EventBusSubscriber(modid = WFCore.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class WFClientEvents {
+
+    /** Shared radar dish model; the GLTF scene + animations load once and every radar BER reuses them. */
+    public static final MachineGltfModel RADAR_MODEL = new MachineGltfModel(WFCore.id("models/radar/radar.gltf"));
+
+    @SubscribeEvent
+    public static void onClientSetup(FMLClientSetupEvent event) {
+        // Register the model receiver so McGLTF loads the dish on (re)load and hands back the GPU scene.
+        event.enqueueWork(() -> MCglTF.getInstance().addGltfModelReceiver(RADAR_MODEL));
+    }
 
     @SuppressWarnings("unchecked")
     @SubscribeEvent
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(
                 (BlockEntityType<RadarBlockEntity>) WFMachines.RADAR.getBlockEntityType(),
-                RadarGeoRenderer::new);
-        event.registerBlockEntityRenderer(
-                (BlockEntityType<VehicleFactoryBlockEntity>) WFMachines.LIGHT_GROUND_VEHICLE_FACTORY
-                        .getBlockEntityType(),
-                VehicleFactoryGeoRenderer::new);
+                ctx -> new GltfMachineRenderer<>(RADAR_MODEL));
     }
 }

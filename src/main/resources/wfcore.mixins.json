@@ -13,7 +13,10 @@
     "NamePlateMixin",
     "DebugRemover",
     "GuiDebugRemover",
-    "ForgeDebugTextRemover"
+    "ForgeDebugTextRemover",
+    "BlockRenderDispatcherMixin",
+    "BlockShouldRenderFaceMixin",
+    "EmbeddiumBlockRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1

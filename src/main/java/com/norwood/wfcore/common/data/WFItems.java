@@ -2,7 +2,6 @@ package com.norwood.wfcore.common.data;
 
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.item.ComponentItem;
-import com.gregtechceu.gtceu.common.data.GTItems;
 import com.gregtechceu.gtceu.common.item.CoverPlaceBehavior;
 
 import com.norwood.wfcore.common.item.BoltToolItem;
@@ -31,9 +30,9 @@ public class WFItems {
                 .lang("Packaged Vehicle")
                 .register();
 
-        // Cooling-fan cover placer items (one per tier). WFCovers.init() must run first so the cover
-        // definitions exist when CoverPlaceBehavior captures them.
-        WFCovers.init();
+        // Cooling-fan cover placer items (one per tier). The cover definitions are registered earlier
+        // via WfCoreAddon.registerCovers() (during gtceu's constructor, while the cover registry is
+        // unfrozen), so WFCovers.COOLING_FANS is already populated here for CoverPlaceBehavior.
         for (int tier : WFCovers.FAN_TIERS) {
             final int t = tier;
             String vn = GTValues.VN[t].toLowerCase(Locale.ROOT);
@@ -41,7 +40,10 @@ public class WFItems {
                     .item("cooling_fan_cover_" + vn, ComponentItem::create)
                     .lang(GTValues.VN[t] + " Cooling Fan Cover")
                     .model(NonNullBiConsumer.noop())
-                    .onRegister(GTItems.attach(new CoverPlaceBehavior(WFCovers.COOLING_FANS[t])))
+                    // Inline GTItems.attach(...) so we don't reference GTItems here: touching that class
+                    // during construction triggers its <clinit>, which builds material-backed items before
+                    // materials are registered (NPE). The lambda runs at the item RegisterEvent instead.
+                    .onRegister(item -> item.attachComponents(new CoverPlaceBehavior(WFCovers.COOLING_FANS[t])))
                     .register();
         }
     }

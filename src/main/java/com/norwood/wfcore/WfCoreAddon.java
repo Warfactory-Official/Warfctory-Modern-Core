@@ -41,6 +41,15 @@ public class WfCoreAddon implements IGTAddon {
         // CustomElements.init();
     }
 
+    @Override
+    public void registerCovers() {
+        // gtceu calls this from GTCovers.init() (its constructor) between COVERS.unfreeze() and
+        // COVERS.freeze(), which is the only window the cover registry is writable. It runs before
+        // WFCore's own constructor (we depend on gtceu), so WFCovers.COOLING_FANS is populated by the
+        // time WFItems builds the placer items.
+        com.norwood.wfcore.common.data.WFCovers.init();
+    }
+
     // If you have custom ingredient types, uncomment this & change to match your capability.
     // KubeJS WILL REMOVE YOUR RECIPES IF THESE ARE NOT REGISTERED.
     /*

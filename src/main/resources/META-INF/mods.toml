@@ -41,6 +41,13 @@ Example Description
         versionRange = "[${gtceu_version},)"
         ordering = "AFTER"
         side = "BOTH"
+    # Required on the client to render the animated machine models (radar dish).
+    [[dependencies.${mod_id}]]
+        modId = "mcgltf"
+        mandatory = true
+        versionRange = "*"
+        ordering = "AFTER"
+        side = "CLIENT"
     # Optional: enables WarForge faction integration (research sharing + chunk reinforcer).
     # Must load before WFCore so its capabilities are registered first.
     [[dependencies.${mod_id}]]
