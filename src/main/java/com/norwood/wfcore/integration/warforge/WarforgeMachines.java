@@ -18,7 +18,7 @@ import com.norwood.wfcore.common.machine.ChunkReinforcerMachine;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.abilities;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.blocks;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.controller;
-import static com.norwood.wfcore.WFCore.EXAMPLE_REGISTRATE;
+import static com.norwood.wfcore.WFCore.WF_MACHINES;
 
 public final class WarforgeMachines {
 
@@ -41,7 +41,7 @@ public final class WarforgeMachines {
     // TODO: make better design on that
     private static MultiblockMachineDefinition register(String name, int tier, int radius, int bonus,
                                                         String langValue) {
-        return EXAMPLE_REGISTRATE.multiblock(name,
+        return WF_MACHINES.multiblock(name,
                 holder -> new ChunkReinforcerMachine(holder, tier, radius, bonus),
                 MetaMachineBlock::new, MetaMachineItem::new, ChunkReinforcerBlockEntity::new)
                 .langValue(langValue)

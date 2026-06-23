@@ -63,6 +63,8 @@ public class RadarMachine extends MultiblockControllerMachine
                           implements IFancyUIMachine, IOpticalComputationReceiver, IAnimatedMachine {
 
     private static final int BASE_CWUT = 4;
+    /** Lowest energy-hatch tier the radar will run at. Below this it forms but refuses to scan. */
+    private static final int MIN_TIER = GTValues.HV;
 
     public static final ManagedFieldHolder MANAGED_FIELD_HOLDER = new ManagedFieldHolder(RadarMachine.class,
             MultiblockControllerMachine.MANAGED_FIELD_HOLDER);
@@ -184,7 +186,7 @@ public class RadarMachine extends MultiblockControllerMachine
         if (energyContainer == null) {
             return false;
         }
-        long energyToDrain = GTValues.VA[Math.max(GTValues.EV, voltageTier)];
+        long energyToDrain = GTValues.VA[Math.max(MIN_TIER, voltageTier)];
         long result = energyContainer.getEnergyStored() - energyToDrain;
         if (result >= 0L && result <= energyContainer.getEnergyCapacity()) {
             if (!simulate) {
@@ -263,8 +265,8 @@ public class RadarMachine extends MultiblockControllerMachine
     }
 
     public boolean canScan() {
-        return isFormed() && !isActive && hasDataStick() && isCorrectY() && hasSkylightAccess() && drainEnergy(true) &&
-                hasComputation();
+        return isFormed() && !isActive && voltageTier >= MIN_TIER && hasDataStick() && isCorrectY() &&
+                hasSkylightAccess() && drainEnergy(true) && hasComputation();
     }
 
     public boolean hasDataStick() {
@@ -385,6 +387,7 @@ public class RadarMachine extends MultiblockControllerMachine
 
     public int getScanDurationTicks() {
         return switch (voltageTier) {
+            case GTValues.HV -> 16000;
             case GTValues.EV -> 12000;
             case GTValues.IV -> 8000;
             case GTValues.LuV -> 6000;
@@ -433,6 +436,9 @@ public class RadarMachine extends MultiblockControllerMachine
         }
         if (!hasSkylightAccess()) {
             return "§cNeeds sky access";
+        }
+        if (voltageTier < MIN_TIER) {
+            return "§cRequires an HV+ energy hatch";
         }
         if (isActive) {
             return "§eScanning...";

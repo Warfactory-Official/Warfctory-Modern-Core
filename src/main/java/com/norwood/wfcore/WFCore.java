@@ -35,7 +35,7 @@ public class WFCore {
     public static final String MOD_ID = "wfcore";
     public static final boolean DEBUG = true;
     public static final Logger LOGGER = LogManager.getLogger();
-    public static GTRegistrate EXAMPLE_REGISTRATE = GTRegistrate.create(WFCore.MOD_ID);
+    public static GTRegistrate WF_MACHINES = GTRegistrate.create(WFCore.MOD_ID);
 
     public WFCore() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
@@ -59,7 +59,7 @@ public class WFCore {
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.radar.RadarRegistryHandler());
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.radar.Retrofitter.INSTANCE);
 
-        EXAMPLE_REGISTRATE.registerRegistrate();
+        WF_MACHINES.registerRegistrate();
 
         com.norwood.wfcore.common.data.WFContent.init();
     }

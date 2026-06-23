@@ -14,7 +14,7 @@ import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
 
 import java.util.Locale;
 
-import static com.norwood.wfcore.WFCore.EXAMPLE_REGISTRATE;
+import static com.norwood.wfcore.WFCore.WF_MACHINES;
 
 public class WFItems {
 
@@ -27,12 +27,12 @@ public class WFItems {
     public static void init() {
         // No bespoke art yet: reuse existing textures as placeholders so datagen produces a valid model
         // (a wrench for the casing bolt tool, a minecart for the packaged vehicle).
-        BOLT_TOOL = EXAMPLE_REGISTRATE.item("bolt_tool", BoltToolItem::new)
+        BOLT_TOOL = WF_MACHINES.item("bolt_tool", BoltToolItem::new)
                 .lang("Bolt Tool")
                 .model((ctx, prov) -> prov.generated(ctx, GTCEu.id("item/tools/wrench")))
                 .register();
 
-        PACKAGED_VEHICLE = EXAMPLE_REGISTRATE.item("packaged_vehicle", PackagedVehicleItem::new)
+        PACKAGED_VEHICLE = WF_MACHINES.item("packaged_vehicle", PackagedVehicleItem::new)
                 .lang("Packaged Vehicle")
                 .model((ctx, prov) -> prov.generated(ctx, new ResourceLocation("minecraft", "item/minecart")))
                 .register();
@@ -43,7 +43,7 @@ public class WFItems {
         for (int tier : WFCovers.FAN_TIERS) {
             final int t = tier;
             String vn = GTValues.VN[t].toLowerCase(Locale.ROOT);
-            COOLING_FAN_COVERS[t] = EXAMPLE_REGISTRATE
+            COOLING_FAN_COVERS[t] = WF_MACHINES
                     .item("cooling_fan_cover_" + vn, ComponentItem::create)
                     .lang(GTValues.VN[t] + " Cooling Fan Cover")
                     .model(NonNullBiConsumer.noop())

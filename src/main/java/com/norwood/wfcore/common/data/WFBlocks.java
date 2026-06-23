@@ -20,7 +20,7 @@ import com.tterrag.registrate.util.entry.BlockEntityEntry;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
 
-import static com.norwood.wfcore.WFCore.EXAMPLE_REGISTRATE;
+import static com.norwood.wfcore.WFCore.WF_MACHINES;
 
 /**
  * WFCore casing blocks. Mirrors GTCEu's "one block per casing" convention (see GTBlocks).
@@ -41,12 +41,12 @@ public class WFBlocks {
         for (int i = 0; i < ACPipeType.VALUES.length; i++) {
             registerACPipe(i);
         }
-        AC_PIPE_BE = EXAMPLE_REGISTRATE.blockEntity("ac_pipe", ACPipeBlockEntity::new)
+        AC_PIPE_BE = WF_MACHINES.blockEntity("ac_pipe", ACPipeBlockEntity::new)
                 .onRegister(ACPipeBlockEntity::onBlockEntityRegister)
                 .validBlocks(AC_PIPES)
                 .register();
 
-        BOLTABLE_CASING = EXAMPLE_REGISTRATE
+        BOLTABLE_CASING = WF_MACHINES
                 .block("boltable_casing", BoltableCasingBlock::new)
                 .initialProperties(() -> Blocks.IRON_BLOCK)
                 .properties(p -> p.isValidSpawn((state, level, pos, ent) -> false))
@@ -67,7 +67,7 @@ public class WFBlocks {
     @SuppressWarnings("unchecked")
     private static void registerACPipe(int index) {
         ACPipeType type = ACPipeType.VALUES[index];
-        AC_PIPES[index] = (BlockEntry<ACPipeBlock>) (BlockEntry<?>) EXAMPLE_REGISTRATE
+        AC_PIPES[index] = (BlockEntry<ACPipeBlock>) (BlockEntry<?>) WF_MACHINES
                 .block("%s_ac_pipe".formatted(type.getSerializedName()), p -> new ACPipeBlock(p, type))
                 .initialProperties(() -> Blocks.IRON_BLOCK)
                 .properties(p -> p.dynamicShape().noOcclusion().forceSolidOn())
@@ -85,7 +85,7 @@ public class WFBlocks {
     }
 
     private static BlockEntry<Block> createCasingBlock(String name, ResourceLocation texture) {
-        return EXAMPLE_REGISTRATE.block(name, Block::new)
+        return WF_MACHINES.block(name, Block::new)
                 .initialProperties(() -> Blocks.IRON_BLOCK)
                 .properties(p -> p.isValidSpawn((state, level, pos, ent) -> false))
                 .addLayer(() -> RenderType::solid)

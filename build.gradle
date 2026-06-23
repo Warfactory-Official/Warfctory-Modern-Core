@@ -168,6 +168,7 @@ dependencies {
     modCompileOnly("curse.maven:kubejs-238086:5853326") { transitive = false }
     modCompileOnly("curse.maven:rhino-416294:6186971") { transitive = false }
 
+    modRuntimeOnly "curse.maven:gtceu-terminals-1423461:8275858"
     compileOnly 'org.projectlombok:lombok:1.18.24'
     annotationProcessor 'org.projectlombok:lombok:1.18.24'
 

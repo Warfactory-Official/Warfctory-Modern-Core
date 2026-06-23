@@ -1,6 +1,6 @@
 package com.norwood.wfcore.common.data;
 
-import static com.norwood.wfcore.WFCore.EXAMPLE_REGISTRATE;
+import static com.norwood.wfcore.WFCore.WF_MACHINES;
 
 /**
  * Creates the registrate-backed content (creative tab, blocks, items) during mod construction, before
@@ -12,7 +12,7 @@ public final class WFContent {
 
     public static void init() {
         WFCreativeTabs.init();
-        EXAMPLE_REGISTRATE.creativeModeTab(() -> WFCreativeTabs.WFCORE_TAB);
+        WF_MACHINES.creativeModeTab(() -> WFCreativeTabs.WFCORE_TAB);
         WFBlocks.init();
         WFItems.init();
     }

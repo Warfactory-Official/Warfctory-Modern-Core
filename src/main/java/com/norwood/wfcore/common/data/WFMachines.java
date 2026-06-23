@@ -52,7 +52,7 @@ import static com.gregtechceu.gtceu.api.pattern.Predicates.custom;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.frames;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.states;
 import static com.gregtechceu.gtceu.common.data.models.GTMachineModels.createWorkableCasingMachineModel;
-import static com.norwood.wfcore.WFCore.EXAMPLE_REGISTRATE;
+import static com.norwood.wfcore.WFCore.WF_MACHINES;
 
 public class WFMachines {
 
@@ -71,7 +71,7 @@ public class WFMachines {
     public static MultiblockMachineDefinition LIGHT_GROUND_VEHICLE_FACTORY;
 
     public static void init() {
-        AC_INPUT_HATCH = EXAMPLE_REGISTRATE.machine("ac_input_hatch",
+        AC_INPUT_HATCH = WF_MACHINES.machine("ac_input_hatch",
                 MachineDefinition::new,
                 holder -> new ACHatchPartMachine(holder, GTValues.EV, false),
                 MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
@@ -82,7 +82,7 @@ public class WFMachines {
                 .overlayTieredHullModel("ac_input_hatch")
                 .register();
 
-        AC_OUTPUT_HATCH = EXAMPLE_REGISTRATE.machine("ac_output_hatch",
+        AC_OUTPUT_HATCH = WF_MACHINES.machine("ac_output_hatch",
                 MachineDefinition::new,
                 holder -> new ACHatchPartMachine(holder, GTValues.EV, true),
                 MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
@@ -92,15 +92,14 @@ public class WFMachines {
                 .tier(GTValues.EV)
                 .overlayTieredHullModel("ac_output_hatch")
                 .register();
-        PRINTER = EXAMPLE_REGISTRATE.machine("printer", holder -> new PrinterMachine(holder, GTValues.LV))
+        PRINTER = WF_MACHINES.machine("printer", holder -> new PrinterMachine(holder, GTValues.LV))
                 .langValue("Data Printer")
                 .rotationState(RotationState.NON_Y_AXIS)
                 .tier(GTValues.LV)
                 .overlayTieredHullModel("printer")
-                .tooltips(Component.translatable("wfcore.machine.printer.tooltip"))
                 .register();
 
-        CPU_SLOT = EXAMPLE_REGISTRATE.machine("cpu_slot", CPUSlotPartMachine::new)
+        CPU_SLOT = WF_MACHINES.machine("cpu_slot", CPUSlotPartMachine::new)
                 .langValue("CPU Slot")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.GPC_CPU_SLOT)
@@ -108,7 +107,7 @@ public class WFMachines {
                 .overlayTieredHullModel("cpu_slot")
                 .register();
 
-        RAM_SLOT = EXAMPLE_REGISTRATE.machine("ram_slot", RAMSlotPartMachine::new)
+        RAM_SLOT = WF_MACHINES.machine("ram_slot", RAMSlotPartMachine::new)
                 .langValue("RAM Slot")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.GPC_RAM_SLOT)
@@ -116,7 +115,7 @@ public class WFMachines {
                 .overlayTieredHullModel("ram_slot")
                 .register();
 
-        COOLING_FAN = EXAMPLE_REGISTRATE.machine("cooling_fan", holder -> new CoolingPartMachine(holder, false))
+        COOLING_FAN = WF_MACHINES.machine("cooling_fan", holder -> new CoolingPartMachine(holder, false))
                 .langValue("Cooling Fan")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.GPC_COOLER)
@@ -124,7 +123,7 @@ public class WFMachines {
                 .overlayTieredHullModel("cooling_fan")
                 .register();
 
-        COOLING_LIQUID = EXAMPLE_REGISTRATE.machine("cooling_liquid", holder -> new CoolingPartMachine(holder, true))
+        COOLING_LIQUID = WF_MACHINES.machine("cooling_liquid", holder -> new CoolingPartMachine(holder, true))
                 .langValue("Liquid Cooler")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.GPC_COOLER)
@@ -132,7 +131,7 @@ public class WFMachines {
                 .overlayTieredHullModel("cooling_liquid")
                 .register();
 
-        MAINFRAME = EXAMPLE_REGISTRATE.multiblock("mainframe", MainframeMachine::new)
+        MAINFRAME = WF_MACHINES.multiblock("mainframe", MainframeMachine::new)
                 .langValue("Computation Mainframe")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
@@ -155,10 +154,9 @@ public class WFMachines {
                         .build())
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
                         WFCore.id("block/multiblock/mainframe"))
-                .tooltips(Component.translatable("wfcore.machine.mainframe.tooltip"))
                 .register();
 
-        RESEARCH_UNIT = EXAMPLE_REGISTRATE.multiblock("research_unit", ResearchUnitMachine::new,
+        RESEARCH_UNIT = WF_MACHINES.multiblock("research_unit", ResearchUnitMachine::new,
                 MetaMachineBlock::new, MetaMachineItem::new, ResearchUnitBlockEntity::new)
                 .langValue("Research Unit")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
@@ -175,10 +173,9 @@ public class WFMachines {
                         .build())
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
                         WFCore.id("block/multiblock/research_unit"))
-                .tooltips(Component.translatable("wfcore.machine.research_unit.tooltip"))
                 .register();
 
-        LARGE_TRANSFORMER = EXAMPLE_REGISTRATE.multiblock("large_transformer", LargeTransformerMachine::new)
+        LARGE_TRANSFORMER = WF_MACHINES.multiblock("large_transformer", LargeTransformerMachine::new)
                 .langValue("Large Transformer")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
@@ -196,10 +193,9 @@ public class WFMachines {
                         .build())
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
                         WFCore.id("block/multiblock/large_transformer"))
-                .tooltips(Component.translatable("wfcore.machine.large_transformer.tooltip"))
                 .register();
 
-        LARGE_BLAST_FURNACE = EXAMPLE_REGISTRATE
+        LARGE_BLAST_FURNACE = WF_MACHINES
                 .multiblock("large_blast_furnace", LargeBlastFurnaceMachine::new)
                 .langValue("Large Blast Furnace")
                 .rotationState(RotationState.NON_Y_AXIS)
@@ -225,10 +221,9 @@ public class WFMachines {
                         GTCEu.id("block/multiblock/primitive_blast_furnace"))
                         .andThen(b -> b.addDynamicRenderer(DynamicRenderHelper::createPBFLavaRender)))
                 .hasBER(true)
-                .tooltips(Component.translatable("wfcore.machine.large_blast_furnace.tooltip"))
                 .register();
 
-        RADAR = EXAMPLE_REGISTRATE.multiblock("radar", RadarMachine::new,
+        RADAR = WF_MACHINES.multiblock("radar", RadarMachine::new,
                 MetaMachineBlock::new, MetaMachineItem::new, RadarBlockEntity::new)
                 .langValue("Radar")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
@@ -258,10 +253,9 @@ public class WFMachines {
                 })
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
                         WFCore.id("block/multiblock/radar"))
-                .tooltips(Component.translatable("wfcore.machine.radar.tooltip"))
                 .register();
 
-        LIGHT_GROUND_VEHICLE_FACTORY = EXAMPLE_REGISTRATE
+        LIGHT_GROUND_VEHICLE_FACTORY = WF_MACHINES
                 .multiblock("light_ground_vehicle_factory", LightGroundVehicleFactoryMachine::new,
                         MetaMachineBlock::new, MetaMachineItem::new, VehicleFactoryBlockEntity::new)
                 .langValue("MV Light Ground Vehicle Factory")
@@ -286,7 +280,6 @@ public class WFMachines {
                         .build())
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
                         WFCore.id("block/multiblock/vehicle_factory"))
-                .tooltips(Component.translatable("wfcore.machine.vehicle_factory.tooltip"))
                 .register();
 
         // WarForge integration: only when WarForge is present. The chunk-reinforcer machines reference
