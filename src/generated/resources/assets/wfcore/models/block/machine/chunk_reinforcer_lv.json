@@ -1,0 +1,82 @@
+{
+  "parent": "minecraft:block/block",
+  "loader": "gtceu:machine",
+  "machine": "wfcore:chunk_reinforcer_lv",
+  "texture_overrides": {
+    "all": "wfcore:block/casings/aluminium_sheet_casing"
+  },
+  "variants": {
+    "is_formed=false,recipe_logic_status=idle": {
+      "model": {
+        "parent": "gtceu:block/machine/template/cube_all/sided",
+        "textures": {
+          "all": "wfcore:block/casings/aluminium_sheet_casing",
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+        }
+      }
+    },
+    "is_formed=false,recipe_logic_status=suspend": {
+      "model": {
+        "parent": "gtceu:block/machine/template/cube_all/sided",
+        "textures": {
+          "all": "wfcore:block/casings/aluminium_sheet_casing",
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+        }
+      }
+    },
+    "is_formed=false,recipe_logic_status=waiting": {
+      "model": {
+        "parent": "gtceu:block/machine/template/cube_all/sided",
+        "textures": {
+          "all": "wfcore:block/casings/aluminium_sheet_casing",
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+        }
+      }
+    },
+    "is_formed=false,recipe_logic_status=working": {
+      "model": {
+        "parent": "gtceu:block/machine/template/cube_all/sided",
+        "textures": {
+          "all": "wfcore:block/casings/aluminium_sheet_casing",
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+        }
+      }
+    },
+    "is_formed=true,recipe_logic_status=idle": {
+      "model": {
+        "parent": "gtceu:block/machine/template/cube_all/sided",
+        "textures": {
+          "all": "wfcore:block/casings/aluminium_sheet_casing",
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+        }
+      }
+    },
+    "is_formed=true,recipe_logic_status=suspend": {
+      "model": {
+        "parent": "gtceu:block/machine/template/cube_all/sided",
+        "textures": {
+          "all": "wfcore:block/casings/aluminium_sheet_casing",
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+        }
+      }
+    },
+    "is_formed=true,recipe_logic_status=waiting": {
+      "model": {
+        "parent": "gtceu:block/machine/template/cube_all/sided",
+        "textures": {
+          "all": "wfcore:block/casings/aluminium_sheet_casing",
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+        }
+      }
+    },
+    "is_formed=true,recipe_logic_status=working": {
+      "model": {
+        "parent": "gtceu:block/machine/template/cube_all/sided",
+        "textures": {
+          "all": "wfcore:block/casings/aluminium_sheet_casing",
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "wfcore:block/aluminium_sheet_casing"
+    }
+  }
+}

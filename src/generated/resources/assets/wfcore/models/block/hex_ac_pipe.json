@@ -1,0 +1,55 @@
+{
+  "parent": "wfcore:block/pipe/hex_ac_pipe/center",
+  "loader": "gtceu:pipe",
+  "parts": {
+    "center": {
+      "model": "wfcore:block/pipe/hex_ac_pipe/center"
+    },
+    "down": {
+      "model": "wfcore:block/pipe/hex_ac_pipe/connection"
+    },
+    "east": {
+      "model": "wfcore:block/pipe/hex_ac_pipe/connection",
+      "x": 90,
+      "y": 270
+    },
+    "north": {
+      "model": "wfcore:block/pipe/hex_ac_pipe/connection",
+      "x": 90,
+      "y": 180
+    },
+    "south": {
+      "model": "wfcore:block/pipe/hex_ac_pipe/connection",
+      "x": 90
+    },
+    "up": {
+      "model": "wfcore:block/pipe/hex_ac_pipe/connection",
+      "x": 180
+    },
+    "west": {
+      "model": "wfcore:block/pipe/hex_ac_pipe/connection",
+      "x": 90,
+      "y": 90
+    }
+  },
+  "restrictors": {
+    "down": {
+      "model": "wfcore:block/pipe/restrictor/down/thickness_16.0"
+    },
+    "east": {
+      "model": "wfcore:block/pipe/restrictor/east/thickness_16.0"
+    },
+    "north": {
+      "model": "wfcore:block/pipe/restrictor/north/thickness_16.0"
+    },
+    "south": {
+      "model": "wfcore:block/pipe/restrictor/south/thickness_16.0"
+    },
+    "up": {
+      "model": "wfcore:block/pipe/restrictor/up/thickness_16.0"
+    },
+    "west": {
+      "model": "wfcore:block/pipe/restrictor/west/thickness_16.0"
+    }
+  }
+}

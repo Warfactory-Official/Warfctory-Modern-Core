@@ -18,7 +18,7 @@ import com.norwood.wfcore.common.machine.RadarBlockEntity;
 public class WFClientEvents {
 
     /** Shared radar dish model; the GLTF scene + animations load once and every radar BER reuses them. */
-    public static final MachineGltfModel RADAR_MODEL = new MachineGltfModel(WFCore.id("models/radar/radar.gltf"));
+    public static final MachineGltfModel RADAR_MODEL = new MachineGltfModel(WFCore.id("model/radar.gltf"));
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {

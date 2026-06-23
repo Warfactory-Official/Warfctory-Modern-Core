@@ -4,12 +4,10 @@
   "wfcore.gui.radar.start_scan": "Start Scan",
   "wfcore.machine.printer.tooltip": "Prints a written report of bases found in radar scan data.",
   "wfcore.machine.vehicle_factory.tooltip": "Assembles a vehicle and deploys it in front of the factory. Recipes are programmable (KubeJS); the recipe's output item is the vehicle.",
-
   "wfcore.machine.large_transformer.tooltip": "Converts DC EU to/from AC EU, cooled by coolant. Needs one AC Input and one AC Output hatch, plus DC energy hatches and a coolant input.",
   "wfcore.machine.mainframe.tooltip": "Provides computation (CWU/t) to research units and radars. CPUs supply compute, RAM caps throughput, coolers fight heat. Output it through a Computation Transmission Hatch.",
   "wfcore.machine.research_unit.tooltip": "Runs research using materials, power and computation. Completed research is written to a data stick.",
   "wfcore.machine.large_blast_furnace.tooltip": "A primitive blast furnace. Feed it through item buses and pull results out the same way; you are going to need 2 buses.",
-
   "wfcore.machine.chunk_reinforcer.tooltip1": "§eBurns food to reinforce your faction's nearby claimed chunks against sieges.",
   "wfcore.machine.chunk_reinforcer.tooltip2": "Reinforces claims within %s chunk(s) for +%s siege defence while fuelled.",
   "wfcore.machine.chunk_reinforcer.radius": "Reinforcement Radius: %s chunk(s)",
@@ -17,16 +15,13 @@
   "wfcore.machine.chunk_reinforcer.claimed": "§aIn claimed territory",
   "wfcore.machine.chunk_reinforcer.unclaimed": "§cNot in claimed territory",
   "wfcore.machine.chunk_reinforcer.fuel": "Fuel remaining: %ss",
-
   "wfcore.gui.transformer.dc_to_ac": "Mode: DC → AC (output)",
   "wfcore.gui.transformer.ac_to_dc": "Mode: AC → DC (input)",
   "wfcore.gui.transformer.no_ac_out": "No AC Output hatch",
   "wfcore.gui.transformer.no_ac_in": "No AC Input hatch",
-
   "wfcore.gui.mainframe.energy": "Energy: %s / %s EU/t",
   "wfcore.gui.mainframe.computation": "Computation: %s / %s CWU/t",
   "wfcore.gui.mainframe.heat": "Heat: %s C",
-
   "wfcore.gui.research.title": "Research Tree",
   "wfcore.gui.research.not_formed": "Structure is not formed",
   "wfcore.gui.research.slave_mode": "Slave mode - adds a parallel slot to an adjacent Control unit",
@@ -40,7 +35,6 @@
   "wfcore.gui.research.queue": "Queue:",
   "wfcore.gui.research.start": "Start Research",
   "wfcore.gui.research.cancel": "Cancel Research",
-
   "block.wfcore.aluminium_sheet_casing": "Aluminium Sheet Casing",
   "block.wfcore.boltable_casing": "Coated Beryllium Casing",
   "block.wfcore.mainframe": "Computation Mainframe",
@@ -63,11 +57,20 @@
   "block.wfcore.quadruple_ac_pipe": "Steel Wire (AC, Quadruple)",
   "block.wfcore.octal_ac_pipe": "Steel Wire (AC, Octal)",
   "block.wfcore.hex_ac_pipe": "Steel Wire (AC, Hex)",
-
   "cover.wfcore.cooling_fan": "Cooling Fan Cover",
-
   "wfcore.research.basic_electronics.name": "Basic Electronics",
   "wfcore.research.advanced_circuits.name": "Advanced Circuits",
   "wfcore.research.radar_systems.name": "Radar Systems",
-  "wfcore.research.vehicle_engineering.name": "Vehicle Engineering"
+  "wfcore.research.vehicle_engineering.name": "Vehicle Engineering",
+  "block.wfcore.light_ground_vehicle_factory": "MV Light Ground Vehicle Factory",
+  "block.wfcore.printer": "Data Printer",
+  "block.wfcore.radar": "Radar",
+  "item.wfcore.bolt_tool": "Bolt Tool",
+  "item.wfcore.cooling_fan_cover_ev": "EV Cooling Fan Cover",
+  "item.wfcore.cooling_fan_cover_hv": "HV Cooling Fan Cover",
+  "item.wfcore.cooling_fan_cover_lv": "LV Cooling Fan Cover",
+  "item.wfcore.cooling_fan_cover_mv": "MV Cooling Fan Cover",
+  "item.wfcore.packaged_vehicle": "Packaged Vehicle",
+  "itemGroup.wfcore.wfcore": "Warfactory Modern Core",
+  "material.wfcore.galvanized_steel": "Galvanized Steel"
 }

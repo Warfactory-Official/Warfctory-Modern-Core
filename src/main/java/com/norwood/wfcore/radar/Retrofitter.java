@@ -25,7 +25,9 @@ import java.io.File;
 import java.nio.file.Path;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Retroactively populates the radar registry by scanning a dimension's region files off-thread.
@@ -90,18 +92,26 @@ public class Retrofitter {
         }
 
         active = true;
-        WFCore.LOGGER.info("Retrofitter: scanning {} region files with virtual threads...", files.length);
+        WFCore.LOGGER.info("Retrofitter: scanning {} region files...", files.length);
 
-        // Run the (blocking) virtual-thread fan-out on its own thread so the command returns
-        // immediately; the server tick drains the queue as it fills.
-        Thread.ofVirtual().name("wfcore-retrofit").start(() -> {
-            try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
-                for (File mcaFile : files) {
-                    executor.submit(() -> scanRegionFile(mcaFile, regionDir));
-                }
+        // Run the (blocking) fan-out on its own daemon thread so the command returns immediately;
+        // the server tick drains the queue as it fills.
+        Thread worker = new Thread(() -> {
+            int threads = Math.max(2, Runtime.getRuntime().availableProcessors());
+            ExecutorService executor = Executors.newFixedThreadPool(threads);
+            for (File mcaFile : files) {
+                executor.submit(() -> scanRegionFile(mcaFile, regionDir));
             }
-            WFCore.LOGGER.info("Retrofitter: scan submitted, {} positions queued.", queue.size());
-        });
+            executor.shutdown();
+            try {
+                executor.awaitTermination(1, TimeUnit.HOURS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+            WFCore.LOGGER.info("Retrofitter: scan finished, {} positions queued.", queue.size());
+        }, "wfcore-retrofit");
+        worker.setDaemon(true);
+        worker.start();
     }
 
     private void scanRegionFile(File mcaFile, Path regionDir) {

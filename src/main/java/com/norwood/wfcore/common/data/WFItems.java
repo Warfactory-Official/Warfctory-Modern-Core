@@ -1,8 +1,11 @@
 package com.norwood.wfcore.common.data;
 
+import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.item.ComponentItem;
 import com.gregtechceu.gtceu.common.item.CoverPlaceBehavior;
+
+import net.minecraft.resources.ResourceLocation;
 
 import com.norwood.wfcore.common.item.BoltToolItem;
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
@@ -22,12 +25,16 @@ public class WFItems {
     public static final ItemEntry<ComponentItem>[] COOLING_FAN_COVERS = new ItemEntry[GTValues.EV + 1];
 
     public static void init() {
+        // No bespoke art yet: reuse existing textures as placeholders so datagen produces a valid model
+        // (a wrench for the casing bolt tool, a minecart for the packaged vehicle).
         BOLT_TOOL = EXAMPLE_REGISTRATE.item("bolt_tool", BoltToolItem::new)
                 .lang("Bolt Tool")
+                .model((ctx, prov) -> prov.generated(ctx, GTCEu.id("item/tools/wrench")))
                 .register();
 
         PACKAGED_VEHICLE = EXAMPLE_REGISTRATE.item("packaged_vehicle", PackagedVehicleItem::new)
                 .lang("Packaged Vehicle")
+                .model((ctx, prov) -> prov.generated(ctx, new ResourceLocation("minecraft", "item/minecart")))
                 .register();
 
         // Cooling-fan cover placer items (one per tier). The cover definitions are registered earlier

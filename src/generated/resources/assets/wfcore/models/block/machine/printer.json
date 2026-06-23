@@ -1,0 +1,32 @@
+{
+  "parent": "minecraft:block/block",
+  "loader": "gtceu:machine",
+  "machine": "wfcore:printer",
+  "replaceable_textures": [
+    "bottom",
+    "top",
+    "side"
+  ],
+  "variants": {
+    "is_formed=false": {
+      "model": {
+        "parent": "wfcore:block/machine/part/printer",
+        "textures": {
+          "bottom": "gtceu:block/casings/voltage/lv/bottom",
+          "side": "gtceu:block/casings/voltage/lv/side",
+          "top": "gtceu:block/casings/voltage/lv/top"
+        }
+      }
+    },
+    "is_formed=true": {
+      "model": {
+        "parent": "wfcore:block/machine/part/printer",
+        "textures": {
+          "bottom": "gtceu:block/casings/voltage/lv/bottom",
+          "side": "gtceu:block/casings/voltage/lv/side",
+          "top": "gtceu:block/casings/voltage/lv/top"
+        }
+      }
+    }
+  }
+}

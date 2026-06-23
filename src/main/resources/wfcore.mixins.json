@@ -2,7 +2,7 @@
   "minVersion": "0.8",
   "required": true,
   "package": "com.norwood.wfcore.mixin",
-  "compatibilityLevel": "JAVA_13",
+  "compatibilityLevel": "JAVA_17",
   "refmap": "mixins.wfcore.refmap.json",
   "mixins": [
     "SuperbWarfareInvMixin",
@@ -16,7 +16,8 @@
     "ForgeDebugTextRemover",
     "BlockRenderDispatcherMixin",
     "BlockShouldRenderFaceMixin",
-    "EmbeddiumBlockRendererMixin"
+    "EmbeddiumBlockRendererMixin",
+    "McgltfHeadlessConstructMixin"
   ],
   "injectors": {
     "defaultRequire": 1

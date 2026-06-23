@@ -1,0 +1,88 @@
+{
+  "parent": "wfcore:block/pipe/hex_ac_pipe/center",
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "east": {
+          "cullface": "east",
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "south": {
+          "cullface": "south",
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "up": {
+          "cullface": "up",
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#side",
+          "tintindex": 0
+        }
+      },
+      "from": [
+        0,
+        0,
+        0
+      ],
+      "to": [
+        16,
+        16,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "east": {
+          "cullface": "east",
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "up": {
+          "cullface": "up",
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "west": {
+          "cullface": "west",
+          "texture": "#side_overlay",
+          "tintindex": 2
+        }
+      },
+      "from": [
+        -0.002,
+        -0.002,
+        -0.002
+      ],
+      "to": [
+        16.002,
+        16.002,
+        16.002
+      ]
+    }
+  ],
+  "textures": {
+    "end": "gtceu:block/pipe/pipe_laser_in",
+    "side": "gtceu:block/pipe/pipe_laser_side",
+    "side_overlay": "gtceu:block/pipe/pipe_laser_side_overlay"
+  }
+}

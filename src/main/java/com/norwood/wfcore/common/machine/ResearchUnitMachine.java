@@ -17,6 +17,7 @@ import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.misc.EnergyContainerList;
 import com.gregtechceu.gtceu.common.data.GTItems;
 
+import com.lowdragmc.lowdraglib.syncdata.IContentChangeAware;
 import com.lowdragmc.lowdraglib.syncdata.ITagSerializable;
 import com.lowdragmc.lowdraglib.syncdata.annotation.DescSynced;
 import com.lowdragmc.lowdraglib.syncdata.annotation.Persisted;
@@ -427,7 +428,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
             queue.add(entry);
         }
         tag.put("queue", queue);
-        this.researchSync.tag = tag;
+        this.researchSync.setTag(tag);
     }
 
     private void ensureParsed() {
@@ -479,11 +480,11 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     public InteractionResult onUse(BlockState blockState, Level level, BlockPos pos, Player player,
                                    InteractionHand hand, BlockHitResult hit) {
         if (player.isShiftKeyDown()) return InteractionResult.PASS;
-        if (!isRemote()) {
+        if (!isRemote() && getHolder().self() instanceof ResearchUnitBlockEntity) {
             pushResearchSync();
-            if (getHolder().self() instanceof ResearchUnitBlockEntity be) {
-                BlockEntityUIFactory.INSTANCE.open(player, be);
-            }
+            // open(player, BlockPos) — NOT open(player, blockEntity): the latter verifies against the
+            // client player (MCHelper.getPlayer()) and throws a dimension mismatch when called server-side.
+            BlockEntityUIFactory.INSTANCE.open(player, pos);
         }
         return InteractionResult.SUCCESS;
     }
@@ -512,9 +513,15 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     }
 
     /** LDLib-syncable wrapper around the client research snapshot tag (state + queue). */
-    public static final class ResearchSyncData implements ITagSerializable<CompoundTag> {
+    public static final class ResearchSyncData implements ITagSerializable<CompoundTag>, IContentChangeAware {
 
         private CompoundTag tag = new CompoundTag();
+        private Runnable onContentsChanged = () -> {};
+
+        public void setTag(CompoundTag tag) {
+            this.tag = tag;
+            onContentsChanged.run();
+        }
 
         @Override
         public CompoundTag serializeNBT() {
@@ -524,6 +531,16 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         @Override
         public void deserializeNBT(CompoundTag nbt) {
             this.tag = nbt;
+        }
+
+        @Override
+        public void setOnContentsChanged(Runnable onContentsChanged) {
+            this.onContentsChanged = onContentsChanged;
+        }
+
+        @Override
+        public Runnable getOnContentsChanged() {
+            return onContentsChanged;
         }
     }
 

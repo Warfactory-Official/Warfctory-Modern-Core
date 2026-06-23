@@ -1,0 +1,9 @@
+{
+  "values": [
+    "wfcore:single_ac_pipe",
+    "wfcore:double_ac_pipe",
+    "wfcore:quadruple_ac_pipe",
+    "wfcore:octal_ac_pipe",
+    "wfcore:hex_ac_pipe"
+  ]
+}

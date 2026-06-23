@@ -67,7 +67,10 @@ version = mod_version
 group = maven_group
 base { archivesName = archives_base_name }
 java {
-    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_21
+    // Target Java 17 BYTECODE (class 61). The mod still runs on the Java 21 JVM; this only caps the
+    // emitted class version so the bundled Mixin 0.8.5 (max CompatibilityLevel JAVA_18 = class 62) can
+    // process our mixin classes. Compiling to Java 21 (class 65) makes every wfcore mixin fail to apply.
+    sourceCompatibility = targetCompatibility = JavaVersion.VERSION_17
     toolchain { languageVersion = JavaLanguageVersion.of(21) }
 }
 
@@ -172,24 +175,17 @@ dependencies {
         exclude group: "org.spongepowered", module: "mixin"
     }
 
-    // McGLTF (1.20.1 port) — drives the hand-authored animated machine models (radar dish). Ships its own
-    // jgltf; mod-provided at runtime, so it is a normal modImplementation (no shading).
     modImplementation("curse.maven:${mcgltf_version}")
 
-    // Embeddium (the modpack's Sodium implementation; keeps the me.jellysquid.mods.sodium packages, so it
-    // also covers Rubidium). Compile-only target for the chunk-mask mixin — provided by the pack at
-    // runtime; absent in dev, where Mixin silently skips EmbeddiumBlockRendererMixin and the vanilla path
-    // takes over.
+
     modCompileOnly("maven.modrinth:embeddium:0.3.31+mc1.20.1") { transitive = false }
 
     modImplementation("curse.maven:superb-warfare-1218165:7292685") {
         exclude group: "org.spongepowered", module: "mixin"
     }
+    modRuntimeOnly("curse.maven:geckolib-388172:8285794")
 
-    // WarForge (research sharing + chunk reinforcer integration). Compile-only against the published
-    // CurseForge jar; the modpack provides WarForge at runtime. transitive=false avoids dragging in
-    // WarForge's own modularui/journeymap deps. Optional — integration is gated on the mod being loaded.
-    modCompileOnly("curse.maven:${warforge_version}") { transitive = false }
+    modImplementation("curse.maven:${warforge_version}") { transitive = false }
 }
 
 tasks.named('shadowJar', ShadowJar).configure {
@@ -217,13 +213,32 @@ mixin {
     // Only register the source set for refmap generation. We deliberately do NOT call `config(...)`:
     // that injects `--mixin.config` into dev runs, which registers the config against the bootstrap
     // Root Container before the mod's resources are on the classloader, so the file can't be read and
-    // launch crashes. Instead the config is declared via the `MixinConfigs` manifest attribute (jar
-    // task below + src/main/resources/META-INF/MANIFEST.MF for dev runs), which FML's Forge mixin
-    // platform agent reads from the mod file at the right time — the same path the JAR deps use.
+    // launch crashes. The packaged jar declares the config via the `MixinConfigs` manifest attribute
+    // (jar task above); for dev runs see writeDevMixinManifest below.
     add sourceSets.main, "mixins.${mod_id}.refmap.json"
 }
 
+// In dev runs the mod is an exploded directory whose FIRST classpath root is build/classes/java/main.
+// FML reads a mod's JAR manifest (and thus the `MixinConfigs` attribute) from that primary root only —
+// NOT from the resources output (build/resources/main) where processResources copies our MANIFEST.MF.
+// Without this the mod's mixin config is never registered in dev (runClient/runData/runServer), so none
+// of our mixins apply. Write the manifest into the classes root as part of compileJava's own action so
+// the classes dir has a single owning task (a separate task writing there trips Gradle 8's overlapping-
+// output validation against the run/IDE JavaExec tasks that read it).
+tasks.named('compileJava', JavaCompile).configure {
+    doLast {
+        def f = destinationDirectory.file('META-INF/MANIFEST.MF').get().asFile
+        f.parentFile.mkdirs()
+        f.text = "Manifest-Version: 1.0\nMixinConfigs: wfcore.mixins.json\n"
+    }
+}
+
 tasks.named('processResources', ProcessResources).configure {
+    // src/main/resources (hand-authored, listed first) and src/generated/resources both contribute
+    // assets/wfcore/lang/en_us.json. The hand-authored file is authoritative (GUI + tooltip strings);
+    // EXCLUDE keeps it and drops any datagen-regenerated lang so a future runData can't break the build.
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
     var properties = [
             "mod_license": mod_license,
             "mod_id": mod_id,
@@ -245,6 +260,6 @@ tasks.named('processResources', ProcessResources).configure {
 tasks.named('jar', Jar).configure { finalizedBy 'reobfJar' }
 tasks.withType(JavaCompile).configureEach {
     options.encoding = "UTF-8"
-    options.release.set(21)
+    options.release.set(17)
     options.compilerArgs << "-Aquiet=true"
 }

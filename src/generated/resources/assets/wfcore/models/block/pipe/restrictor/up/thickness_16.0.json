@@ -1,0 +1,59 @@
+{
+  "elements": [
+    {
+      "faces": {
+        "east": {
+          "texture": "#restrictor"
+        },
+        "north": {
+          "texture": "#restrictor"
+        },
+        "south": {
+          "texture": "#restrictor"
+        },
+        "west": {
+          "texture": "#restrictor"
+        }
+      },
+      "from": [
+        -0.003,
+        16.003,
+        -0.003
+      ],
+      "to": [
+        16.003,
+        16,
+        16.003
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "texture": "#restrictor"
+        },
+        "north": {
+          "texture": "#restrictor"
+        },
+        "south": {
+          "texture": "#restrictor"
+        },
+        "west": {
+          "texture": "#restrictor"
+        }
+      },
+      "from": [
+        -0.003,
+        16.003,
+        -0.003
+      ],
+      "to": [
+        16.003,
+        16,
+        16.003
+      ]
+    }
+  ],
+  "textures": {
+    "restrictor": "gtceu:block/pipe/blocked/pipe_blocked"
+  }
+}
