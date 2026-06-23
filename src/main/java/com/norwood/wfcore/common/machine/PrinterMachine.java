@@ -10,7 +10,9 @@ import com.gregtechceu.gtceu.api.machine.TickableSubscription;
 import com.gregtechceu.gtceu.api.machine.TieredEnergyMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IMachineLife;
 import com.gregtechceu.gtceu.api.machine.feature.IUIMachine;
+import com.gregtechceu.gtceu.api.machine.property.GTMachineModelProperties;
 import com.gregtechceu.gtceu.api.machine.trait.NotifiableItemStackHandler;
+import com.gregtechceu.gtceu.api.machine.trait.RecipeLogic;
 import com.gregtechceu.gtceu.common.data.GTItems;
 
 import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
@@ -52,6 +54,8 @@ public class PrinterMachine extends TieredEnergyMachine implements IUIMachine, I
     protected final NotifiableItemStackHandler bookOut;
     @Persisted
     protected int progress;
+    /** Server-side working flag; drives the animated front overlay via the recipe-logic-status render state. */
+    protected boolean working;
 
     @Nullable
     protected TickableSubscription tickSub;
@@ -66,6 +70,22 @@ public class PrinterMachine extends TieredEnergyMachine implements IUIMachine, I
     @Override
     public ManagedFieldHolder getFieldHolder() {
         return MANAGED_FIELD_HOLDER;
+    }
+
+    private void setWorking(boolean w) {
+        if (this.working != w) {
+            this.working = w;
+            scheduleRenderUpdate();
+        }
+    }
+
+    @Override
+    public void scheduleRenderUpdate() {
+        if (!isRemote()) {
+            setRenderState(getRenderState().setValue(GTMachineModelProperties.RECIPE_LOGIC_STATUS,
+                    working ? RecipeLogic.Status.WORKING : RecipeLogic.Status.IDLE));
+        }
+        super.scheduleRenderUpdate();
     }
 
     private long energyPerTick() {
@@ -102,12 +122,15 @@ public class PrinterMachine extends TieredEnergyMachine implements IUIMachine, I
         ItemStack data = dataInv.getStackInSlot(0);
         if (paper.isEmpty() || !isDataItem(data) || !hasScan(data) || !bookOut.getStackInSlot(0).isEmpty()) {
             progress = 0;
+            setWorking(false);
             return;
         }
         if (!drainEnergy(true)) {
+            setWorking(false);
             return;
         }
         drainEnergy(false);
+        setWorking(true);
 
         if (++progress >= MAX_PROGRESS) {
             progress = 0;

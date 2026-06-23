@@ -5,6 +5,8 @@ import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.core.Direction;
@@ -15,7 +17,9 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.render.mask.RenderMaskManager;
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
@@ -88,7 +92,20 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         RenderSystem.depthMask(true);
         RenderSystem.enableCull();
 
+        // mcgltf draws immediately with the vanilla entity shader but never binds the lightmap (the 1.12.2
+        // fixed-function path set lightmap coords by hand). Without it the shader's Sampler2 samples an
+        // unbound (black) texture and the whole model renders black, so bind the lightmap to texture unit 2.
+        LightTexture lightTexture = Minecraft.getInstance().gameRenderer.lightTexture();
+        lightTexture.turnOnLightLayer();
+        GL13.glActiveTexture(GL13.GL_TEXTURE2);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, RenderSystem.getShaderTexture(2));
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+
+        // mcgltf's vanilla path folds each node's normal into the static CURRENT_NORMAL for lighting, but
+        // the library never initialises it — pair it with the pose (inverse-transpose of the model-view's
+        // 3x3) or it NPEs in applyTransformVanilla on the first node.
         RenderedGltfModel.setCurrentPose(pose);
+        RenderedGltfModel.setCurrentNormal(new Matrix3f(pose).invert().transpose());
         try {
             if (MCglTF.getInstance().isShaderModActive()) {
                 model.scene.renderForShaderMod();
@@ -98,6 +115,7 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         } catch (RuntimeException e) {
             WFCore.LOGGER.error("Failed to render GLTF model {}", model.getModelLocation(), e);
         } finally {
+            lightTexture.turnOffLightLayer();
             restoreGlState();
         }
     }
@@ -112,6 +130,8 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         GL30.glBindVertexArray(0);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        GL13.glActiveTexture(GL13.GL_TEXTURE2);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
         RenderSystem.activeTexture(GL13.GL_TEXTURE0);
     }

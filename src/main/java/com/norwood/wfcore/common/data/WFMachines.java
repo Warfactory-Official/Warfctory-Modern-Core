@@ -13,12 +13,13 @@ import com.gregtechceu.gtceu.api.machine.MultiblockMachineDefinition;
 import com.gregtechceu.gtceu.api.machine.multiblock.PartAbility;
 import com.gregtechceu.gtceu.api.pattern.FactoryBlockPattern;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
+import com.gregtechceu.gtceu.api.registry.registrate.MachineBuilder;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
+import com.gregtechceu.gtceu.common.data.models.GTMachineModels;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
-import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
@@ -96,7 +97,7 @@ public class WFMachines {
                 .langValue("Data Printer")
                 .rotationState(RotationState.NON_Y_AXIS)
                 .tier(GTValues.LV)
-                .overlayTieredHullModel("printer")
+                .workableTieredHullModel(WFCore.id("block/multiblock/printer"))
                 .register();
 
         CPU_SLOT = WF_MACHINES.machine("cpu_slot", CPUSlotPartMachine::new)
@@ -112,7 +113,8 @@ public class WFMachines {
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.GPC_RAM_SLOT)
                 .tier(GTValues.HV)
-                .overlayTieredHullModel("ram_slot")
+                .modelProperty(RAMSlotPartMachine.RAM_FILL, RAMSlotPartMachine.FillLevel.L0)
+                .model(ramSocketModel())
                 .register();
 
         COOLING_FAN = WF_MACHINES.machine("cooling_fan", holder -> new CoolingPartMachine(holder, false))
@@ -227,6 +229,14 @@ public class WFMachines {
                 MetaMachineBlock::new, MetaMachineItem::new, RadarBlockEntity::new)
                 .langValue("Radar")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
+                // The dish is drawn by our own GltfMachineRenderer (registered via EntityRenderersEvent).
+                // GTM registers BlockEntityWithBERModelRenderer for the same BE type when hasBER is on
+                // (default true) and clobbers ours, so the model + render mask silently never run. Disable
+                // it: the casing/front overlay still render from the chunk-mesh baked model.
+                .hasBER(false)
+                // The dish is left-right symmetric but the controller 'A' sits off-centre, so a flipped
+                // pattern match would mirror everything across the controller and wreck the mask/model.
+                .allowFlip(false)
                 .pattern(definition -> {
                     var pattern = FactoryBlockPattern.start(
                             RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT);
@@ -292,5 +302,25 @@ public class WFMachines {
 
     private static Block matBlock(Material material) {
         return ChemicalHelper.getBlock(TagPrefix.block, material);
+    }
+
+    /**
+     * Front-overlay model for the RAM slot: the {@code ram_socket} sprite picked by how many sockets are
+     * filled ({@code ram_socket}, {@code ram_socket1}..{@code ram_socket4}), driven by
+     * {@link RAMSlotPartMachine.FillLevel} via the {@code RAM_FILL} render-state property.
+     */
+    private static MachineBuilder.ModelInitializer ramSocketModel() {
+        return (ctx, prov, builder) -> {
+            builder.forAllStatesModels(state -> {
+                var tex = WFCore
+                        .id("block/overlay/part/ram/ram_socket" + state.getValue(RAMSlotPartMachine.RAM_FILL).suffix());
+                var model = prov.models().nested()
+                        .parent(prov.models().getExistingFile(GTCEu.id("block/overlay/2_layer/front")))
+                        .texture("overlay", tex)
+                        .texture("overlay_2", tex);
+                return GTMachineModels.tieredHullTextures(model, builder.getOwner().getTier());
+            });
+            builder.addReplaceableTextures("bottom", "top", "side");
+        };
     }
 }

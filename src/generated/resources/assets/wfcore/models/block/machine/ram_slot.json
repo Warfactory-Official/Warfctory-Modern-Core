@@ -8,21 +8,61 @@
     "side"
   ],
   "variants": {
-    "is_formed=false": {
+    "ram_fill=0": {
       "model": {
-        "parent": "wfcore:block/machine/part/ram_slot",
+        "parent": "gtceu:block/overlay/2_layer/front",
         "textures": {
           "bottom": "gtceu:block/casings/voltage/hv/bottom",
+          "overlay": "wfcore:block/overlay/part/ram/ram_socket",
+          "overlay_2": "wfcore:block/overlay/part/ram/ram_socket",
           "side": "gtceu:block/casings/voltage/hv/side",
           "top": "gtceu:block/casings/voltage/hv/top"
         }
       }
     },
-    "is_formed=true": {
+    "ram_fill=1": {
       "model": {
-        "parent": "wfcore:block/machine/part/ram_slot",
+        "parent": "gtceu:block/overlay/2_layer/front",
         "textures": {
           "bottom": "gtceu:block/casings/voltage/hv/bottom",
+          "overlay": "wfcore:block/overlay/part/ram/ram_socket1",
+          "overlay_2": "wfcore:block/overlay/part/ram/ram_socket1",
+          "side": "gtceu:block/casings/voltage/hv/side",
+          "top": "gtceu:block/casings/voltage/hv/top"
+        }
+      }
+    },
+    "ram_fill=2": {
+      "model": {
+        "parent": "gtceu:block/overlay/2_layer/front",
+        "textures": {
+          "bottom": "gtceu:block/casings/voltage/hv/bottom",
+          "overlay": "wfcore:block/overlay/part/ram/ram_socket2",
+          "overlay_2": "wfcore:block/overlay/part/ram/ram_socket2",
+          "side": "gtceu:block/casings/voltage/hv/side",
+          "top": "gtceu:block/casings/voltage/hv/top"
+        }
+      }
+    },
+    "ram_fill=3": {
+      "model": {
+        "parent": "gtceu:block/overlay/2_layer/front",
+        "textures": {
+          "bottom": "gtceu:block/casings/voltage/hv/bottom",
+          "overlay": "wfcore:block/overlay/part/ram/ram_socket3",
+          "overlay_2": "wfcore:block/overlay/part/ram/ram_socket3",
+          "side": "gtceu:block/casings/voltage/hv/side",
+          "top": "gtceu:block/casings/voltage/hv/top"
+        }
+      }
+    },
+    "ram_fill=4": {
+      "model": {
+        "parent": "gtceu:block/overlay/2_layer/front",
+        "textures": {
+          "bottom": "gtceu:block/casings/voltage/hv/bottom",
+          "overlay": "wfcore:block/overlay/part/ram/ram_socket4",
+          "overlay_2": "wfcore:block/overlay/part/ram/ram_socket4",
           "side": "gtceu:block/casings/voltage/hv/side",
           "top": "gtceu:block/casings/voltage/hv/top"
         }

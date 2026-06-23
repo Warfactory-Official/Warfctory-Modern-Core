@@ -11,7 +11,8 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "wfcore:block/casings/aluminium_sheet_casing",
-          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front",
+          "overlay_front_emissive": "wfcore:block/multiblock/research_unit/overlay_front_emissive"
         }
       }
     },
@@ -20,7 +21,8 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "wfcore:block/casings/aluminium_sheet_casing",
-          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front_paused",
+          "overlay_front_emissive": "wfcore:block/multiblock/research_unit/overlay_front_paused_emissive"
         }
       }
     },
@@ -29,7 +31,8 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "wfcore:block/casings/aluminium_sheet_casing",
-          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front_active",
+          "overlay_front_emissive": "wfcore:block/multiblock/research_unit/overlay_front_active_emissive"
         }
       }
     },
@@ -38,7 +41,8 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "wfcore:block/casings/aluminium_sheet_casing",
-          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front_active",
+          "overlay_front_emissive": "wfcore:block/multiblock/research_unit/overlay_front_active_emissive"
         }
       }
     },
@@ -47,7 +51,8 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "wfcore:block/casings/aluminium_sheet_casing",
-          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front",
+          "overlay_front_emissive": "wfcore:block/multiblock/research_unit/overlay_front_emissive"
         }
       }
     },
@@ -56,7 +61,8 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "wfcore:block/casings/aluminium_sheet_casing",
-          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front_paused",
+          "overlay_front_emissive": "wfcore:block/multiblock/research_unit/overlay_front_paused_emissive"
         }
       }
     },
@@ -65,7 +71,8 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "wfcore:block/casings/aluminium_sheet_casing",
-          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front_active",
+          "overlay_front_emissive": "wfcore:block/multiblock/research_unit/overlay_front_active_emissive"
         }
       }
     },
@@ -74,7 +81,8 @@
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
           "all": "wfcore:block/casings/aluminium_sheet_casing",
-          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front"
+          "overlay_front": "wfcore:block/multiblock/research_unit/overlay_front_active",
+          "overlay_front_emissive": "wfcore:block/multiblock/research_unit/overlay_front_active_emissive"
         }
       }
     }

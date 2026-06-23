@@ -2,29 +2,40 @@
   "parent": "minecraft:block/block",
   "loader": "gtceu:machine",
   "machine": "wfcore:printer",
-  "replaceable_textures": [
-    "bottom",
-    "top",
-    "side"
-  ],
   "variants": {
-    "is_formed=false": {
+    "recipe_logic_status=idle": {
       "model": {
-        "parent": "wfcore:block/machine/part/printer",
+        "parent": "gtceu:block/casings/voltage/lv",
         "textures": {
-          "bottom": "gtceu:block/casings/voltage/lv/bottom",
-          "side": "gtceu:block/casings/voltage/lv/side",
-          "top": "gtceu:block/casings/voltage/lv/top"
+          "overlay_front": "wfcore:block/multiblock/printer/overlay_front",
+          "overlay_front_emissive": "wfcore:block/multiblock/printer/overlay_front_emissive"
         }
       }
     },
-    "is_formed=true": {
+    "recipe_logic_status=suspend": {
       "model": {
-        "parent": "wfcore:block/machine/part/printer",
+        "parent": "gtceu:block/casings/voltage/lv",
         "textures": {
-          "bottom": "gtceu:block/casings/voltage/lv/bottom",
-          "side": "gtceu:block/casings/voltage/lv/side",
-          "top": "gtceu:block/casings/voltage/lv/top"
+          "overlay_front": "wfcore:block/multiblock/printer/overlay_front_paused",
+          "overlay_front_emissive": "wfcore:block/multiblock/printer/overlay_front_paused_emissive"
+        }
+      }
+    },
+    "recipe_logic_status=waiting": {
+      "model": {
+        "parent": "gtceu:block/casings/voltage/lv",
+        "textures": {
+          "overlay_front": "wfcore:block/multiblock/printer/overlay_front_active",
+          "overlay_front_emissive": "wfcore:block/multiblock/printer/overlay_front_active_emissive"
+        }
+      }
+    },
+    "recipe_logic_status=working": {
+      "model": {
+        "parent": "gtceu:block/casings/voltage/lv",
+        "textures": {
+          "overlay_front": "wfcore:block/multiblock/printer/overlay_front_active",
+          "overlay_front_emissive": "wfcore:block/multiblock/printer/overlay_front_active_emissive"
         }
       }
     }
