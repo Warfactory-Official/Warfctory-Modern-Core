@@ -10,6 +10,7 @@ import brachy.modularui.drawable.Rectangle;
 import brachy.modularui.drawable.UITexture;
 import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.ModularPanel;
+import brachy.modularui.screen.RichTooltip;
 import brachy.modularui.screen.UISettings;
 import brachy.modularui.value.sync.InteractionSyncHandler;
 import brachy.modularui.value.sync.PanelSyncManager;
@@ -89,6 +90,8 @@ public final class ResearchTreeGui {
     private static final int COLOR_QUEUED = 0xFFB07818;
     private static final int COLOR_ACTIVE = 0xFFE0A020;
     private static final int COLOR_COMPLETE = 0xFF44A050;
+    private static final int COLOR_BUTTON_DISABLED = 0xFF3A3A40;
+    private static final int COLOR_BUTTON_SHADE = 0x55000000;
 
     // client-side selection (one GUI per client)
     private static final String[] SELECTED = { null };
@@ -121,7 +124,6 @@ public final class ResearchTreeGui {
 
     private static void buildTabsAndTree(ModularPanel<?> panel, ResearchUnitMachine mte, PanelSyncManager sync) {
         List<ResearchCategory> categories = categories();
-        ResearchState state = mte.getResearchState();
         int[] nodeCounter = { 0 };
 
         PagedWidget.Controller controller = new PagedWidget.Controller();
@@ -129,7 +131,7 @@ public final class ResearchTreeGui {
         paged.controller(controller);
         paged.pos(TREE_X, TREE_Y).size(TREE_W, TREE_H);
         for (ResearchCategory category : categories) {
-            paged.addPage(buildCategoryCanvas(mte, state, category, sync, nodeCounter));
+            paged.addPage(buildCategoryCanvas(mte, category, sync, nodeCounter));
         }
         paged.initialPage(0);
         panel.child(paged);
@@ -159,9 +161,8 @@ public final class ResearchTreeGui {
         return tab;
     }
 
-    private static ScrollWidget<?> buildCategoryCanvas(ResearchUnitMachine mte, ResearchState state,
-                                                       ResearchCategory category, PanelSyncManager sync,
-                                                       int[] nodeCounter) {
+    private static ScrollWidget<?> buildCategoryCanvas(ResearchUnitMachine mte, ResearchCategory category,
+                                                       PanelSyncManager sync, int[] nodeCounter) {
         String id = category.getId();
         List<Research> nodes = ResearchRegistry.byCategory(id);
         Map<String, int[]> layout = ResearchLayout.compute(nodes);
@@ -198,7 +199,7 @@ public final class ResearchTreeGui {
         }
         for (Research research : nodes) {
             int[] cell = layout.get(research.getId());
-            canvas.child(buildNode(mte, state, research, nodeCounter[0]++, cell[0], cell[1], ox, oy, sync));
+            canvas.child(buildNode(mte, research, nodeCounter[0]++, cell[0], cell[1], ox, oy, sync));
         }
         return canvas;
     }
@@ -229,8 +230,8 @@ public final class ResearchTreeGui {
         return new ItemStack(Items.BOOK);
     }
 
-    private static ButtonWidget<?> buildNode(ResearchUnitMachine mte, ResearchState state, Research research,
-                                             int index, int col, int row, int ox, int oy, PanelSyncManager sync) {
+    private static ButtonWidget<?> buildNode(ResearchUnitMachine mte, Research research, int index, int col, int row,
+                                             int ox, int oy, PanelSyncManager sync) {
         final String rid = research.getId();
 
         InteractionSyncHandler select = new InteractionSyncHandler().setOnMousePressed(d -> mte.setSelected(rid));
@@ -238,8 +239,8 @@ public final class ResearchTreeGui {
 
         ButtonWidget<?> node = new ButtonWidget<>();
         node.pos(nodeX(col, ox), nodeY(row, oy)).size(NODE, NODE);
-        node.background(new Rectangle().color(nodeColor(mte, state, rid)));
-        node.backgroundOverlay(new Rectangle().color(COLOR_BORDER).hollow(1f));
+        node.background(nodeBackground(mte, rid));
+        node.backgroundOverlay(new Rectangle().color(COLOR_BORDER));
         if (!research.getIcon().isEmpty()) {
             node.child(new ItemDisplayWidget().item(research.getIcon()).pos(4, 4).size(18));
         }
@@ -250,7 +251,12 @@ public final class ResearchTreeGui {
             t.spaceLine(2);
             t.addLine(Text.lang("wfcore.gui.research.runs", research.getRunsRequired()));
             t.addLine(Text.lang("wfcore.gui.research.cwu_per_run", research.getCwuPerRun()));
-            t.addLine(Text.str(statusLine(mte)));
+            t.addLine(Text.str(statusLine(mte, rid)));
+            if (statusOf(mte, rid) == NodeStatus.LOCKED && !research.getPrerequisites().isEmpty()) {
+                t.spaceLine(2);
+                t.addLine(Text.lang("wfcore.gui.research.blocker_locked"));
+                appendUnmetPrereqs(t, mte, research);
+            }
         });
         node.onMousePressed((context, button) -> {
             SELECTED[0] = rid;
@@ -323,23 +329,102 @@ public final class ResearchTreeGui {
                     Component.translatable("wfcore.gui.research.cost_per_run", r.getCwuPerRun(), r.getEut());
         })).pos(4, 52));
 
-        InteractionSyncHandler action = new InteractionSyncHandler().setOnMousePressed(d -> mte.toggleSelected());
-        sync.syncValue("research_action", 0, action);
-        ButtonWidget<?> button = new ButtonWidget<>();
-        button.pos(4, 64).size(108, 16).syncHandler("research_action", 0);
-        button.background(new Rectangle().color(COLOR_AVAILABLE));
-        button.child(new TextWidget<>(Text.dynamic(() -> {
-            Research r = selected();
-            return (r != null && mte.isQueuedClient(r.getId())) ? Component.translatable("wfcore.gui.research.cancel") :
-                    Component.translatable("wfcore.gui.research.start");
-        })).pos(6, 4));
-        detail.child(button);
+        detail.child(buildActionButton(mte, sync));
 
         detail.child(new TextWidget<>(Text.lang("wfcore.gui.research.unlocks")).pos(118, 53));
         addItemRow(detail, 118, 64, ResearchTreeGui::unlockedAt, 4);
 
         addProgressBar(detail, mte, 4, 84, DETAIL_W - 8, 6);
         return detail;
+    }
+
+    /**
+     * The start/cancel button. While the selected research is queued it reads "Cancel" and stays active; once a
+     * research is complete (or otherwise can't be started) the button is greyed-out and pressed-in, with a
+     * tooltip naming the blocker(s).
+     */
+    private static ButtonWidget<?> buildActionButton(ResearchUnitMachine mte, PanelSyncManager sync) {
+        InteractionSyncHandler action = new InteractionSyncHandler().setOnMousePressed(d -> mte.toggleSelected());
+        sync.syncValue("research_action", 0, action);
+
+        ButtonWidget<?> button = new ButtonWidget<>();
+        button.pos(4, 64).size(108, 16).syncHandler("research_action", 0);
+        button.background(new Rectangle().color(COLOR_BUTTON_DISABLED));
+
+        ParentWidget<?> activeFill = new ParentWidget<>();
+        activeFill.background(new Rectangle().color(COLOR_AVAILABLE)).pos(0, 0).size(108, 16);
+        activeFill.setEnabledIf(w -> canAct(mte));
+        button.child(activeFill);
+
+        ParentWidget<?> pressedShade = new ParentWidget<>();
+        pressedShade.background(new Rectangle().color(COLOR_BUTTON_SHADE)).pos(0, 0).size(108, 16);
+        pressedShade.setEnabledIf(w -> !canAct(mte));
+        button.child(pressedShade);
+
+        button.backgroundOverlay(new Rectangle().color(COLOR_BORDER).hollow(1f));
+        button.child(new TextWidget<>(Text.dynamic(() -> actionLabel(mte))).pos(6, 4));
+        button.tooltipDynamic(t -> {
+            Research r = selected();
+            if (r == null) return;
+            t.titleMargin();
+            switch (startState(mte)) {
+                case CANCEL -> {
+                    t.addLine(Text.lang("wfcore.gui.research.cancel"));
+                    t.addLine(Text.lang("wfcore.gui.research.tip_cancel"));
+                }
+                case START -> {
+                    t.addLine(Text.lang("wfcore.gui.research.start"));
+                    t.addLine(Text.lang("wfcore.gui.research.tip_start"));
+                }
+                case COMPLETE -> t.addLine(Text.of(Component
+                        .translatable("wfcore.gui.research.blocker_complete")
+                        .withStyle(net.minecraft.ChatFormatting.GREEN)));
+                case QUEUE_FULL -> t.addLine(Text.of(Component
+                        .translatable("wfcore.gui.research.blocker_queue_full", ResearchUnitMachine.QUEUE_SIZE)
+                        .withStyle(net.minecraft.ChatFormatting.RED)));
+                case LOCKED -> {
+                    t.addLine(Text.of(Component.translatable("wfcore.gui.research.blocker_locked")
+                            .withStyle(net.minecraft.ChatFormatting.RED)));
+                    appendUnmetPrereqs(t, mte, r);
+                }
+            }
+        });
+        return button;
+    }
+
+    private static Component actionLabel(ResearchUnitMachine mte) {
+        return switch (startState(mte)) {
+            case CANCEL -> Component.translatable("wfcore.gui.research.cancel");
+            case COMPLETE -> Component.translatable("wfcore.gui.research.completed");
+            default -> Component.translatable("wfcore.gui.research.start");
+        };
+    }
+
+    /** Why the selected research can (or can't) be acted on; drives the button label, colour and tooltip. */
+    private static StartState startState(ResearchUnitMachine mte) {
+        Research r = selected();
+        if (r == null) return StartState.START;
+        return switch (statusOf(mte, r.getId())) {
+            case QUEUED, RESEARCHING -> StartState.CANCEL;
+            case COMPLETE -> StartState.COMPLETE;
+            case LOCKED -> StartState.LOCKED;
+            case READY -> mte.getClientQueue().size() >= ResearchUnitMachine.QUEUE_SIZE ? StartState.QUEUE_FULL :
+                    StartState.START;
+        };
+    }
+
+    /** True when the button does something on click (start a ready research, or cancel a queued one). */
+    private static boolean canAct(ResearchUnitMachine mte) {
+        StartState s = startState(mte);
+        return s == StartState.START || s == StartState.CANCEL;
+    }
+
+    private enum StartState {
+        START,
+        CANCEL,
+        COMPLETE,
+        LOCKED,
+        QUEUE_FULL
     }
 
     private static void addProgressBar(ParentWidget<?> detail, ResearchUnitMachine mte, int x, int y, int w, int h) {
@@ -487,19 +572,48 @@ public final class ResearchTreeGui {
         };
     }
 
-    private static String statusLine(ResearchUnitMachine mte) {
-        Research r = selected();
-        if (r == null) return "";
+    /**
+     * The single source of truth for "what state is this research in", used by the node tile colour, the node
+     * tooltip status line and the start/cancel button. Evaluated live (never cached at build time) so the tile
+     * colour always agrees with the tooltip and the synced server state.
+     */
+    private static NodeStatus statusOf(ResearchUnitMachine mte, String rid) {
         ResearchState state = mte.getResearchState();
-        String id = r.getId();
-        int pct = Math.round(state.getProgress(id) * 100f);
-        if (state.isComplete(id)) return Component.translatable("wfcore.gui.research.status_complete").getString();
-        if (mte.isActiveClient(id)) {
-            return Component.translatable("wfcore.gui.research.status_running", pct).getString();
+        if (state.isComplete(rid)) return NodeStatus.COMPLETE;
+        if (mte.isActiveClient(rid)) return NodeStatus.RESEARCHING;
+        if (mte.isQueuedClient(rid)) return NodeStatus.QUEUED;
+        if (state.isUnlocked(rid)) return NodeStatus.READY;
+        return NodeStatus.LOCKED;
+    }
+
+    /** Adds one greyed line per still-incomplete prerequisite (incl. cross-category ones) to a tooltip. */
+    private static void appendUnmetPrereqs(RichTooltip t, ResearchUnitMachine mte, Research r) {
+        ResearchState state = mte.getResearchState();
+        for (String prereqId : r.getPrerequisites()) {
+            if (state.isComplete(prereqId)) continue;
+            Research p = ResearchRegistry.get(prereqId);
+            Component name = p != null ? Component.translatable(p.getNameKey()) : Component.literal(prereqId);
+            t.addLine(Text.of(Component.literal(" - ").append(name).withStyle(net.minecraft.ChatFormatting.GRAY)));
         }
-        if (mte.isQueuedClient(id)) return Component.translatable("wfcore.gui.research.status_queued", pct).getString();
-        if (!state.isUnlocked(id)) return Component.translatable("wfcore.gui.research.status_locked").getString();
-        return Component.translatable("wfcore.gui.research.status_ready", pct).getString();
+    }
+
+    private static String statusLine(ResearchUnitMachine mte, String rid) {
+        int pct = Math.round(mte.getResearchState().getProgress(rid) * 100f);
+        return switch (statusOf(mte, rid)) {
+            case COMPLETE -> Component.translatable("wfcore.gui.research.status_complete").getString();
+            case RESEARCHING -> Component.translatable("wfcore.gui.research.status_running", pct).getString();
+            case QUEUED -> Component.translatable("wfcore.gui.research.status_queued", pct).getString();
+            case READY -> Component.translatable("wfcore.gui.research.status_ready", pct).getString();
+            case LOCKED -> Component.translatable("wfcore.gui.research.status_locked").getString();
+        };
+    }
+
+    private enum NodeStatus {
+        LOCKED,
+        READY,
+        QUEUED,
+        RESEARCHING,
+        COMPLETE
     }
 
     private static String modeLabel(ResearchUnitMachine mte) {
@@ -515,11 +629,18 @@ public final class ResearchTreeGui {
         return MARGIN + (row - oy) * ROW_SPACING;
     }
 
-    private static int nodeColor(ResearchUnitMachine mte, ResearchState state, String rid) {
-        if (state.isComplete(rid)) return COLOR_COMPLETE;
-        if (mte.isActiveClient(rid)) return COLOR_ACTIVE;
-        if (mte.isQueuedClient(rid)) return COLOR_QUEUED;
-        if (state.isUnlocked(rid)) return COLOR_AVAILABLE;
-        return COLOR_LOCKED;
+    /** A live, status-driven background for a node tile: re-evaluates {@link #statusOf} every frame. */
+    private static brachy.modularui.api.drawable.IDrawable nodeBackground(ResearchUnitMachine mte, String rid) {
+        return (ctx, x, y, w, h, theme) -> STATUS_RECTS.get(statusOf(mte, rid)).draw(ctx, x, y, w, h, theme);
+    }
+
+    private static final java.util.Map<NodeStatus, Rectangle> STATUS_RECTS = new java.util.EnumMap<>(NodeStatus.class);
+
+    static {
+        STATUS_RECTS.put(NodeStatus.LOCKED, new Rectangle().color(COLOR_LOCKED));
+        STATUS_RECTS.put(NodeStatus.READY, new Rectangle().color(COLOR_AVAILABLE));
+        STATUS_RECTS.put(NodeStatus.QUEUED, new Rectangle().color(COLOR_QUEUED));
+        STATUS_RECTS.put(NodeStatus.RESEARCHING, new Rectangle().color(COLOR_ACTIVE));
+        STATUS_RECTS.put(NodeStatus.COMPLETE, new Rectangle().color(COLOR_COMPLETE));
     }
 }
