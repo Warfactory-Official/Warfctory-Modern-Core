@@ -9,6 +9,7 @@ import net.minecraft.resources.ResourceLocation;
 
 import com.norwood.wfcore.common.item.BoltToolItem;
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
+import com.norwood.wfcore.common.item.SiegeDefenseTesterItem;
 import com.tterrag.registrate.util.entry.ItemEntry;
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
 
@@ -20,6 +21,7 @@ public class WFItems {
 
     public static ItemEntry<BoltToolItem> BOLT_TOOL;
     public static ItemEntry<PackagedVehicleItem> PACKAGED_VEHICLE;
+    public static ItemEntry<SiegeDefenseTesterItem> SIEGE_DEFENSE_TESTER;
 
     @SuppressWarnings("unchecked")
     public static final ItemEntry<ComponentItem>[] COOLING_FAN_COVERS = new ItemEntry[GTValues.EV + 1];
@@ -35,6 +37,13 @@ public class WFItems {
         PACKAGED_VEHICLE = WF_MACHINES.item("packaged_vehicle", PackagedVehicleItem::new)
                 .lang("Packaged Vehicle")
                 .model((ctx, prov) -> prov.generated(ctx, new ResourceLocation("minecraft", "item/minecart")))
+                .register();
+
+        // Testing tool: reports the WarForge siege difficulty of the current chunk. Uses the 1.12.2
+        // eight_carrot art; static model is hand-authored so it renders without runData.
+        SIEGE_DEFENSE_TESTER = WF_MACHINES.item("siege_defense_tester", SiegeDefenseTesterItem::new)
+                .lang("Siege Difficulty Probe")
+                .model(NonNullBiConsumer.noop())
                 .register();
 
         // Cooling-fan cover placer items (one per tier). The cover definitions are registered earlier

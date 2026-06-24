@@ -28,6 +28,7 @@ public final class Research {
     private final String category;
     private final int gridX;
     private final int gridY;
+    private final boolean manualPos;
     private final List<String> prerequisites;
 
     private final int runsRequired;
@@ -46,6 +47,7 @@ public final class Research {
         this.category = b.category == null ? "wfcore" : b.category;
         this.gridX = b.gridX;
         this.gridY = b.gridY;
+        this.manualPos = b.manualPos;
         this.prerequisites = Collections.unmodifiableList(new ArrayList<>(b.prerequisites));
         this.runsRequired = Math.max(1, b.runsRequired);
         this.itemsPerRun = Collections.unmodifiableList(new ArrayList<>(b.itemsPerRun));
@@ -85,6 +87,11 @@ public final class Research {
 
     public int getGridY() {
         return gridY;
+    }
+
+    /** True if a position was set explicitly via {@link Builder#pos(int, int)} (vs. left to auto-layout). */
+    public boolean hasManualPos() {
+        return manualPos;
     }
 
     public List<String> getPrerequisites() {
@@ -144,6 +151,7 @@ public final class Research {
         private String category;
         private int gridX;
         private int gridY;
+        private boolean manualPos;
         private final List<String> prerequisites = new ArrayList<>();
         private int runsRequired = 1;
         private List<ItemStack> itemsPerRun = new ArrayList<>();
@@ -181,9 +189,11 @@ public final class Research {
             return this;
         }
 
+        /** Pins this research to a fixed grid cell, overriding auto-layout. Omit to let layout place it. */
         public Builder pos(int gridX, int gridY) {
             this.gridX = gridX;
             this.gridY = gridY;
+            this.manualPos = true;
             return this;
         }
 

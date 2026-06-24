@@ -74,7 +74,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         SLAVE
     }
 
-    private static final int QUEUE_SIZE = 3;
+    public static final int QUEUE_SIZE = 3;
     private static final int CLUSTER_SCAN_RADIUS = 4;
     private static final int MAX_SLAVES = 16;
     public static final String STICK_KEY = "wfcore_research";
@@ -349,13 +349,20 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     public boolean dequeue(String researchId) {
         for (int i = 0; i < jobs.size(); i++) {
             if (jobs.get(i).researchId.equals(researchId)) {
-                state.setPartialCWU(researchId, jobs.get(i).accumulatedCWU);
-                jobs.remove(i);
-                pushResearchSync();
-                return true;
+                return dequeueAt(i);
             }
         }
         return false;
+    }
+
+    /** Removes the job at the given queue index (clicked queue slot), banking its partial progress. */
+    public boolean dequeueAt(int index) {
+        if (index < 0 || index >= jobs.size()) return false;
+        Job job = jobs.get(index);
+        state.setPartialCWU(job.researchId, job.accumulatedCWU);
+        jobs.remove(index);
+        pushResearchSync();
+        return true;
     }
 
     //////////////////// material helpers (read from the input bus) ////////////////////

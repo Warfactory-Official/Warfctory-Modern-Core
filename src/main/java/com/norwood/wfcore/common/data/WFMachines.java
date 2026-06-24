@@ -105,7 +105,8 @@ public class WFMachines {
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.GPC_CPU_SLOT)
                 .tier(GTValues.HV)
-                .overlayTieredHullModel("cpu_slot")
+                .modelProperty(CPUSlotPartMachine.CPU_FILL, CPUSlotPartMachine.CpuFill.EMPTY)
+                .model(cpuSlotModel())
                 .register();
 
         RAM_SLOT = WF_MACHINES.machine("ram_slot", RAMSlotPartMachine::new)
@@ -314,6 +315,26 @@ public class WFMachines {
             builder.forAllStatesModels(state -> {
                 var tex = WFCore
                         .id("block/overlay/part/ram/ram_socket" + state.getValue(RAMSlotPartMachine.RAM_FILL).suffix());
+                var model = prov.models().nested()
+                        .parent(prov.models().getExistingFile(GTCEu.id("block/overlay/2_layer/front")))
+                        .texture("overlay", tex)
+                        .texture("overlay_2", tex);
+                return GTMachineModels.tieredHullTextures(model, builder.getOwner().getTier());
+            });
+            builder.addReplaceableTextures("bottom", "top", "side");
+        };
+    }
+
+    /**
+     * Front-overlay model for the CPU slot: the {@code cpu_slot} sprite (empty) or {@code cpu_slot_filled}
+     * (a CPU is installed), driven by {@link CPUSlotPartMachine.CpuFill} via the {@code cpu_fill} render-state
+     * property.
+     */
+    private static MachineBuilder.ModelInitializer cpuSlotModel() {
+        return (ctx, prov, builder) -> {
+            builder.forAllStatesModels(state -> {
+                var tex = WFCore
+                        .id("block/overlay/part/cpu_slot" + state.getValue(CPUSlotPartMachine.CPU_FILL).suffix());
                 var model = prov.models().nested()
                         .parent(prov.models().getExistingFile(GTCEu.id("block/overlay/2_layer/front")))
                         .texture("overlay", tex)

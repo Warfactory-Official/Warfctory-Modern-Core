@@ -70,7 +70,7 @@ public class RAMSlotPartMachine extends MultiblockPartMachine implements IRamSlo
 
     public RAMSlotPartMachine(IMachineBlockEntity holder) {
         super(holder);
-        this.inventory = new NotifiableItemStackHandler(this, SLOTS, IO.NONE) {
+        this.inventory = new NotifiableItemStackHandler(this, SLOTS, IO.NONE, IO.BOTH) {
 
             @Override
             public void onContentsChanged() {

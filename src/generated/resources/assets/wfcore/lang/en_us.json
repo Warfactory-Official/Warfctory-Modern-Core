@@ -30,6 +30,7 @@
   "item.wfcore.cooling_fan_cover_lv": "LV Cooling Fan Cover",
   "item.wfcore.cooling_fan_cover_mv": "MV Cooling Fan Cover",
   "item.wfcore.packaged_vehicle": "Packaged Vehicle",
+  "item.wfcore.siege_defense_tester": "Siege Difficulty Probe",
   "itemGroup.wfcore.wfcore": "Warfactory Modern Core",
   "material.wfcore.galvanized_steel": "Galvanized Steel"
 }

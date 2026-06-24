@@ -8,21 +8,25 @@
     "side"
   ],
   "variants": {
-    "is_formed=false": {
+    "cpu_fill=empty": {
       "model": {
-        "parent": "wfcore:block/machine/part/cpu_slot",
+        "parent": "gtceu:block/overlay/2_layer/front",
         "textures": {
           "bottom": "gtceu:block/casings/voltage/hv/bottom",
+          "overlay": "wfcore:block/overlay/part/cpu_slot",
+          "overlay_2": "wfcore:block/overlay/part/cpu_slot",
           "side": "gtceu:block/casings/voltage/hv/side",
           "top": "gtceu:block/casings/voltage/hv/top"
         }
       }
     },
-    "is_formed=true": {
+    "cpu_fill=filled": {
       "model": {
-        "parent": "wfcore:block/machine/part/cpu_slot",
+        "parent": "gtceu:block/overlay/2_layer/front",
         "textures": {
           "bottom": "gtceu:block/casings/voltage/hv/bottom",
+          "overlay": "wfcore:block/overlay/part/cpu_slot_filled",
+          "overlay_2": "wfcore:block/overlay/part/cpu_slot_filled",
           "side": "gtceu:block/casings/voltage/hv/side",
           "top": "gtceu:block/casings/voltage/hv/top"
         }
