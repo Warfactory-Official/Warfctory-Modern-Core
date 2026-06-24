@@ -58,6 +58,7 @@ public class WFCore {
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.radar.RadarRegistryHandler());
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.radar.Retrofitter.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.compute.WFComputeTooltips());
 
         WF_MACHINES.registerRegistrate();
 
@@ -87,6 +88,9 @@ public class WFCore {
             com.norwood.wfcore.common.fluid.CoolantRegistry.register();
             com.norwood.wfcore.common.compute.CPURegistry.register();
             com.norwood.wfcore.common.compute.RAMRegistry.register();
+            LOGGER.info("Compute registries: {} CPU item(s), {} RAM item(s)",
+                    com.norwood.wfcore.common.compute.CPURegistry.size(),
+                    com.norwood.wfcore.common.compute.RAMRegistry.size());
             com.norwood.wfcore.common.research.WFResearches.register();
             UIFactory.register(VehicleUIFactory.INSTANCE);
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");

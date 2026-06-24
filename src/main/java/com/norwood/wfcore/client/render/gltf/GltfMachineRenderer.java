@@ -6,17 +6,21 @@ import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.Direction;
 
 import com.modularmods.mcgltf.MCglTF;
 import com.modularmods.mcgltf.RenderedGltfModel;
+import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.render.mask.RenderMaskManager;
+import com.norwood.wfcore.mixin.LightTextureAccessor;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
@@ -92,13 +96,13 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         RenderSystem.depthMask(true);
         RenderSystem.enableCull();
 
-        // mcgltf draws immediately with the vanilla entity shader but never binds the lightmap (the 1.12.2
-        // fixed-function path set lightmap coords by hand). Without it the shader's Sampler2 samples an
-        // unbound (black) texture and the whole model renders black, so bind the lightmap to texture unit 2.
-        LightTexture lightTexture = Minecraft.getInstance().gameRenderer.lightTexture();
-        lightTexture.turnOnLightLayer();
+        // mcgltf draws immediately with the vanilla entity shader but never binds the lightmap, and the
+        // model's per-vertex TEXCOORD_1 lightmap UVs are a fixed-but-dim second UV set, so the dish would be
+        // either black (unbound) or stuck at ~half light. Mirror the 1.12.2 path
+        // (setLightmapTextureCoords(getCombinedLight(pos.up(15)))): bind a 1x1 texture holding the real
+        // lightmap colour sampled at the dish's open-sky position, so it tracks day/night world light.
         GL13.glActiveTexture(GL13.GL_TEXTURE2);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, RenderSystem.getShaderTexture(2));
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, worldLightLightmap(be));
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
 
         // mcgltf's vanilla path folds each node's normal into the static CURRENT_NORMAL for lighting, but
@@ -115,9 +119,33 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         } catch (RuntimeException e) {
             WFCore.LOGGER.error("Failed to render GLTF model {}", model.getModelLocation(), e);
         } finally {
-            lightTexture.turnOffLightLayer();
             restoreGlState();
         }
+    }
+
+    private static DynamicTexture worldLightTexture;
+
+    /**
+     * A 1x1 texture holding the vanilla lightmap colour at the dish's open-sky position (controller + 15,
+     * mirroring the 1.12.2 {@code getCombinedLight(pos.up(15))}). Re-sampled each frame so the model is lit
+     * by real world light — bright at noon, dim at night — instead of its dim per-vertex {@code TEXCOORD_1}.
+     */
+    private static int worldLightLightmap(MetaMachineBlockEntity be) {
+        if (worldLightTexture == null) {
+            worldLightTexture = new DynamicTexture(new NativeImage(1, 1, false));
+        }
+        int color = 0xFFFFFFFF;
+        if (be.getLevel() != null) {
+            int packed = LevelRenderer.getLightColor(be.getLevel(), be.getBlockPos().above(15));
+            NativeImage pixels = ((LightTextureAccessor) Minecraft.getInstance().gameRenderer.lightTexture())
+                    .wfcore$getLightPixels();
+            if (pixels != null) {
+                color = pixels.getPixelRGBA(LightTexture.block(packed), LightTexture.sky(packed));
+            }
+        }
+        worldLightTexture.getPixels().setPixelRGBA(0, 0, color);
+        worldLightTexture.upload();
+        return worldLightTexture.getId();
     }
 
     /**

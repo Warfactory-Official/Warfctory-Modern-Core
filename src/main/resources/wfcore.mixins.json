@@ -17,7 +17,8 @@
     "BlockRenderDispatcherMixin",
     "BlockShouldRenderFaceMixin",
     "EmbeddiumBlockRendererMixin",
-    "McgltfHeadlessConstructMixin"
+    "McgltfHeadlessConstructMixin",
+    "LightTextureAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -35,6 +35,10 @@ public final class RAMRegistry {
         return stack != null && !stack.isEmpty() && REGISTRY.containsKey(stack.getItem());
     }
 
+    public static int size() {
+        return REGISTRY.size();
+    }
+
     public static void register() {
         register(GTItems.RANDOM_ACCESS_MEMORY_WAFER.asItem(), 256);
     }

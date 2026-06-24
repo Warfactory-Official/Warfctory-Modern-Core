@@ -36,9 +36,13 @@ public final class CPURegistry {
         return stack != null && !stack.isEmpty() && REGISTRY.containsKey(stack.getItem());
     }
 
+    public static int size() {
+        return REGISTRY.size();
+    }
+
     public static void register() {
-        register(GTItems.CENTRAL_PROCESSING_UNIT_WAFER.asItem(),
-                new CPUEntry(0.5, GTValues.V[GTValues.HV], GTValues.V[GTValues.MV]));
+        register(GTItems.INTEGRATED_CIRCUIT_MV.asItem(),
+                new CPUEntry(0.5, GTValues.V[GTValues.HV], GTValues.VH[GTValues.MV]));
     }
 
     public record CPUEntry(
