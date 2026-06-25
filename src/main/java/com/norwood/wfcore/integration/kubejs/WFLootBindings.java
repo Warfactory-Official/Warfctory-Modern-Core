@@ -1,13 +1,12 @@
 package com.norwood.wfcore.integration.kubejs;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.storage.loot.Deserializers;
 import net.minecraft.world.level.storage.loot.LootTable;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.norwood.wfcore.common.loot.WFLootBuilder;
 import com.norwood.wfcore.common.loot.WFLootRegistry;
 

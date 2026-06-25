@@ -2,9 +2,6 @@ package com.norwood.wfcore.common.gui;
 
 import com.gregtechceu.gtceu.common.data.GTItems;
 
-import brachy.modularui.drawable.GuiTextures;
-import brachy.modularui.drawable.ItemDrawable;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -14,13 +11,15 @@ import brachy.modularui.api.IPanelHandler;
 import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
+import brachy.modularui.drawable.GuiTextures;
+import brachy.modularui.drawable.ItemDrawable;
 import brachy.modularui.drawable.Rectangle;
 import brachy.modularui.drawable.UITexture;
-import brachy.modularui.utils.Color;
 import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.screen.RichTooltip;
 import brachy.modularui.screen.UISettings;
+import brachy.modularui.utils.Color;
 import brachy.modularui.value.sync.InteractionSyncHandler;
 import brachy.modularui.value.sync.ItemSlotSyncHandler;
 import brachy.modularui.value.sync.PanelSyncManager;
@@ -148,12 +147,11 @@ public final class ResearchTreeGui {
             .location("gtceu:gui/widget/button_power").imageSize(18, 36).build();
 
     // client-side selection (one GUI per client)
-    private static final String[] SELECTED = {null};
+    private static final String[] SELECTED = { null };
     // client-side selection of the library window's write target (mirrors SELECTED's pattern)
-    private static final String[] LIBRARY_SELECTED = {null};
+    private static final String[] LIBRARY_SELECTED = { null };
 
-    private ResearchTreeGui() {
-    }
+    private ResearchTreeGui() {}
 
     public static ModularPanel<?> build(ResearchUnitMachine mte, PosGuiData data,
                                         PanelSyncManager syncManager, UISettings settings) {
@@ -235,11 +233,10 @@ public final class ResearchTreeGui {
         ButtonWidget<?> button = new ButtonWidget<>();
         button.name("working_toggle");
         button.pos(POWER_X, WORKING_Y).size(POWER_SIZE, POWER_SIZE).syncHandler("working_enabled", 0);
-        button.background((ctx, x, y, w, h, theme) ->
-                (mte.isWorkingEnabled() ? on : off).draw(ctx, x, y, w, h, theme));
+        button.background((ctx, x, y, w, h, theme) -> (mte.isWorkingEnabled() ? on : off).draw(ctx, x, y, w, h, theme));
 
         button.tooltipDynamic(t -> t.addLine(Text.lang(mte.isWorkingEnabled() ?
-                        "wfcore.gui.research.working_enabled" : "wfcore.gui.research.working_disabled")))
+                "wfcore.gui.research.working_enabled" : "wfcore.gui.research.working_disabled")))
                 .tooltipAutoUpdate(true);
         return button;
     }
@@ -273,7 +270,8 @@ public final class ResearchTreeGui {
         ModularPanel<?> panel = ModularPanel.defaultPanel("research_library", w, h);
         panel.draggable(true);
         panel.child(new TextWidget<>(Text.lang("wfcore.gui.research.library")).pos(8, 6).name("library_title"));
-        panel.child(new ButtonWidget<>().background(GuiTextures.BUTTON_CLEAN).overlay(GuiTextures.CLOSE).size(10).pos(195, 6));
+        panel.child(new ButtonWidget<>().background(GuiTextures.BUTTON_CLEAN).overlay(GuiTextures.CLOSE).size(10)
+                .pos(195, 6));
 
         int slotY = h - 26;
         int listH = slotY - 22 - INSET;
@@ -314,7 +312,7 @@ public final class ResearchTreeGui {
     }
 
     /** Self-typed generics don't infer cleanly against a wildcard target, so build the list raw and widen here. */
-    @SuppressWarnings({"rawtypes", "unchecked"})
+    @SuppressWarnings({ "rawtypes", "unchecked" })
     private static ListWidget<IWidget, ?> libraryList() {
         return new ListWidget();
     }
@@ -345,15 +343,15 @@ public final class ResearchTreeGui {
     private static IDrawable libraryRowBackground(String rid) {
         Rectangle selected = new Rectangle().color(COLOR_AVAILABLE);
         Rectangle base = new Rectangle().color(COLOR_SLOT);
-        return (ctx, x, y, w, h, theme) ->
-                (rid.equals(LIBRARY_SELECTED[0]) ? selected : base).draw(ctx, x, y, w, h, theme);
+        return (ctx, x, y, w, h, theme) -> (rid.equals(LIBRARY_SELECTED[0]) ? selected : base).draw(ctx, x, y, w, h,
+                theme);
     }
 
     /// ///////////////// tabs + per-category trees ////////////////////
 
     private static void buildTabsAndTree(ModularPanel<?> panel, ResearchUnitMachine mte, PanelSyncManager sync) {
         List<ResearchCategory> categories = categories();
-        int[] nodeCounter = {0};
+        int[] nodeCounter = { 0 };
 
         PagedWidget.Controller controller = new PagedWidget.Controller();
         PagedWidget<?> paged = new PagedWidget<>();
@@ -625,7 +623,8 @@ public final class ResearchTreeGui {
 
         detail.child(buildActionButton(mte, sync));
 
-        detail.child(new TextWidget<>(Text.lang("wfcore.gui.research.unlocks")).pos(INSET + 140, 37).name("unlocks_label"));
+        detail.child(
+                new TextWidget<>(Text.lang("wfcore.gui.research.unlocks")).pos(INSET + 140, 37).name("unlocks_label"));
         addItemRow(detail, INSET + 140, 48, ResearchTreeGui::unlockedAt, 4, "unlock_item");
 
         addProgressBar(detail, mte, INSET, 106, innerW, 6);
@@ -819,12 +818,15 @@ public final class ResearchTreeGui {
 
     private static Component statusLine(ResearchUnitMachine mte) {
         if (!mte.isWorkingEnabled()) {
-            return Component.translatable("wfcore.gui.research.screen_paused").withStyle(net.minecraft.ChatFormatting.RED);
+            return Component.translatable("wfcore.gui.research.screen_paused")
+                    .withStyle(net.minecraft.ChatFormatting.RED);
         }
         if (activeJobs(mte) > 0) {
-            return Component.translatable("wfcore.gui.research.screen_working").withStyle(net.minecraft.ChatFormatting.GREEN);
+            return Component.translatable("wfcore.gui.research.screen_working")
+                    .withStyle(net.minecraft.ChatFormatting.GREEN);
         }
-        return Component.translatable("wfcore.gui.research.screen_idling").withStyle(net.minecraft.ChatFormatting.YELLOW);
+        return Component.translatable("wfcore.gui.research.screen_idling")
+                .withStyle(net.minecraft.ChatFormatting.YELLOW);
     }
 
     /// ///////////////// item rows ////////////////////
@@ -907,7 +909,6 @@ public final class ResearchTreeGui {
         w.size(size).background(itemIconDrawable(supplier));
         return w;
     }
-
 
     private static IDrawable itemIconDrawable(Supplier<ItemStack> supplier) {
         ItemDrawable drawable = new ItemDrawable();

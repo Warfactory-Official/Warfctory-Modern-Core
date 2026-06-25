@@ -25,6 +25,7 @@ public final class WFLootBuilder {
     private record Entry(ResourceLocation item, int min, int max, int weight) {}
 
     private static final class Pool {
+
         private NumberProvider rolls = ConstantValue.exactly(1);
         private final List<Entry> entries = new ArrayList<>();
     }

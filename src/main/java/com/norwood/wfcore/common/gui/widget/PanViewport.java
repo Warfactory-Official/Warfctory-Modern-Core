@@ -3,8 +3,8 @@ package com.norwood.wfcore.common.gui.widget;
 import brachy.modularui.api.layout.IViewport;
 import brachy.modularui.api.layout.IViewportStack;
 import brachy.modularui.api.widget.Interactable;
-import brachy.modularui.utils.HoveredWidgetList;
 import brachy.modularui.screen.viewport.ModularGuiContext;
+import brachy.modularui.utils.HoveredWidgetList;
 import brachy.modularui.widget.ParentWidget;
 
 /**
@@ -13,7 +13,8 @@ import brachy.modularui.widget.ParentWidget;
  * extent is declared with {@link #contentSize(int, int)}; only the part currently under the widget is drawn,
  * shifted by an {@code (x, y)} offset that dragging (and the mouse wheel) adjust and clamp to the content.
  *
- * <p>It is a drop-in replacement for a scroll container: add children at absolute positions in content space,
+ * <p>
+ * It is a drop-in replacement for a scroll container: add children at absolute positions in content space,
  * set {@code contentSize(w, h)} to the full extent, and panning/clipping is automatic. The implementation is
  * self-contained (it keeps its own offset, holds no external references) so it can be lifted into ModularUI
  * upstream as a general-purpose widget.
