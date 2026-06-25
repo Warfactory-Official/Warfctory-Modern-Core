@@ -55,7 +55,10 @@ public final class CPURegistry {
 
         public double getCurrentEfficency(long power) {
             if (power < minPower) return 0;
-            double load = (double) (power - minPower) / (maxPower - power);
+            long span = maxPower - minPower;
+            // load = fraction of the power band in use (0 at idle, 1 at max); the dropoff makes a CPU run
+            // less efficiently the harder it is pushed. Guard the degenerate span (maxPower == minPower).
+            double load = span <= 0 ? 1.0 : (double) (power - minPower) / span;
             double dropoff = 0.2 * Math.pow(load, 2);
             return Math.max(0.05, efficiency - dropoff);
         }

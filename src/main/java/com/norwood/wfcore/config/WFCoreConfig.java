@@ -23,6 +23,7 @@ public final class WFCoreConfig {
     private static final String FILE_NAME = "wfcore.yaml";
     private static final int DEFAULT_ENERGY_TO_FLUID_RATIO = 10;
     private static final int DEFAULT_REFUEL_INTERVAL_TICKS = 20;
+    private static final boolean DEFAULT_CLEAR_STRUCTURE_LOOT = true;
     private static final String DEFAULT_CONFIG = """
             # WFCore configuration
             # vehicles:
@@ -39,11 +40,14 @@ public final class WFCoreConfig {
             #     storageColumns: 10
             energyToFluidRatio: 10
             refuelIntervalTicks: 20
+            # Empty every chest and fishing loot table by default; repopulate or whitelist via KubeJS (WFLoot).
+            clearStructureLoot: true
             vehicles: []
             """;
 
     private static volatile int energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
     private static volatile int refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
+    private static volatile boolean clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
 
     private WFCoreConfig() {}
 
@@ -53,6 +57,11 @@ public final class WFCoreConfig {
 
     public static int getRefuelIntervalTicks() {
         return refuelIntervalTicks;
+    }
+
+    /** When true, WFCore empties every chest/fishing loot table on load unless KubeJS overrides or keeps it. */
+    public static boolean isClearStructureLoot() {
+        return clearStructureLoot;
     }
 
     public static void load() {
@@ -72,6 +81,7 @@ public final class WFCoreConfig {
             WFCore.LOGGER.error("Failed to load WFCore YAML config from {}", configFile, e);
             energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
             refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
+            clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
             SuperbOverrides.setOverrideDataMap(Map.of());
         }
     }
@@ -84,12 +94,14 @@ public final class WFCoreConfig {
             WFCore.LOGGER.warn("WFCore config was empty or not a map; using defaults");
             energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
             refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
+            clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
             SuperbOverrides.setOverrideDataMap(Map.of());
             return;
         }
 
         energyToFluidRatio = positiveInt(root.get("energyToFluidRatio"), DEFAULT_ENERGY_TO_FLUID_RATIO);
         refuelIntervalTicks = positiveInt(root.get("refuelIntervalTicks"), DEFAULT_REFUEL_INTERVAL_TICKS);
+        clearStructureLoot = boolValue(root.get("clearStructureLoot"), DEFAULT_CLEAR_STRUCTURE_LOOT);
         SuperbOverrides.setOverrideDataMap(parseVehicleOverrides(root.get("vehicles")));
         WFCore.LOGGER.info("Loaded WFCore YAML config: {} vehicle overrides, energy ratio {}, refuel interval {} ticks",
                 SuperbOverrides.overrideDataMap.size(), energyToFluidRatio, refuelIntervalTicks);
@@ -212,6 +224,14 @@ public final class WFCoreConfig {
         } catch (NumberFormatException ignored) {
             return null;
         }
+    }
+
+    private static boolean boolValue(Object value, boolean fallback) {
+        if (value instanceof Boolean b) {
+            return b;
+        }
+        String text = stringValue(value);
+        return text == null || text.isBlank() ? fallback : Boolean.parseBoolean(text);
     }
 
     private static Float floatValue(Object value) {

@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.CompletableFuture;
 
 /**
@@ -27,6 +28,15 @@ public final class RadarClustering {
     // TODO: make these adjustable in the GUI, as in the 1.12.2 version.
     public static final int MIN_PTS = 10;
     public static final int EPS = 200;
+
+    /** Radars scanning within this many ticks of each other share a single DBSCAN result (~2s). */
+    public static final int CACHE_TICKS = 40;
+
+    // Per-level cache of the latest (possibly still in-flight) scan. Main-thread access only; weak keys so a
+    // level that unloads (e.g. server stop) drops its entry instead of pinning a stale result.
+    private static final Map<ServerLevel, Cached> CACHE = new WeakHashMap<>();
+
+    private record Cached(long gameTime, CompletableFuture<List<ClusterData>> future) {}
 
     private RadarClustering() {}
 
@@ -53,6 +63,35 @@ public final class RadarClustering {
         }
 
         return map;
+    }
+
+    /**
+     * Runs a DBSCAN scan for {@code level}, or reuses a recent one: requests within {@link #CACHE_TICKS} ticks
+     * share the same (possibly still-running) result, so a burst of radars firing together computes once. A
+     * failed scan is evicted rather than reused. Must be called on the server thread — it snapshots
+     * {@link #collectTargets(ServerLevel)} synchronously.
+     */
+    public static CompletableFuture<List<ClusterData>> scan(ServerLevel level, int eps, int minPts) {
+        long now = level.getGameTime();
+        Cached cached = CACHE.get(level);
+        if (cached != null) {
+            long age = now - cached.gameTime();
+            if (age >= 0 && age <= CACHE_TICKS) {
+                return cached.future();
+            }
+        }
+        CompletableFuture<List<ClusterData>> future = calculateDBSCAN(collectTargets(level), eps, minPts);
+        Cached entry = new Cached(now, future);
+        CACHE.put(level, entry);
+        // The future completes off-thread; on failure, drop this entry back on the server thread so co-firing
+        // radars recompute instead of sharing the failure. remove(key, value) only evicts if still this entry,
+        // so a newer scan that already replaced it is left alone.
+        future.whenComplete((result, error) -> {
+            if (error != null) {
+                level.getServer().execute(() -> CACHE.remove(level, entry));
+            }
+        });
+        return future;
     }
 
     public static CompletableFuture<List<ClusterData>> calculateDBSCAN(Map<IntCoord2, DataPoint> objMap,

@@ -42,7 +42,7 @@ public final class WFResearches {
                 new ItemStack(Items.DIAMOND, 4), new ItemStack(Items.AMETHYST_BLOCK), "radar_systems",
                 "sensor_arrays");
 
-        // ---------------------------------------------------------------- Vehicles: MANUAL (hand-placed, 5 rows)
+        // ------------------------------------------- Vehicles: MANUAL (hand-placed, 10 cols x 7 rows for scroll test)
         node("vehicle_chassis", "vehicles", Items.IRON_BARS, 0, 0, 5, 80, 48, 45,
                 new ItemStack(Items.IRON_INGOT, 4), new ItemStack(Items.IRON_BARS));
         node("light_frame", "vehicles", Items.IRON_INGOT, 1, -1, 6, 120, 64, 55,
@@ -63,6 +63,38 @@ public final class WFResearches {
         node("mechanized_warfare", "vehicles", Items.NETHERITE_INGOT, 4, 0, 18, 560, 256, 110,
                 new ItemStack(Items.NETHERITE_INGOT, 2), new ItemStack(Items.NETHERITE_BLOCK), "vehicle_engineering",
                 "main_battle_tank");
+        // Extended late-game branches spread across columns 5-9 and rows -3..3 so the page must scroll on BOTH
+        // axes (scroll area ~ 24 + 10*46 = 484 px wide, 24 + 7*40 = 304 px tall, vs a ~362x156 viewport).
+        node("rapid_deployment", "vehicles", Items.LEATHER_BOOTS, 5, -3, 12, 300, 128, 80,
+                new ItemStack(Items.LEATHER, 6), new ItemStack(Items.LEATHER_BOOTS), "recon_drones");
+        node("amphibious_vehicles", "vehicles", Items.OAK_BOAT, 5, -1, 14, 360, 150, 85,
+                new ItemStack(Items.IRON_INGOT, 10), new ItemStack(Items.OAK_BOAT), "mechanized_warfare");
+        node("siege_platforms", "vehicles", Items.PISTON, 5, 1, 14, 360, 150, 85,
+                new ItemStack(Items.IRON_BLOCK, 4), new ItemStack(Items.PISTON), "mechanized_warfare");
+        node("heavy_logistics", "vehicles", Items.CHEST_MINECART, 5, 3, 12, 320, 130, 80,
+                new ItemStack(Items.IRON_INGOT, 16), new ItemStack(Items.CHEST_MINECART), "main_battle_tank");
+        node("stealth_armor", "vehicles", Items.IRON_HELMET, 6, -2, 16, 420, 180, 90,
+                new ItemStack(Items.IRON_INGOT, 12), new ItemStack(Items.IRON_HELMET), "amphibious_vehicles");
+        node("active_protection", "vehicles", Items.SHIELD, 6, 0, 16, 420, 180, 90,
+                new ItemStack(Items.IRON_INGOT, 12), new ItemStack(Items.SHIELD), "amphibious_vehicles",
+                "siege_platforms");
+        node("assault_artillery", "vehicles", Items.TNT_MINECART, 6, 2, 16, 420, 180, 90,
+                new ItemStack(Items.TNT, 4), new ItemStack(Items.TNT_MINECART), "siege_platforms", "heavy_logistics");
+        node("autonomous_combat", "vehicles", Items.OBSERVER, 7, -1, 18, 520, 220, 100,
+                new ItemStack(Items.REDSTONE_BLOCK, 4), new ItemStack(Items.OBSERVER), "stealth_armor",
+                "active_protection");
+        node("command_network", "vehicles", Items.LODESTONE, 7, 1, 18, 520, 220, 100,
+                new ItemStack(Items.AMETHYST_SHARD, 6), new ItemStack(Items.LODESTONE), "active_protection",
+                "assault_artillery");
+        node("drone_swarms", "vehicles", Items.PHANTOM_MEMBRANE, 8, -2, 20, 600, 256, 110,
+                new ItemStack(Items.PHANTOM_MEMBRANE, 8), new ItemStack(Items.PHANTOM_MEMBRANE), "autonomous_combat");
+        node("integrated_battlefield", "vehicles", Items.BEACON, 8, 0, 20, 600, 256, 110,
+                new ItemStack(Items.DIAMOND, 4), new ItemStack(Items.BEACON), "autonomous_combat", "command_network");
+        node("armored_doctrine", "vehicles", Items.NETHERITE_BLOCK, 8, 2, 20, 600, 256, 110,
+                new ItemStack(Items.NETHERITE_INGOT, 2), new ItemStack(Items.NETHERITE_BLOCK), "command_network");
+        node("future_warfare", "vehicles", Items.NETHER_STAR, 9, 0, 24, 800, 320, 130,
+                new ItemStack(Items.NETHERITE_BLOCK, 2), new ItemStack(Items.NETHER_STAR), "drone_swarms",
+                "integrated_battlefield", "armored_doctrine");
 
         // ---------------------------------------------------------------- Weapons: AUTO (two parallel chains merge)
         autoNode("ballistics", "weapons", Items.GUNPOWDER, 5, 80, 40, 45,

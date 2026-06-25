@@ -421,6 +421,12 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         this.isWorkingEnabled = workingEnabled;
     }
 
+    /** GUI working-enabled toggle (server-side); persists and re-syncs the new state. */
+    public void toggleWorkingEnabled() {
+        this.isWorkingEnabled = !isWorkingEnabled;
+        markDirty();
+    }
+
     //////////////////// client snapshot for the research-tree GUI ////////////////////
 
     /** Rebuilds the {@link #researchSync} snapshot (state + queue) sent to clients for the tree GUI. */

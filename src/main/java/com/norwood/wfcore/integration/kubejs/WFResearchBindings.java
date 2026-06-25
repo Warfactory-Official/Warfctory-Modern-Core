@@ -27,6 +27,7 @@ import com.norwood.wfcore.api.research.ResearchRegistry;
  * <pre>{@code
  * WFResearch.builder('my_research')
  *     .category('logistics').pos(0, 0)
+ *     .nodeColor(0xFF2F6BD8)                       // optional tile tint when the node is available
  *     .runs(4).cwuPerRun(64).itemPerRun(Item.of('minecraft:redstone', 2))
  *     .unlocks(Item.of('minecraft:repeater'))
  *     .register()

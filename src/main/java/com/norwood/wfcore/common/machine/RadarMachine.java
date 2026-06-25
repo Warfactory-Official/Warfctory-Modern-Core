@@ -225,8 +225,7 @@ public class RadarMachine extends MultiblockControllerMachine
         scanProgress = 0;
         lastScan = null;
 
-        var snapshot = RadarClustering.collectTargets(serverLevel);
-        RadarClustering.calculateDBSCAN(snapshot, RadarClustering.EPS, RadarClustering.MIN_PTS)
+        RadarClustering.scan(serverLevel, RadarClustering.EPS, RadarClustering.MIN_PTS)
                 .thenAccept(clusters -> serverLevel.getServer().execute(() -> {
                     UUID id = UUID.randomUUID();
                     RadarScanData.get(serverLevel).addScan(id, clusters);

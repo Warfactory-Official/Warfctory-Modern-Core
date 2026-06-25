@@ -1,13 +1,19 @@
 package com.norwood.wfcore.common.gui;
 
+import brachy.modularui.drawable.GuiTextures;
+import brachy.modularui.drawable.ItemDrawable;
+import net.minecraft.client.gui.Gui;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
+import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.api.drawable.Text;
+import brachy.modularui.api.widget.IWidget;
 import brachy.modularui.api.value.IValue;
 import brachy.modularui.drawable.Rectangle;
 import brachy.modularui.drawable.UITexture;
+import brachy.modularui.utils.Color;
 import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.screen.RichTooltip;
@@ -15,15 +21,13 @@ import brachy.modularui.screen.UISettings;
 import brachy.modularui.value.sync.InteractionSyncHandler;
 import brachy.modularui.value.sync.PanelSyncManager;
 import brachy.modularui.widget.ParentWidget;
-import brachy.modularui.widget.ScrollWidget;
-import brachy.modularui.widget.scroll.HorizontalScrollData;
-import brachy.modularui.widget.scroll.VerticalScrollData;
 import brachy.modularui.widgets.ButtonWidget;
 import brachy.modularui.widgets.ItemDisplayWidget;
 import brachy.modularui.widgets.PagedWidget;
 import brachy.modularui.widgets.RichTextWidget;
 import brachy.modularui.widgets.TextWidget;
 import com.norwood.wfcore.api.research.*;
+import com.norwood.wfcore.common.gui.widget.PanViewport;
 import com.norwood.wfcore.common.machine.ResearchUnitMachine;
 
 import java.util.ArrayList;
@@ -48,27 +52,46 @@ import java.util.function.Supplier;
  */
 public final class ResearchTreeGui {
 
-    private static final int PANEL_W = 320;
+    private static final int PANEL_W = 380;
     private static final int PANEL_H = 320;
 
-    private static final int TAB_Y = 2;
+    /** Gap between sections (and the panel's outer margin). */
+    private static final int PAD = 4;
+    /**
+     * Inner content inset within a section. Applied directly to child coordinates rather than via
+     * {@code padding()}: in this ModularUI fork padding only offsets relatively-positioned children, so a
+     * statically-positioned {@code pos(x, y)}/{@code right(x)} child ignores it and would sit on the edge.
+     */
+    private static final int INSET = 5;
+
+    // header row: machine nameplate (block + name) + the working-enabled toggle
+    private static final int HEADER_X = PAD;
+    private static final int HEADER_Y = PAD;
+    private static final int HEADER_W = PANEL_W - 2 * PAD;
+    private static final int HEADER_H = 20;
+    private static final int TOGGLE_SIZE = 16;
+
+    // bottom row (detail + queue), anchored to the panel's bottom edge
+    private static final int DETAIL_X = PAD;
+    private static final int DETAIL_W = 260;
+    private static final int DETAIL_H = 104;
+    private static final int BOTTOM_Y = PANEL_H - PAD - DETAIL_H;
+
+    private static final int QUEUE_X = DETAIL_X + DETAIL_W + PAD;
+    private static final int QUEUE_W = PANEL_W - PAD - QUEUE_X;
+    private static final int QUEUE_H = 48;
+    private static final int QUEUE_SLOT = 24;
+
+    // category tabs run along the bottom edge of the tree pane, between it and the bottom row
     private static final int TAB_SIZE = 24;
     private static final int TAB_H = 18;
+    private static final int TAB_Y = BOTTOM_Y - TAB_H - 2;
 
-    private static final int TREE_X = 5;
-    private static final int TREE_Y = 21;
-    private static final int TREE_W = 310;
-    private static final int TREE_H = 194;
-
-    private static final int DETAIL_X = 5;
-    private static final int BOTTOM_Y = TREE_Y + TREE_H + 4;
-    private static final int DETAIL_W = 196;
-    private static final int DETAIL_H = 94;
-
-    private static final int QUEUE_X = 205;
-    private static final int QUEUE_W = 110;
-    private static final int QUEUE_H = 94;
-    private static final int QUEUE_SLOT = 24;
+    // tree pane fills from just below the header down to the tabs
+    private static final int TREE_X = PAD;
+    private static final int TREE_W = PANEL_W - 2 * PAD;
+    private static final int TREE_Y = HEADER_Y + HEADER_H + 2;
+    private static final int TREE_H = TAB_Y - TREE_Y;
 
     private static final int NODE = 26;
     private static final int COL_SPACING = 46;
@@ -92,6 +115,7 @@ public final class ResearchTreeGui {
     private static final int COLOR_COMPLETE = 0xFF44A050;
     private static final int COLOR_BUTTON_DISABLED = 0xFF3A3A40;
     private static final int COLOR_BUTTON_SHADE = 0x55000000;
+    private static final int COLOR_NODE_HOVER = 0x60FFFFFF;
 
     // client-side selection (one GUI per client)
     private static final String[] SELECTED = { null };
@@ -101,16 +125,15 @@ public final class ResearchTreeGui {
     public static ModularPanel<?> build(ResearchUnitMachine mte, PosGuiData data,
                                         PanelSyncManager syncManager, UISettings settings) {
         ModularPanel<?> panel = ModularPanel.defaultPanel("research_unit", PANEL_W, PANEL_H);
-        panel.child(new TextWidget<>(Text.lang("wfcore.gui.research.title")).pos(8, 6));
-        panel.child(new TextWidget<>(Text.dynamic(
-                () -> Component.literal(modeLabel(mte) + "  x" + mte.getJobCapacity()))).pos(238, 6));
+        panel.invisible();
+        panel.child(buildHeader(mte, syncManager));
 
         if (!mte.isFormed()) {
-            panel.child(new TextWidget<>(Text.lang("wfcore.gui.research.not_formed")).pos(TREE_X + 8, TREE_Y + 8));
+            panel.child(notice("wfcore.gui.research.not_formed"));
             return panel;
         }
         if (mte.getMode() == ResearchUnitMachine.Mode.SLAVE) {
-            panel.child(new TextWidget<>(Text.lang("wfcore.gui.research.slave_mode")).pos(TREE_X + 8, TREE_Y + 8));
+            panel.child(notice("wfcore.gui.research.slave_mode"));
             return panel;
         }
 
@@ -118,6 +141,64 @@ public final class ResearchTreeGui {
         panel.child(buildDetail(mte, syncManager));
         panel.child(buildQueue(mte, syncManager));
         return panel;
+    }
+
+    private static TextWidget<?> notice(String langKey) {
+        return new TextWidget<>(Text.lang(langKey)).pos(TREE_X + 8, TREE_Y + 8).name("notice");
+    }
+
+    //////////////////// header: nameplate + working-enabled toggle ////////////////////
+
+    /**
+     * The GT-multiblock-style header: a nameplate showing the controller's block model (rendered as its item)
+     * and display name on the left, the mode/capacity readout and a working-enabled play/stop toggle on the
+     * right. Padded parent so its children inset cleanly.
+     */
+    private static ParentWidget<?> buildHeader(ResearchUnitMachine mte, PanelSyncManager sync) {
+        ParentWidget<?> header = new ParentWidget<>();
+        header.name("header");
+        header.pos(HEADER_X, HEADER_Y).size(HEADER_W, HEADER_H);
+        header.background(GuiTextures.MC_BACKGROUND);
+
+        ItemStack block = mte.getDefinition().asStack();
+        header.child(new ItemDisplayWidget().item(itemValue(() -> block))
+                .pos(INSET, 2).size(16).name("nameplate_icon"));
+        header.child(new TextWidget<>(Text.of(block.getHoverName()))
+                .pos(INSET + 20, 6).name("nameplate_name"));
+
+        header.child(new TextWidget<>(Text.dynamic(
+                () -> Component.literal(modeLabel(mte) + " x" + mte.getJobCapacity())))
+                .top(6).right(INSET + TOGGLE_SIZE + 6).name("mode_label"));
+
+        header.child(buildWorkingButton(mte, sync));
+        return header;
+    }
+
+    /** Play (green) while working is enabled, stop (red) while paused; click toggles, GT-multiblock style. */
+    private static ButtonWidget<?> buildWorkingButton(ResearchUnitMachine mte, PanelSyncManager sync) {
+        InteractionSyncHandler toggle = new InteractionSyncHandler()
+                .setOnMousePressed(d -> mte.toggleWorkingEnabled());
+        sync.syncValue("working_enabled", 0, toggle);
+
+        ButtonWidget<?> button = new ButtonWidget<>();
+        button.name("working_toggle");
+        button.size(TOGGLE_SIZE, TOGGLE_SIZE).right(INSET).top(2).syncHandler("working_enabled", 0);
+        button.background(GuiTextures.MC_BUTTON);
+
+        ParentWidget<?> play = new ParentWidget<>();
+        play.name("working_play").pos(3, 3).size(TOGGLE_SIZE - 6, TOGGLE_SIZE - 6).background(GuiTextures.PLAY);
+        play.setEnabledIf(w -> mte.isWorkingEnabled());
+        button.child(play);
+
+        ParentWidget<?> stop = new ParentWidget<>();
+        stop.name("working_stop").pos(3, 3).size(TOGGLE_SIZE - 6, TOGGLE_SIZE - 6).background(GuiTextures.STOP);
+        stop.setEnabledIf(w -> !mte.isWorkingEnabled());
+        button.child(stop);
+
+        button.tooltipDynamic(t -> t.addLine(Text.lang(mte.isWorkingEnabled() ?
+                "wfcore.gui.research.working_enabled" : "wfcore.gui.research.working_disabled")))
+                .tooltipAutoUpdate(true);
+        return button;
     }
 
     //////////////////// tabs + per-category trees ////////////////////
@@ -128,10 +209,21 @@ public final class ResearchTreeGui {
 
         PagedWidget.Controller controller = new PagedWidget.Controller();
         PagedWidget<?> paged = new PagedWidget<>();
+        paged.name("tree_paged");
+        paged.background(GuiTextures.MC_BACKGROUND);
         paged.controller(controller);
         paged.pos(TREE_X, TREE_Y).size(TREE_W, TREE_H);
+
+        // Each page is a fixed-size parent the size of the paged area; the canvas is inset by INSET on every
+        // side so the scroll viewport sits inside a clean frame and never spills onto the tabs/panels (the old
+        // coverChildren + padding wrapper grew the page past the paged area, which caused the overlap).
+        int viewW = TREE_W - 2 * INSET;
+        int viewH = TREE_H - 2 * INSET;
         for (ResearchCategory category : categories) {
-            paged.addPage(buildCategoryCanvas(mte, category, sync, nodeCounter));
+            paged.addPage(new ParentWidget<>()
+                    .name("tree_page_" + category.getId())
+                    .size(TREE_W, TREE_H)
+                    .child(buildCategoryCanvas(mte, category, sync, nodeCounter, viewW, viewH)));
         }
         paged.initialPage(0);
         panel.child(paged);
@@ -144,15 +236,17 @@ public final class ResearchTreeGui {
     /** An icon tab that switches the active page; the category name shows as a tooltip. */
     private static ButtonWidget<?> buildTab(PagedWidget.Controller controller, ResearchCategory category, int index) {
         ButtonWidget<?> tab = new ButtonWidget<>();
+        tab.name("tab_" + category.getId());
         tab.pos(TREE_X + index * (TAB_SIZE + 1), TAB_Y).size(TAB_SIZE, TAB_H);
-        tab.background(new Rectangle().color(COLOR_TAB_INACTIVE));
+        tab.background(GuiTextures.MC_BACKGROUND);
 
         ParentWidget<?> highlight = new ParentWidget<>();
+        highlight.name("tab_highlight_" + index);
         highlight.pos(0, 0).size(TAB_SIZE, TAB_H).background(new Rectangle().color(COLOR_TAB_ACTIVE));
         highlight.setEnabledIf(w -> controller.isInitialised() && controller.getActivePageIndex() == index);
         tab.child(highlight);
 
-        tab.child(new ItemDisplayWidget().item(tabIcon(category)).pos((TAB_SIZE - 16) / 2, (TAB_H - 16) / 2).size(16));
+        tab.overlay(new ItemDrawable(tabIcon(category)).asIcon().size(16));
         tab.tooltipBuilder(t -> t.addLine(Text.lang(category.getNameKey())));
         tab.onMousePressed((context, button) -> {
             controller.setPage(index);
@@ -161,8 +255,9 @@ public final class ResearchTreeGui {
         return tab;
     }
 
-    private static ScrollWidget<?> buildCategoryCanvas(ResearchUnitMachine mte, ResearchCategory category,
-                                                       PanelSyncManager sync, int[] nodeCounter) {
+    private static PanViewport<?> buildCategoryCanvas(ResearchUnitMachine mte, ResearchCategory category,
+                                                      PanelSyncManager sync, int[] nodeCounter,
+                                                      int viewW, int viewH) {
         String id = category.getId();
         List<Research> nodes = ResearchRegistry.byCategory(id);
         Map<String, int[]> layout = ResearchLayout.compute(nodes);
@@ -178,13 +273,12 @@ public final class ResearchTreeGui {
         }
         final int ox = minX, oy = minY;
 
-        ScrollWidget<?> canvas = new ScrollWidget<>();
-        canvas.getScrollArea().setScrollData(new HorizontalScrollData());
-        canvas.getScrollArea().setScrollData(new VerticalScrollData());
-        canvas.pos(0, 0).size(TREE_W, TREE_H);
+        PanViewport<?> canvas = new PanViewport<>();
+        canvas.name("tree_canvas_" + id);
+        canvas.pos(INSET, INSET).size(viewW, viewH);
         canvas.background(categoryBackground(category));
-        canvas.getScrollArea().getScrollX().setScrollSize(MARGIN * 2 + (maxX - minX + 1) * COL_SPACING);
-        canvas.getScrollArea().getScrollY().setScrollSize(MARGIN * 2 + (maxY - minY + 1) * ROW_SPACING);
+        canvas.contentSize(MARGIN * 2 + (maxX - minX + 1) * COL_SPACING,
+                MARGIN * 2 + (maxY - minY + 1) * ROW_SPACING);
 
         int connectorColor = category.getConnectorColor();
         for (Research research : nodes) {
@@ -205,7 +299,7 @@ public final class ResearchTreeGui {
     }
 
     /** The themed canvas background: a tiled texture, else a solid colour, else the default stone tiles. */
-    private static brachy.modularui.api.drawable.IDrawable categoryBackground(ResearchCategory category) {
+    private static IDrawable categoryBackground(ResearchCategory category) {
         if (category.getBackgroundTexture() != null) {
             return UITexture.builder()
                     .location(category.getBackgroundTexture().toString())
@@ -238,11 +332,11 @@ public final class ResearchTreeGui {
         sync.syncValue("research_node", index, select);
 
         ButtonWidget<?> node = new ButtonWidget<>();
+        node.name("node_" + rid);
         node.pos(nodeX(col, ox), nodeY(row, oy)).size(NODE, NODE);
-        node.background(nodeBackground(mte, rid));
-        node.backgroundOverlay(new Rectangle().color(COLOR_BORDER));
         if (!research.getIcon().isEmpty()) {
-            node.child(new ItemDisplayWidget().item(research.getIcon()).pos(4, 4).size(18));
+            node.background(nodeBackground(mte, research, node));
+            node.overlay(new ItemDrawable(research.getIcon()).asIcon().size(16));
         }
         node.tooltipDynamic(t -> {
             t.titleMargin();
@@ -257,7 +351,7 @@ public final class ResearchTreeGui {
                 t.addLine(Text.lang("wfcore.gui.research.blocker_locked"));
                 appendUnmetPrereqs(t, mte, research);
             }
-        });
+        }).tooltipAutoUpdate(true);
         node.onMousePressed((context, button) -> {
             SELECTED[0] = rid;
             return false; // let the sync handler fire the server-side selection
@@ -266,54 +360,81 @@ public final class ResearchTreeGui {
         return node;
     }
 
-    private static void addConnector(ScrollWidget<?> canvas, int fromCol, int fromRow, int toCol, int toRow,
+    private static void addConnector(ParentWidget<?> canvas, int fromCol, int fromRow, int toCol, int toRow,
                                      int ox, int oy, int color) {
-        int x1 = nodeX(fromCol, ox) + NODE / 2;
-        int y1 = nodeY(fromRow, oy) + NODE / 2;
-        int x2 = nodeX(toCol, ox) + NODE / 2;
-        int y2 = nodeY(toRow, oy) + NODE / 2;
+        int px = nodeX(fromCol, ox) + NODE / 2;
+        int py = nodeY(fromRow, oy) + NODE / 2;
+        int cx = nodeX(toCol, ox) + NODE / 2;
+        int cy = nodeY(toRow, oy) + NODE / 2;
+
+        // Same column: a straight vertical run into the child's near (top/bottom) edge.
+        if (px == cx) {
+            int dir = cy >= py ? 1 : -1;
+            int tipY = dir > 0 ? nodeY(toRow, oy) - 1 : nodeY(toRow, oy) + NODE;
+            verticalLeg(canvas, px, py + dir * (NODE / 2), tipY, color);
+            addArrowhead(canvas, px, tipY, 0, dir, color);
+            return;
+        }
+
         // Route vertical (at the parent's column) then horizontal (along the child's row) so the final approach
-        // — and the arrowhead — points horizontally into the child, making the unlock direction obvious.
-        if (y1 != y2) {
-            canvas.child(line(x1 - 1, Math.min(y1, y2), 2, Math.abs(y2 - y1), color));
-        }
-        if (x1 != x2) {
-            canvas.child(line(Math.min(x1, x2), y2 - 1, Math.abs(x2 - x1), 2, color));
-        }
-        boolean rightward = x2 >= x1;
+        // — and the arrowhead — points horizontally into the child. Each leg stops at a node edge, so the
+        // connector never runs under the node tiles.
+        boolean rightward = cx > px;
         int tipX = rightward ? nodeX(toCol, ox) - 1 : nodeX(toCol, ox) + NODE;
-        addArrowhead(canvas, tipX, y2, rightward ? 1 : -1, color);
+        int startX = px;
+        if (py != cy) {
+            int dir = cy > py ? 1 : -1;
+            verticalLeg(canvas, px, py + dir * (NODE / 2), cy, color);
+        } else {
+            startX = rightward ? nodeX(fromCol, ox) + NODE : nodeX(fromCol, ox); // leave the parent at its edge
+        }
+        horizontalLeg(canvas, startX, tipX, cy, color);
+        addArrowhead(canvas, tipX, cy, rightward ? 1 : -1, 0, color);
     }
 
-    /** A filled triangular arrowhead built from 1px slices (no client-only draw calls), tip at (tipX,tipY). */
-    private static void addArrowhead(ScrollWidget<?> canvas, int tipX, int tipY, int dir, int color) {
-        for (int i = 0; i < ARROW_LEN; i++) {
-            int half = ARROW_LEN - 1 - i;
-            canvas.child(line(tipX - dir * half, tipY - half, 1, 2 * half + 1, color));
+    private static void verticalLeg(ParentWidget<?> canvas, int x, int y1, int y2, int color) {
+        canvas.child(line(x - 1, Math.min(y1, y2), 2, Math.abs(y2 - y1), color));
+    }
+
+    private static void horizontalLeg(ParentWidget<?> canvas, int x1, int x2, int y, int color) {
+        canvas.child(line(Math.min(x1, x2), y - 1, Math.abs(x2 - x1), 2, color));
+    }
+
+    /** A filled triangular arrowhead built from 1px slices, tip at (tipX,tipY) pointing along (dx,dy). */
+    private static void addArrowhead(ParentWidget<?> canvas, int tipX, int tipY, int dx, int dy, int color) {
+        for (int half = ARROW_LEN - 1; half >= 0; half--) {
+            if (dx != 0) {
+                canvas.child(line(tipX - dx * half, tipY - half, 1, 2 * half + 1, color));
+            } else {
+                canvas.child(line(tipX - half, tipY - dy * half, 2 * half + 1, 1, color));
+            }
         }
     }
 
     private static ParentWidget<?> line(int x, int y, int w, int h, int color) {
-        return new ParentWidget<>().background(new Rectangle().color(color)).pos(x, y)
+        return new ParentWidget<>().name("tree_line").background(new Rectangle().color(color)).pos(x, y)
                 .size(Math.max(1, w), Math.max(1, h));
     }
 
     //////////////////// bottom-left detail panel ////////////////////
 
     private static ParentWidget<?> buildDetail(ResearchUnitMachine mte, PanelSyncManager sync) {
+        int innerW = DETAIL_W - 2 * INSET;
         ParentWidget<?> detail = new ParentWidget<>();
+        detail.name("detail");
         detail.pos(DETAIL_X, BOTTOM_Y).size(DETAIL_W, DETAIL_H);
-        detail.background(new Rectangle().color(COLOR_PANEL));
+        detail.background(GuiTextures.MC_BACKGROUND);
         // Only visible while a research node is selected.
         detail.setEnabledIf(w -> selected() != null);
 
         detail.child(new TextWidget<>(Text.dynamic(() -> {
             Research r = selected();
             return r == null ? Component.empty() : Component.translatable(r.getNameKey());
-        })).pos(4, 3));
+        })).pos(INSET, 4).name("detail_name"));
 
         RichTextWidget description = new RichTextWidget();
-        description.pos(4, 14).size(DETAIL_W - 8, 18);
+        description.name("detail_description");
+        description.pos(INSET, 15).size(innerW, 18);
         description.autoUpdate(true);
         description.textBuilder(rt -> {
             Research r = selected();
@@ -321,20 +442,20 @@ public final class ResearchTreeGui {
         });
         detail.child(description);
 
-        addItemRow(detail, 4, 34, ResearchTreeGui::inputPerRunAt);
+        addItemRow(detail, INSET, 35, ResearchTreeGui::inputPerRunAt, "input_item");
 
         detail.child(new TextWidget<>(Text.dynamic(() -> {
             Research r = selected();
             return r == null ? Component.empty() :
                     Component.translatable("wfcore.gui.research.cost_per_run", r.getCwuPerRun(), r.getEut());
-        })).pos(4, 52));
+        })).pos(INSET, 53).name("detail_cost"));
 
         detail.child(buildActionButton(mte, sync));
 
-        detail.child(new TextWidget<>(Text.lang("wfcore.gui.research.unlocks")).pos(118, 53));
-        addItemRow(detail, 118, 64, ResearchTreeGui::unlockedAt, 4);
+        detail.child(new TextWidget<>(Text.lang("wfcore.gui.research.unlocks")).pos(INSET + 110, 53).name("unlocks_label"));
+        addItemRow(detail, INSET + 110, 64, ResearchTreeGui::unlockedAt, 4, "unlock_item");
 
-        addProgressBar(detail, mte, 4, 84, DETAIL_W - 8, 6);
+        addProgressBar(detail, mte, INSET, 85, innerW, 6);
         return detail;
     }
 
@@ -348,21 +469,22 @@ public final class ResearchTreeGui {
         sync.syncValue("research_action", 0, action);
 
         ButtonWidget<?> button = new ButtonWidget<>();
-        button.pos(4, 64).size(108, 16).syncHandler("research_action", 0);
+        button.name("action_button");
+        button.pos(INSET, 64).size(108, 16).syncHandler("research_action", 0);
         button.background(new Rectangle().color(COLOR_BUTTON_DISABLED));
 
         ParentWidget<?> activeFill = new ParentWidget<>();
-        activeFill.background(new Rectangle().color(COLOR_AVAILABLE)).pos(0, 0).size(108, 16);
+        activeFill.name("action_active").background(new Rectangle().color(COLOR_AVAILABLE)).pos(0, 0).size(108, 16);
         activeFill.setEnabledIf(w -> canAct(mte));
         button.child(activeFill);
 
         ParentWidget<?> pressedShade = new ParentWidget<>();
-        pressedShade.background(new Rectangle().color(COLOR_BUTTON_SHADE)).pos(0, 0).size(108, 16);
+        pressedShade.name("action_shade").background(new Rectangle().color(COLOR_BUTTON_SHADE)).pos(0, 0).size(108, 16);
         pressedShade.setEnabledIf(w -> !canAct(mte));
         button.child(pressedShade);
 
         button.backgroundOverlay(new Rectangle().color(COLOR_BORDER).hollow(1f));
-        button.child(new TextWidget<>(Text.dynamic(() -> actionLabel(mte))).pos(6, 4));
+        button.child(new TextWidget<>(Text.dynamic(() -> actionLabel(mte))).pos(6, 4).name("action_label"));
         button.tooltipDynamic(t -> {
             Research r = selected();
             if (r == null) return;
@@ -388,7 +510,7 @@ public final class ResearchTreeGui {
                     appendUnmetPrereqs(t, mte, r);
                 }
             }
-        });
+        }).tooltipAutoUpdate(true);
         return button;
     }
 
@@ -429,18 +551,20 @@ public final class ResearchTreeGui {
 
     private static void addProgressBar(ParentWidget<?> detail, ResearchUnitMachine mte, int x, int y, int w, int h) {
         ParentWidget<?> bar = new ParentWidget<>();
+        bar.name("progress_bar");
         bar.pos(x, y).size(w, h);
         bar.background(new Rectangle().color(COLOR_BAR_BG));
         int segW = Math.max(1, w / BAR_SEGMENTS);
         for (int i = 0; i < BAR_SEGMENTS; i++) {
             final float threshold = (i + 1) / (float) BAR_SEGMENTS;
             ParentWidget<?> seg = new ParentWidget<>();
+            seg.name("progress_seg_" + i);
             seg.pos(i * segW, 0).size(Math.max(1, segW - 1), h);
             seg.background(new Rectangle().color(COLOR_BAR_FILL));
             seg.setEnabledIf(s -> barProgress(mte) >= threshold);
             bar.child(seg);
         }
-        bar.tooltipDynamic(t -> t.addLine(Text.str(Math.round(barProgress(mte) * 100f) + "%")));
+        bar.tooltipDynamic(t -> t.addLine(Text.str(Math.round(barProgress(mte) * 100f) + "%"))).tooltipAutoUpdate(true);
         detail.child(bar);
     }
 
@@ -448,21 +572,24 @@ public final class ResearchTreeGui {
 
     private static ParentWidget<?> buildQueue(ResearchUnitMachine mte, PanelSyncManager sync) {
         ParentWidget<?> queue = new ParentWidget<>();
+        queue.name("queue");
         queue.pos(QUEUE_X, BOTTOM_Y).size(QUEUE_W, QUEUE_H);
-        queue.background(new Rectangle().color(COLOR_PANEL));
-        queue.child(new TextWidget<>(Text.lang("wfcore.gui.research.queue")).pos(4, 4));
+        queue.background(GuiTextures.MC_BACKGROUND);
+        queue.child(new TextWidget<>(Text.lang("wfcore.gui.research.queue")).pos(INSET, 4).name("queue_label"));
 
         int slots = ResearchUnitMachine.QUEUE_SIZE;
+        int slotGap = Math.max(2, (QUEUE_W - 2 * INSET - slots * QUEUE_SLOT) / Math.max(1, slots - 1));
         for (int i = 0; i < slots; i++) {
             final int slot = i;
             InteractionSyncHandler remove = new InteractionSyncHandler().setOnMousePressed(d -> mte.dequeueAt(slot));
             sync.syncValue("research_dequeue", slot, remove);
 
             ButtonWidget<?> qb = new ButtonWidget<>();
-            qb.pos(6 + i * (QUEUE_SLOT + 8), 22).size(QUEUE_SLOT, QUEUE_SLOT);
-            qb.background(new Rectangle().color(COLOR_SLOT));
-            qb.backgroundOverlay(new Rectangle().color(COLOR_BORDER).hollow(1f));
-            qb.child(new ItemDisplayWidget().item(itemValue(() -> queueIcon(mte, slot))).pos(3, 3).size(18));
+            qb.name("queue_slot_" + i);
+            qb.pos(INSET + i * (QUEUE_SLOT + slotGap), 14).size(QUEUE_SLOT, QUEUE_SLOT);
+            qb.background(queueBackground(mte, slot));
+            qb.child(new ItemDisplayWidget().item(itemValue(() -> queueIcon(mte, slot)))
+                    .pos(3, 3).size(18).name("queue_item_" + i));
             qb.tooltipDynamic(t -> {
                 List<String> q = mte.getClientQueue();
                 if (slot >= q.size()) return;
@@ -474,7 +601,7 @@ public final class ResearchTreeGui {
                         "wfcore.gui.research.waiting"));
                 t.spaceLine(2);
                 t.addLine(Text.lang("wfcore.gui.research.remove_hint"));
-            });
+            }).tooltipAutoUpdate(true);
             qb.syncHandler("research_dequeue", slot);
             queue.child(qb);
         }
@@ -483,21 +610,23 @@ public final class ResearchTreeGui {
 
     //////////////////// item rows ////////////////////
 
-    private static void addItemRow(ParentWidget<?> detail, int x, int y, IntFunction<ItemStack> provider) {
-        addItemRow(detail, x, y, provider, MAX_ITEM_SLOTS);
+    private static void addItemRow(ParentWidget<?> detail, int x, int y, IntFunction<ItemStack> provider,
+                                   String nameTag) {
+        addItemRow(detail, x, y, provider, MAX_ITEM_SLOTS, nameTag);
     }
 
-    private static void addItemRow(ParentWidget<?> detail, int x, int y, IntFunction<ItemStack> provider, int count) {
+    private static void addItemRow(ParentWidget<?> detail, int x, int y, IntFunction<ItemStack> provider, int count,
+                                   String nameTag) {
         for (int i = 0; i < count; i++) {
             final int idx = i;
             ItemDisplayWidget sprite = new ItemDisplayWidget()
                     .item(itemValue(() -> provider.apply(idx)))
                     .displayAmount(true);
-            sprite.pos(x + i * 18, y).size(18);
+            sprite.name(nameTag + "_" + idx).pos(x + i * 18, y).size(18);
             sprite.tooltipDynamic(t -> {
                 ItemStack s = provider.apply(idx);
                 if (!s.isEmpty()) t.addLine(Text.of(s.getHoverName()));
-            });
+            }).tooltipAutoUpdate(true);
             detail.child(sprite);
         }
     }
@@ -629,18 +758,61 @@ public final class ResearchTreeGui {
         return MARGIN + (row - oy) * ROW_SPACING;
     }
 
-    /** A live, status-driven background for a node tile: re-evaluates {@link #statusOf} every frame. */
-    private static brachy.modularui.api.drawable.IDrawable nodeBackground(ResearchUnitMachine mte, String rid) {
-        return (ctx, x, y, w, h, theme) -> STATUS_RECTS.get(statusOf(mte, rid)).draw(ctx, x, y, w, h, theme);
+    /**
+     * A live node tile, re-evaluated every frame: a status-tinted nine-slice MC background, overlaid with a
+     * green completion fill that rises from the bottom edge as the research's progress climbs to 100%, plus a
+     * brighten-on-hover highlight so the tile visibly reacts to the cursor.
+     */
+    private static IDrawable nodeBackground(ResearchUnitMachine mte, Research research, IWidget node) {
+        final String rid = research.getId();
+        final Rectangle fill = new Rectangle().color(COLOR_BAR_FILL);
+        final Rectangle highlight = new Rectangle().color(COLOR_NODE_HOVER);
+        return (ctx, x, y, w, h, theme) -> {
+            Color.setGlColor(nodeTint(mte, research));
+            GuiTextures.MC_BACKGROUND.draw(ctx, x, y, w, h);
+            Color.resetGlColor();
+
+            float progress = mte.getResearchState().getProgress(rid);
+            if (progress > 0f) {
+                int inset = 3;
+                int fillH = Math.round(progress * (h - 2 * inset));
+                if (fillH > 0) {
+                    fill.draw(ctx, x + inset, y + h - inset - fillH, w - 2 * inset, fillH, theme);
+                }
+            }
+            if (node.isHovering()) {
+                highlight.draw(ctx, x, y, w, h, theme);
+            }
+        };
     }
 
-    private static final java.util.Map<NodeStatus, Rectangle> STATUS_RECTS = new java.util.EnumMap<>(NodeStatus.class);
+    /** The tile tint: a research's own {@link Research#getNodeColor() colour} when ready, else status colours. */
+    private static int nodeTint(ResearchUnitMachine mte, Research research) {
+        return switch (statusOf(mte, research.getId())) {
+            case LOCKED -> COLOR_LOCKED;
+            case READY -> research.getNodeColor() != 0 ? research.getNodeColor() : COLOR_AVAILABLE;
+            case QUEUED -> COLOR_QUEUED;
+            case RESEARCHING -> COLOR_ACTIVE;
+            case COMPLETE -> COLOR_COMPLETE;
+        };
+    }
 
-    static {
-        STATUS_RECTS.put(NodeStatus.LOCKED, new Rectangle().color(COLOR_LOCKED));
-        STATUS_RECTS.put(NodeStatus.READY, new Rectangle().color(COLOR_AVAILABLE));
-        STATUS_RECTS.put(NodeStatus.QUEUED, new Rectangle().color(COLOR_QUEUED));
-        STATUS_RECTS.put(NodeStatus.RESEARCHING, new Rectangle().color(COLOR_ACTIVE));
-        STATUS_RECTS.put(NodeStatus.COMPLETE, new Rectangle().color(COLOR_COMPLETE));
+    private static IDrawable queueBackground(ResearchUnitMachine mte, int slot) {
+        return mcBackground(() -> queueTint(mte, slot));
+    }
+
+    /** Empty slots stay dim; a running job glows active, a waiting one shows the queued colour. */
+    private static int queueTint(ResearchUnitMachine mte, int slot) {
+        if (slot >= mte.getClientQueue().size()) return COLOR_SLOT;
+        return slot < mte.getJobCapacity() ? COLOR_ACTIVE : COLOR_QUEUED;
+    }
+
+    /** Tints the nine-slice {@code MC_BACKGROUND} with an ARGB colour fetched each frame (achievement-tile look). */
+    private static IDrawable mcBackground(java.util.function.IntSupplier color) {
+        return (ctx, x, y, w, h, theme) -> {
+            Color.setGlColor(color.getAsInt());
+            GuiTextures.MC_BACKGROUND.draw(ctx, x, y, w, h);
+            Color.resetGlColor();
+        };
     }
 }

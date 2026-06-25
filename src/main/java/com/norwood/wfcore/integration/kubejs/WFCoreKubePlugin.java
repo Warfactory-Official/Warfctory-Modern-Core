@@ -11,6 +11,8 @@ public class WFCoreKubePlugin extends KubeJSPlugin {
     public void registerBindings(BindingsEvent event) {
         if (event.getType() == ScriptType.STARTUP) {
             event.add("WFResearch", new WFResearchBindings());
+            event.add("WFLoot", new WFLootBindings());
+            event.add("WFEnchant", new WFEnchantBindings());
         }
     }
 }

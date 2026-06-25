@@ -72,8 +72,11 @@ public class MainframeMachine extends MultiblockControllerMachine
     private boolean isWorkingEnabled = true;
     private boolean hasNotEnoughEnergy;
     double AMBIENT = Double.NaN;
+    @Persisted
     double currentTemp = Double.NaN;
-    private long currentCWU;
+    // Set when a CPU/RAM part's contents change (or the structure (re)forms), so the GPC handler rebuilds its
+    // cached component stats on the next tick instead of every tick.
+    private boolean computeDirty = true;
     @Nullable
     private TickableSubscription tickSub;
 
@@ -125,9 +128,15 @@ public class MainframeMachine extends MultiblockControllerMachine
         this.coolantIn = new FluidHandlerList(fluidIn);
         this.coolantOut = new FluidHandlerList(fluidOut);
         this.gpcHandler.rebuild();
+        this.computeDirty = false;
         if (!isRemote()) {
             tickSub = subscribeServerTick(this::tickMainframe);
         }
+    }
+
+    /** Called by CPU/RAM parts when their contents change; the handler rebuilds on the next tick. */
+    public void markComputeDirty() {
+        this.computeDirty = true;
     }
 
     @Override
@@ -155,13 +164,15 @@ public class MainframeMachine extends MultiblockControllerMachine
             this.AMBIENT = computeAmbient();
             if (Double.isNaN(currentTemp)) this.currentTemp = AMBIENT;
         }
-        // re-read component stats each tick so swapping CPUs/RAM/coolers takes effect
-        gpcHandler.rebuild();
+        // rebuild cached component stats only when a part changed, so swapping CPUs/RAM still takes effect
+        if (computeDirty) {
+            gpcHandler.rebuild();
+            computeDirty = false;
+        }
 
         if (!isWorkingEnabled) {
             setActive(false);
             currentTemp = Math.max(AMBIENT, currentTemp - 0.25);
-            this.currentCWU = 0;
             gpcHandler.clearAllocation();
             return;
         }
@@ -180,10 +191,8 @@ public class MainframeMachine extends MultiblockControllerMachine
                 explode();
                 return;
             }
-            this.currentCWU = gpcHandler.getAllocatedCWUt();
         } else {
             currentTemp = Math.max(AMBIENT, currentTemp - 0.25);
-            this.currentCWU = 0;
             gpcHandler.clearAllocation();
         }
     }
@@ -223,14 +232,16 @@ public class MainframeMachine extends MultiblockControllerMachine
 
     @Override
     public int requestCWUt(int cwut, boolean simulate, @NotNull Collection<IOpticalComputationProvider> seen) {
+        seen.add(this);
         if (!isActive() || !isWorkingEnabled || hasNotEnoughEnergy) return 0;
         return gpcHandler.requestComputation(cwut, simulate);
     }
 
     @Override
     public int getMaxCWUt(@NotNull Collection<IOpticalComputationProvider> seen) {
+        seen.add(this);
         if (!isActive() || !isWorkingEnabled || hasNotEnoughEnergy) return 0;
-        return (int) gpcHandler.getProvidableCWUt();
+        return (int) Math.min(Integer.MAX_VALUE, gpcHandler.getProvidableCWUt());
     }
 
     @Override
@@ -307,6 +318,12 @@ public class MainframeMachine extends MultiblockControllerMachine
         private long requestedCWUtThisTick;
         long cachedEUt;
         private double currentSag;
+        // CPU-set aggregates, recomputed only in rebuild() (the CPUs are constant between rebuilds) so the
+        // per-tick / per-consumer hot path reads them in O(1) instead of iterating + Math.pow-ing every call.
+        private long cachedMaxCWUt;
+        private long cachedMaxEUt;
+        private long cachedUpkeepEUt;
+        private int cachedMaxCoolingDemand;
 
         private GPCHandler(MainframeMachine mainframe) {
             this.mainframe = mainframe;
@@ -351,6 +368,10 @@ public class MainframeMachine extends MultiblockControllerMachine
             this.cpuLimits = new long[0];
             this.totalThroughput = 0;
             this.cpuCount = 0;
+            this.cachedMaxCWUt = 0;
+            this.cachedMaxEUt = 0;
+            this.cachedUpkeepEUt = 0;
+            this.cachedMaxCoolingDemand = 0;
         }
 
         public void clearAllocation() {
@@ -367,23 +388,15 @@ public class MainframeMachine extends MultiblockControllerMachine
         }
 
         private long getUpkeepEUt() {
-            long upkeepEUt = 0;
-            for (CPURegistry.CPUEntry component : activeCPUs) upkeepEUt += component.minPower();
-            return upkeepEUt;
+            return cachedUpkeepEUt;
         }
 
         public long getMaxEUt() {
-            long maximumEUt = 0;
-            for (int i = 0; i < activeCPUs.length; i++) maximumEUt += cpuLimits[i];
-            return maximumEUt;
+            return cachedMaxEUt;
         }
 
         public int getMaxCoolingDemand() {
-            int maxCooling = 0;
-            for (int i = 0; i < activeCPUs.length; i++) {
-                maxCooling += (int) activeCPUs[i].getHeat(this.cpuLimits[i]);
-            }
-            return maxCooling;
+            return cachedMaxCoolingDemand;
         }
 
         public int getMaxCoolingAmount() {
@@ -398,11 +411,7 @@ public class MainframeMachine extends MultiblockControllerMachine
         }
 
         public long getMaxCWUt() {
-            long maxCWUt = 0;
-            for (int i = 0; i < activeCPUs.length; i++) {
-                maxCWUt += activeCPUs[i].getCWU(this.cpuLimits[i]);
-            }
-            return maxCWUt;
+            return cachedMaxCWUt;
         }
 
         public double calculateTemperatureChange(boolean forceCoolWithActive) {
@@ -459,9 +468,21 @@ public class MainframeMachine extends MultiblockControllerMachine
             this.cpuCount = hardware.size();
             this.activeCPUs = hardware.toArray(new CPURegistry.CPUEntry[0]);
             this.cpuLimits = new long[this.cpuCount];
+            long maxCWUt = 0, maxEUt = 0, upkeepEUt = 0;
+            int coolingDemand = 0;
             for (int i = 0; i < this.cpuCount; i++) {
-                this.cpuLimits[i] = this.activeCPUs[i].maxPower();
+                CPURegistry.CPUEntry cpu = this.activeCPUs[i];
+                long limit = cpu.maxPower();
+                this.cpuLimits[i] = limit;
+                maxCWUt += cpu.getCWU(limit);
+                maxEUt += limit;
+                upkeepEUt += cpu.minPower();
+                coolingDemand += (int) cpu.getHeat(limit);
             }
+            this.cachedMaxCWUt = maxCWUt;
+            this.cachedMaxEUt = maxEUt;
+            this.cachedUpkeepEUt = upkeepEUt;
+            this.cachedMaxCoolingDemand = coolingDemand;
 
             double baseFrameMass = 500.0;
             int totalPhysicalHatches = mainframe.cpuSlots.size() + mainframe.coolers.size() + mainframe.ramSlots.size();

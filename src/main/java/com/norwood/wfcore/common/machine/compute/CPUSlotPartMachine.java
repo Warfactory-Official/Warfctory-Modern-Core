@@ -7,6 +7,7 @@ import com.gregtechceu.gtceu.api.gui.widget.SlotWidget;
 import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
 import com.gregtechceu.gtceu.api.machine.feature.IMachineLife;
 import com.gregtechceu.gtceu.api.machine.feature.IUIMachine;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
 import com.gregtechceu.gtceu.api.machine.multiblock.part.MultiblockPartMachine;
 import com.gregtechceu.gtceu.api.machine.trait.NotifiableItemStackHandler;
 
@@ -23,6 +24,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
 import com.norwood.wfcore.common.compute.CPURegistry;
+import com.norwood.wfcore.common.machine.MainframeMachine;
 import org.jetbrains.annotations.Nullable;
 
 /** Holds one CPU item; its stats feed the mainframe's compute output. */
@@ -70,9 +72,18 @@ public class CPUSlotPartMachine extends MultiblockPartMachine implements ICpuSlo
                 super.onContentsChanged();
                 if (!isRemote()) {
                     scheduleRenderUpdate();
+                    notifyComputeDirty();
                 }
             }
         }.setFilter(CPURegistry::isCPU);
+    }
+
+    private void notifyComputeDirty() {
+        for (IMultiController controller : getControllers()) {
+            if (controller instanceof MainframeMachine mainframe) {
+                mainframe.markComputeDirty();
+            }
+        }
     }
 
     @Override

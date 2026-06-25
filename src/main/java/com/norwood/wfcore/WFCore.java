@@ -59,6 +59,7 @@ public class WFCore {
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.radar.RadarRegistryHandler());
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.radar.Retrofitter.INSTANCE);
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.compute.WFComputeTooltips());
+        MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.loot.WFLootEvents());
 
         WF_MACHINES.registerRegistrate();
 

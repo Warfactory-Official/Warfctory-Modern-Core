@@ -7,7 +7,9 @@
   "mixins": [
     "SuperbWarfareInvMixin",
     "VehicleEntitySetEnergyInvoker",
-    "DataAccessHatchResearchShareMixin"
+    "DataAccessHatchResearchShareMixin",
+    "ItemStackEnchantMixin",
+    "EnchantmentHelperMixin"
   ],
   "client": [
     "NamePlateMixin",

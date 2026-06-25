@@ -51,12 +51,17 @@ public class CoolingPartMachine extends MultiblockPartMachine implements ICooler
     @Override
     public double getMaxActiveCoolingRate(double thermalMass, IFluidHandler coolantIn) {
         if (!isLiquid || coolantIn == null) return 0;
-        FluidStack stack = coolantIn.drain(1, IFluidHandler.FluidAction.SIMULATE);
-        if (stack.isEmpty()) return 0;
-        CoolantRegistry.CoolantSettings settings = CoolantRegistry.get(stack.getFluid());
-        if (settings == null) return 0;
-        // 100mB is the max per tick per hatch
-        return (100 * settings.heatCapacity()) / thermalMass;
+        // Mirror executeActiveCooling: the first registered-coolant tank, capped at what's actually available
+        // (≤ 100mB/tick/hatch), so the reported potential matches what we can really drain this tick.
+        for (int i = 0; i < coolantIn.getTanks(); i++) {
+            FluidStack stack = coolantIn.getFluidInTank(i);
+            if (stack.isEmpty()) continue;
+            CoolantRegistry.CoolantSettings settings = CoolantRegistry.get(stack.getFluid());
+            if (settings == null) continue;
+            int available = Math.min(getFluidUsagePerTick(), stack.getAmount());
+            return (available * settings.heatCapacity()) / thermalMass;
+        }
+        return 0;
     }
 
     @Override

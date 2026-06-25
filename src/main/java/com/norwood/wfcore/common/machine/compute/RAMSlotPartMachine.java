@@ -7,6 +7,7 @@ import com.gregtechceu.gtceu.api.gui.widget.SlotWidget;
 import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
 import com.gregtechceu.gtceu.api.machine.feature.IMachineLife;
 import com.gregtechceu.gtceu.api.machine.feature.IUIMachine;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
 import com.gregtechceu.gtceu.api.machine.multiblock.part.MultiblockPartMachine;
 import com.gregtechceu.gtceu.api.machine.trait.NotifiableItemStackHandler;
 
@@ -23,6 +24,7 @@ import net.minecraft.world.level.block.state.properties.EnumProperty;
 import net.minecraft.world.phys.BlockHitResult;
 
 import com.norwood.wfcore.common.compute.RAMRegistry;
+import com.norwood.wfcore.common.machine.MainframeMachine;
 
 /** Holds RAM items; their summed throughput caps how much CWU the mainframe can route. */
 public class RAMSlotPartMachine extends MultiblockPartMachine implements IRamSlot, IUIMachine, IMachineLife {
@@ -77,9 +79,18 @@ public class RAMSlotPartMachine extends MultiblockPartMachine implements IRamSlo
                 super.onContentsChanged();
                 if (!isRemote()) {
                     scheduleRenderUpdate();
+                    notifyComputeDirty();
                 }
             }
         }.setFilter(RAMRegistry::isRAM);
+    }
+
+    private void notifyComputeDirty() {
+        for (IMultiController controller : getControllers()) {
+            if (controller instanceof MainframeMachine mainframe) {
+                mainframe.markComputeDirty();
+            }
+        }
     }
 
     @Override

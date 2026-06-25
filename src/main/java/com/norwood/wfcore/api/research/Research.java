@@ -29,6 +29,7 @@ public final class Research {
     private final int gridX;
     private final int gridY;
     private final boolean manualPos;
+    private final int nodeColor;
     private final List<String> prerequisites;
 
     private final int runsRequired;
@@ -48,6 +49,7 @@ public final class Research {
         this.gridX = b.gridX;
         this.gridY = b.gridY;
         this.manualPos = b.manualPos;
+        this.nodeColor = b.nodeColor;
         this.prerequisites = Collections.unmodifiableList(new ArrayList<>(b.prerequisites));
         this.runsRequired = Math.max(1, b.runsRequired);
         this.itemsPerRun = Collections.unmodifiableList(new ArrayList<>(b.itemsPerRun));
@@ -92,6 +94,11 @@ public final class Research {
     /** True if a position was set explicitly via {@link Builder#pos(int, int)} (vs. left to auto-layout). */
     public boolean hasManualPos() {
         return manualPos;
+    }
+
+    /** The node tile's tint (ARGB) when available/ready, or {@code 0} to use the default theme colour. */
+    public int getNodeColor() {
+        return nodeColor;
     }
 
     public List<String> getPrerequisites() {
@@ -152,6 +159,7 @@ public final class Research {
         private int gridX;
         private int gridY;
         private boolean manualPos;
+        private int nodeColor;
         private final List<String> prerequisites = new ArrayList<>();
         private int runsRequired = 1;
         private List<ItemStack> itemsPerRun = new ArrayList<>();
@@ -194,6 +202,12 @@ public final class Research {
             this.gridX = gridX;
             this.gridY = gridY;
             this.manualPos = true;
+            return this;
+        }
+
+        /** Tints the node tile (ARGB) when the research is available; locked/queued/done keep status colours. */
+        public Builder nodeColor(int argb) {
+            this.nodeColor = argb;
             return this;
         }
 
