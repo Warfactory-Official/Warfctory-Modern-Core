@@ -16,6 +16,7 @@ import com.flansmod.warforge.api.WarforgeAPI;
 import com.flansmod.warforge.common.WarForgeMod;
 import com.flansmod.warforge.common.util.DimChunkPos;
 import com.flansmod.warforge.server.Faction;
+import com.norwood.wfcore.api.research.ResearchDataItem;
 import com.norwood.wfcore.common.machine.ResearchUnitMachine;
 
 import java.util.UUID;
@@ -40,6 +41,18 @@ public final class FactionLibraryAccess {
         UUID faction = WarForgeMod.FACTIONS.getClaim(new DimChunkPos(world.dimension(), pos));
         if (faction == null || Faction.nullUuid.equals(faction)) return false;
         return WarforgeAPI.anyLoadedClaimedTile(faction, FactionLibraryAccess::tileHoldsData);
+    }
+
+    /**
+     * Whether the faction owning the chunk at {@code pos} holds the given research - the primary unlock route
+     * for research-gated recipes. A provider qualifies when it is a research unit whose state has the full
+     * research path complete, or any inventory holding a data item imprinted with that research id.
+     */
+    public static boolean hasResearch(Level world, BlockPos pos, String researchId) {
+        if (world == null || world.isClientSide || pos == null || researchId == null) return false;
+        UUID faction = WarForgeMod.FACTIONS.getClaim(new DimChunkPos(world.dimension(), pos));
+        if (faction == null || Faction.nullUuid.equals(faction)) return false;
+        return WarforgeAPI.anyLoadedClaimedTile(faction, be -> tileHasResearch(be, researchId));
     }
 
     private static boolean tileHoldsData(BlockEntity be) {
@@ -68,6 +81,32 @@ public final class FactionLibraryAccess {
                     !stack.getTag().getString(ResearchUnitMachine.STICK_KEY).isEmpty()) {
                 return true;
             }
+        }
+        return false;
+    }
+
+    private static boolean tileHasResearch(BlockEntity be, String researchId) {
+        if (be instanceof IMachineBlockEntity mbe && mbe.getMetaMachine() instanceof ResearchUnitMachine unit &&
+                unit.getResearchState().isPathComplete(researchId)) {
+            return true;
+        }
+        if (handlerHasResearch(be.getCapability(ForgeCapabilities.ITEM_HANDLER, null).resolve().orElse(null),
+                researchId)) {
+            return true;
+        }
+        for (Direction side : Direction.values()) {
+            if (handlerHasResearch(be.getCapability(ForgeCapabilities.ITEM_HANDLER, side).resolve().orElse(null),
+                    researchId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean handlerHasResearch(IItemHandler inv, String researchId) {
+        if (inv == null) return false;
+        for (int slot = 0; slot < inv.getSlots(); slot++) {
+            if (ResearchDataItem.matches(inv.getStackInSlot(slot), researchId)) return true;
         }
         return false;
     }

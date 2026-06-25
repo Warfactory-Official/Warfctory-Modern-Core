@@ -1,5 +1,7 @@
 package com.norwood.wfcore.common.gui;
 
+import com.gregtechceu.gtceu.common.data.GTItems;
+
 import brachy.modularui.drawable.GuiTextures;
 import brachy.modularui.drawable.ItemDrawable;
 import net.minecraft.client.gui.Gui;
@@ -7,10 +9,11 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
+import brachy.modularui.api.GuiAxis;
+import brachy.modularui.api.IPanelHandler;
 import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
-import brachy.modularui.api.value.IValue;
 import brachy.modularui.drawable.Rectangle;
 import brachy.modularui.drawable.UITexture;
 import brachy.modularui.utils.Color;
@@ -19,13 +22,17 @@ import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.screen.RichTooltip;
 import brachy.modularui.screen.UISettings;
 import brachy.modularui.value.sync.InteractionSyncHandler;
+import brachy.modularui.value.sync.ItemSlotSyncHandler;
 import brachy.modularui.value.sync.PanelSyncManager;
 import brachy.modularui.widget.ParentWidget;
 import brachy.modularui.widgets.ButtonWidget;
-import brachy.modularui.widgets.ItemDisplayWidget;
+import brachy.modularui.widgets.ListWidget;
+import brachy.modularui.widgets.PageButton;
 import brachy.modularui.widgets.PagedWidget;
 import brachy.modularui.widgets.RichTextWidget;
 import brachy.modularui.widgets.TextWidget;
+import brachy.modularui.widgets.slot.ItemSlot;
+import brachy.modularui.widgets.slot.ModularSlot;
 import com.norwood.wfcore.api.research.*;
 import com.norwood.wfcore.common.gui.widget.PanViewport;
 import com.norwood.wfcore.common.machine.ResearchUnitMachine;
@@ -52,10 +59,14 @@ import java.util.function.Supplier;
  */
 public final class ResearchTreeGui {
 
-    private static final int PANEL_W = 380;
-    private static final int PANEL_H = 320;
+    // Sized to fit a 1080p screen at GUI scale 3 (640x360 effective) while staying centred clear of the
+    // JEI/EMI side panels: ~96px of margin remains on each side at that scale.
+    private static final int PANEL_W = 448;
+    private static final int PANEL_H = 340;
 
-    /** Gap between sections (and the panel's outer margin). */
+    /**
+     * Gap between sections (and the panel's outer margin).
+     */
     private static final int PAD = 4;
     /**
      * Inner content inset within a section. Applied directly to child coordinates rather than via
@@ -64,38 +75,55 @@ public final class ResearchTreeGui {
      */
     private static final int INSET = 5;
 
-    // header row: machine nameplate (block + name) + the working-enabled toggle
-    private static final int HEADER_X = PAD;
-    private static final int HEADER_Y = PAD;
-    private static final int HEADER_W = PANEL_W - 2 * PAD;
-    private static final int HEADER_H = 20;
-    private static final int TOGGLE_SIZE = 16;
+    // GT-style tabs/title share the 28x32 TAB textures, whose 4px connecting edge overlaps (and merges into)
+    // the panel it attaches to.
+    private static final int TAB_W = 28;
+    private static final int TAB_TEX_H = 32;
+    private static final int TAB_INSET = 4;
 
-    // bottom row (detail + queue), anchored to the panel's bottom edge
-    private static final int DETAIL_X = PAD;
-    private static final int DETAIL_W = 260;
-    private static final int DETAIL_H = 104;
-    private static final int BOTTOM_Y = PANEL_H - PAD - DETAIL_H;
-
-    private static final int QUEUE_X = DETAIL_X + DETAIL_W + PAD;
-    private static final int QUEUE_W = PANEL_W - PAD - QUEUE_X;
+    private static final int POWER_SIZE = 18;
     private static final int QUEUE_H = 48;
     private static final int QUEUE_SLOT = 24;
 
-    // category tabs run along the bottom edge of the tree pane, between it and the bottom row
-    private static final int TAB_SIZE = 24;
-    private static final int TAB_H = 18;
-    private static final int TAB_Y = BOTTOM_Y - TAB_H - 2;
+    private static final int TITLE_H = 24;
+    private static final int TITLE_W = 140;
 
-    // tree pane fills from just below the header down to the tabs
+    private static final int DETAIL_W = 280;
+    private static final int DETAIL_H = 120;
+
+    // title: a TAB_TOP-textured nameplate (block icon + name) attached to the top-left of the tree pane
+    private static final int TITLE_X = PAD;
+    private static final int TITLE_Y = PAD;
+    private static final int TREE_Y = TITLE_Y + TITLE_H - TAB_INSET;
+    // bottom-left detail panel, anchored to the panel's bottom edge
+    private static final int DETAIL_X = PAD;
+    private static final int QUEUE_X = DETAIL_X + DETAIL_W + PAD;
+    private static final int QUEUE_W = PANEL_W - PAD - QUEUE_X - POWER_SIZE - PAD;
+    private static final int SCREEN_X = QUEUE_X;
+    private static final int SCREEN_W = PANEL_W - PAD - SCREEN_X;
+    private static final int BOTTOM_Y = PANEL_H - PAD - DETAIL_H;
+    // category tabs run along the bottom of the tree pane (GT-style PageButtons; TAB_BOTTOM is 28x32)
+    private static final int TAB_Y = BOTTOM_Y - 2 - TAB_TEX_H;
+    private static final int TREE_H = TAB_Y + TAB_INSET - TREE_Y;
+    private static final int QUEUE_Y = TREE_Y + TREE_H + PAD;
+    // two stacked 18px buttons in the right column: the working toggle, then the library opener below it
+    private static final int WORKING_Y = QUEUE_Y + 4;
+    private static final int LIBRARY_Y = WORKING_Y + POWER_SIZE + 2;
+    private static final int SCREEN_Y = QUEUE_Y + QUEUE_H + PAD;
+    private static final int SCREEN_H = PANEL_H - PAD - SCREEN_Y;
+    // tree pane: from just under the attached title (its inset overlaps the title) down to where tabs connect
     private static final int TREE_X = PAD;
     private static final int TREE_W = PANEL_W - 2 * PAD;
-    private static final int TREE_Y = HEADER_Y + HEADER_H + 2;
-    private static final int TREE_H = TAB_Y - TREE_Y;
-
+    // right column: a shortened queue with the GT power button to its right, status screen filling below them
+    private static final int POWER_X = PANEL_W - PAD - POWER_SIZE;
     private static final int NODE = 26;
     private static final int COL_SPACING = 46;
     private static final int ROW_SPACING = 40;
+    /**
+     * Half the empty gap between adjacent columns / rows; connector legs route through these gutters.
+     */
+    private static final int GUTTER = (COL_SPACING - NODE) / 2;
+    private static final int ROWGUT = (ROW_SPACING - NODE) / 2;
     private static final int MARGIN = 12;
     private static final int MAX_ITEM_SLOTS = 6;
     private static final int BAR_SEGMENTS = 20;
@@ -103,8 +131,6 @@ public final class ResearchTreeGui {
 
     private static final int COLOR_BORDER = 0xFF101010;
     private static final int COLOR_PANEL = 0xFF202024;
-    private static final int COLOR_TAB_ACTIVE = 0xFF3A3A42;
-    private static final int COLOR_TAB_INACTIVE = 0xFF18181C;
     private static final int COLOR_SLOT = 0xFF101014;
     private static final int COLOR_BAR_BG = 0xFF0A0A0A;
     private static final int COLOR_BAR_FILL = 0xFF44A050;
@@ -117,29 +143,39 @@ public final class ResearchTreeGui {
     private static final int COLOR_BUTTON_SHADE = 0x55000000;
     private static final int COLOR_NODE_HOVER = 0x60FFFFFF;
 
-    // client-side selection (one GUI per client)
-    private static final String[] SELECTED = { null };
+    // GTCEu's power on/off button texture (18x36 vertical atlas: top frame = off, bottom = on/lit)
+    private static final UITexture POWER_TEX = UITexture.builder()
+            .location("gtceu:gui/widget/button_power").imageSize(18, 36).build();
 
-    private ResearchTreeGui() {}
+    // client-side selection (one GUI per client)
+    private static final String[] SELECTED = {null};
+    // client-side selection of the library window's write target (mirrors SELECTED's pattern)
+    private static final String[] LIBRARY_SELECTED = {null};
+
+    private ResearchTreeGui() {
+    }
 
     public static ModularPanel<?> build(ResearchUnitMachine mte, PosGuiData data,
                                         PanelSyncManager syncManager, UISettings settings) {
         ModularPanel<?> panel = ModularPanel.defaultPanel("research_unit", PANEL_W, PANEL_H);
         panel.invisible();
-        panel.child(buildHeader(mte, syncManager));
 
-        if (!mte.isFormed()) {
-            panel.child(notice("wfcore.gui.research.not_formed"));
-            return panel;
+        boolean active = mte.isFormed() && mte.getMode() == ResearchUnitMachine.Mode.CONTROL;
+        // Tree first so the title (added next) draws over the tree's top-left edge and merges into it.
+        if (active) {
+            buildTabsAndTree(panel, mte, syncManager);
         }
-        if (mte.getMode() == ResearchUnitMachine.Mode.SLAVE) {
-            panel.child(notice("wfcore.gui.research.slave_mode"));
-            return panel;
-        }
+        panel.child(buildTitle(mte));
 
-        buildTabsAndTree(panel, mte, syncManager);
-        panel.child(buildDetail(mte, syncManager));
-        panel.child(buildQueue(mte, syncManager));
+        if (active) {
+            panel.child(buildWorkingButton(mte, syncManager));
+            panel.child(buildLibraryButton(mte, syncManager));
+            panel.child(buildScreen(mte));
+            panel.child(buildDetail(mte, syncManager));
+            panel.child(buildQueue(mte, syncManager));
+        } else {
+            panel.child(notice(mte.isFormed() ? "wfcore.gui.research.slave_mode" : "wfcore.gui.research.not_formed"));
+        }
         return panel;
     }
 
@@ -147,65 +183,177 @@ public final class ResearchTreeGui {
         return new TextWidget<>(Text.lang(langKey)).pos(TREE_X + 8, TREE_Y + 8).name("notice");
     }
 
-    //////////////////// header: nameplate + working-enabled toggle ////////////////////
+    //////////////////// title nameplate (attached tab) ////////////////////
 
     /**
-     * The GT-multiblock-style header: a nameplate showing the controller's block model (rendered as its item)
-     * and display name on the left, the mode/capacity readout and a working-enabled play/stop toggle on the
-     * right. Padded parent so its children inset cleanly.
+     * The GT-multiblock-style title: a nameplate showing the controller's block model and display name, drawn
+     * with the {@link GuiTextures#TAB_TOP} tab texture so it reads as a tab attached to the tree pane below it
+     * (added after the tree in {@link #build}, its connecting inset overlaps and merges into the pane's edge).
      */
-    private static ParentWidget<?> buildHeader(ResearchUnitMachine mte, PanelSyncManager sync) {
-        ParentWidget<?> header = new ParentWidget<>();
-        header.name("header");
-        header.pos(HEADER_X, HEADER_Y).size(HEADER_W, HEADER_H);
-        header.background(GuiTextures.MC_BACKGROUND);
+    private static ParentWidget<?> buildTitle(ResearchUnitMachine mte) {
+        ParentWidget<?> title = new ParentWidget<>();
+        title.name("title");
+        title.pos(TITLE_X, TITLE_Y).size(TITLE_W, TITLE_H);
+        title.background(titleTabBackground());
 
         ItemStack block = mte.getDefinition().asStack();
-        header.child(new ItemDisplayWidget().item(itemValue(() -> block))
-                .pos(INSET, 2).size(16).name("nameplate_icon"));
-        header.child(new TextWidget<>(Text.of(block.getHoverName()))
-                .pos(INSET + 20, 6).name("nameplate_name"));
-
-        header.child(new TextWidget<>(Text.dynamic(
-                () -> Component.literal(modeLabel(mte) + " x" + mte.getJobCapacity())))
-                .top(6).right(INSET + TOGGLE_SIZE + 6).name("mode_label"));
-
-        header.child(buildWorkingButton(mte, sync));
-        return header;
+        title.child(itemIcon(() -> block, 16).pos(INSET, 3).name("title_icon"));
+        title.child(new TextWidget<>(Text.of(block.getHoverName()))
+                .pos(INSET + 20, 6).name("title_name"));
+        return title;
     }
 
-    /** Play (green) while working is enabled, stop (red) while paused; click toggles, GT-multiblock style. */
+    /**
+     * Draws a single active TAB_TOP tab as the title bar by slicing one piece horizontally — crisp left/right
+     * caps with the centre stretched — so it reads as one seamless rounded tab (the three atlas pieces are
+     * separate bordered tabs, so composing start+middle+end would show dividers).
+     */
+    private static IDrawable titleTabBackground() {
+        UITexture tab = GuiTextures.TAB_TOP.getMiddle(true);
+        UITexture left = tab.getSubArea(0f, 0f, 0.25f, 1f);
+        UITexture mid = tab.getSubArea(0.25f, 0f, 0.75f, 1f);
+        UITexture right = tab.getSubArea(0.75f, 0f, 1f, 1f);
+        int cap = 7;
+        return (ctx, x, y, w, h, theme) -> {
+            left.draw(ctx, x, y, cap, h, theme);
+            mid.draw(ctx, x + cap, y, w - 2 * cap, h, theme);
+            right.draw(ctx, x + w - cap, y, cap, h, theme);
+        };
+    }
+
+    /**
+     * GT-style power button to the right of the queue: lit while working is enabled, dim while paused.
+     */
     private static ButtonWidget<?> buildWorkingButton(ResearchUnitMachine mte, PanelSyncManager sync) {
         InteractionSyncHandler toggle = new InteractionSyncHandler()
                 .setOnMousePressed(d -> mte.toggleWorkingEnabled());
         sync.syncValue("working_enabled", 0, toggle);
 
+        UITexture on = POWER_TEX.getSubArea(0f, 0.5f, 1f, 1f);
+        UITexture off = POWER_TEX.getSubArea(0f, 0f, 1f, 0.5f);
+
         ButtonWidget<?> button = new ButtonWidget<>();
         button.name("working_toggle");
-        button.size(TOGGLE_SIZE, TOGGLE_SIZE).right(INSET).top(2).syncHandler("working_enabled", 0);
-        button.background(GuiTextures.MC_BUTTON);
-
-        ParentWidget<?> play = new ParentWidget<>();
-        play.name("working_play").pos(3, 3).size(TOGGLE_SIZE - 6, TOGGLE_SIZE - 6).background(GuiTextures.PLAY);
-        play.setEnabledIf(w -> mte.isWorkingEnabled());
-        button.child(play);
-
-        ParentWidget<?> stop = new ParentWidget<>();
-        stop.name("working_stop").pos(3, 3).size(TOGGLE_SIZE - 6, TOGGLE_SIZE - 6).background(GuiTextures.STOP);
-        stop.setEnabledIf(w -> !mte.isWorkingEnabled());
-        button.child(stop);
+        button.pos(POWER_X, WORKING_Y).size(POWER_SIZE, POWER_SIZE).syncHandler("working_enabled", 0);
+        button.background((ctx, x, y, w, h, theme) ->
+                (mte.isWorkingEnabled() ? on : off).draw(ctx, x, y, w, h, theme));
 
         button.tooltipDynamic(t -> t.addLine(Text.lang(mte.isWorkingEnabled() ?
-                "wfcore.gui.research.working_enabled" : "wfcore.gui.research.working_disabled")))
+                        "wfcore.gui.research.working_enabled" : "wfcore.gui.research.working_disabled")))
                 .tooltipAutoUpdate(true);
         return button;
     }
 
-    //////////////////// tabs + per-category trees ////////////////////
+    //////////////////// library window (write obtained blueprints onto a data item) ////////////////////
+
+    /**
+     * The button below the working toggle that opens the draggable library window: a list of every research the
+     * player has obtained, a slot for a data item/paper, and a Write button that imprints the picked blueprint.
+     */
+    private static ButtonWidget<?> buildLibraryButton(ResearchUnitMachine mte, PanelSyncManager sync) {
+        IPanelHandler library = sync.syncedPanel("research_library", true,
+                (mgr, handler) -> buildLibraryPanel(mte, mgr));
+
+        ButtonWidget<?> button = new ButtonWidget<>();
+        button.name("library_button");
+        button.pos(POWER_X, LIBRARY_Y).size(POWER_SIZE, POWER_SIZE);
+        button.background(mcBackground(() -> COLOR_PANEL));
+        button.overlay(new ItemDrawable(new ItemStack(GTItems.TOOL_DATA_ORB.asItem())).asIcon().size(14));
+        button.onMousePressed((context, btn) -> {
+            library.openPanel();
+            return true;
+        });
+        button.tooltipDynamic(t -> t.addLine(Text.lang("wfcore.gui.research.library"))).tooltipAutoUpdate(true);
+        return button;
+    }
+
+    private static ModularPanel<?> buildLibraryPanel(ResearchUnitMachine mte, PanelSyncManager sync) {
+        int w = 210;
+        int h = 200;
+        ModularPanel<?> panel = ModularPanel.defaultPanel("research_library", w, h);
+        panel.draggable(true);
+        panel.child(new TextWidget<>(Text.lang("wfcore.gui.research.library")).pos(8, 6).name("library_title"));
+        panel.child(new ButtonWidget<>().background(GuiTextures.BUTTON_CLEAN).overlay(GuiTextures.CLOSE).size(10).pos(195, 6));
+
+        int slotY = h - 26;
+        int listH = slotY - 22 - INSET;
+        ListWidget<IWidget, ?> list = libraryList();
+        list.name("library_list");
+        list.pos(8, 22);
+        list.size(w - 16, listH);
+        list.scrollDirection(GuiAxis.Y);
+        list.collapseDisabledChildren(true);
+
+        List<IWidget> rows = new ArrayList<>();
+        int index = 0;
+        for (Research research : ResearchRegistry.all()) {
+            rows.add(buildLibraryRow(mte, research, index++, sync, w - 24));
+        }
+        list.children(rows);
+        panel.child(list);
+
+        ModularSlot slot = new ModularSlot(mte.getLibraryInv().storage, 0)
+                .filter(ResearchDataItem::isDataItem).accessibility(true, true);
+        sync.syncValue("library_slot", 0, new ItemSlotSyncHandler(slot));
+        ItemSlot slotWidget = new ItemSlot();
+        slotWidget.pos(8, slotY).size(18, 18);
+        slotWidget.syncHandler("library_slot", 0);
+        panel.child(slotWidget);
+
+        InteractionSyncHandler write = new InteractionSyncHandler().setOnMousePressed(d -> mte.writeLibrary());
+        sync.syncValue("library_write", 0, write);
+        ButtonWidget<?> writeBtn = new ButtonWidget<>();
+        writeBtn.name("library_write");
+        writeBtn.pos(30, slotY).size(w - 30 - 8, 18).syncHandler("library_write", 0);
+        writeBtn.background(new Rectangle().color(COLOR_AVAILABLE));
+        writeBtn.backgroundOverlay(new Rectangle().color(COLOR_BORDER).hollow(1f));
+        writeBtn.child(new TextWidget<>(Text.lang("wfcore.gui.research.write")).pos(6, 5).name("library_write_label"));
+        writeBtn.tooltipDynamic(t -> t.addLine(Text.lang("wfcore.gui.research.write_hint"))).tooltipAutoUpdate(true);
+        panel.child(writeBtn);
+        return panel;
+    }
+
+    /** Self-typed generics don't infer cleanly against a wildcard target, so build the list raw and widen here. */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    private static ListWidget<IWidget, ?> libraryList() {
+        return new ListWidget();
+    }
+
+    /** One obtained-research row: click to pick it as the write target (only fully-unlocked researches show). */
+    private static IWidget buildLibraryRow(ResearchUnitMachine mte, Research research, int index,
+                                           PanelSyncManager sync, int rowW) {
+        final String rid = research.getId();
+        InteractionSyncHandler select = new InteractionSyncHandler().setOnMousePressed(d -> mte.selectLibrary(rid));
+        sync.syncValue("library_select", index, select);
+
+        ButtonWidget<?> row = new ButtonWidget<>();
+        row.name("library_row_" + rid);
+        row.size(rowW, 18);
+        row.setEnabledIf(w -> mte.getResearchState().isPathComplete(rid));
+        row.background(libraryRowBackground(rid));
+        row.child(itemIcon(research::getIcon, 16).pos(2, 1).name("library_icon_" + rid));
+        row.child(new TextWidget<>(Text.of(Component.translatable(research.getNameKey()))).pos(20, 5)
+                .name("library_name_" + rid));
+        row.onMousePressed((context, btn) -> {
+            LIBRARY_SELECTED[0] = rid;
+            return false;
+        });
+        row.syncHandler("library_select", index);
+        return row;
+    }
+
+    private static IDrawable libraryRowBackground(String rid) {
+        Rectangle selected = new Rectangle().color(COLOR_AVAILABLE);
+        Rectangle base = new Rectangle().color(COLOR_SLOT);
+        return (ctx, x, y, w, h, theme) ->
+                (rid.equals(LIBRARY_SELECTED[0]) ? selected : base).draw(ctx, x, y, w, h, theme);
+    }
+
+    /// ///////////////// tabs + per-category trees ////////////////////
 
     private static void buildTabsAndTree(ModularPanel<?> panel, ResearchUnitMachine mte, PanelSyncManager sync) {
         List<ResearchCategory> categories = categories();
-        int[] nodeCounter = { 0 };
+        int[] nodeCounter = {0};
 
         PagedWidget.Controller controller = new PagedWidget.Controller();
         PagedWidget<?> paged = new PagedWidget<>();
@@ -228,30 +376,26 @@ public final class ResearchTreeGui {
         paged.initialPage(0);
         panel.child(paged);
 
-        for (int i = 0; i < categories.size(); i++) {
-            panel.child(buildTab(controller, categories.get(i), i));
+        int n = categories.size();
+        for (int i = 0; i < n; i++) {
+            int location = n == 1 ? 0 : i == 0 ? -1 : i == n - 1 ? 1 : 0;
+            panel.child(buildTab(controller, categories.get(i), i, location));
         }
     }
 
-    /** An icon tab that switches the active page; the category name shows as a tooltip. */
-    private static ButtonWidget<?> buildTab(PagedWidget.Controller controller, ResearchCategory category, int index) {
-        ButtonWidget<?> tab = new ButtonWidget<>();
+    /**
+     * A GT-multiblock-style tab that switches the active page. {@link PageButton} draws the connected
+     * {@link GuiTextures#TAB_BOTTOM} texture (the active/inactive swap is driven by the shared controller) and
+     * handles the page switch itself; {@code location} is the strip position: -1 start cap, 0 middle, +1 end.
+     */
+    private static PageButton buildTab(PagedWidget.Controller controller, ResearchCategory category,
+                                       int index, int location) {
+        PageButton tab = new PageButton(index, controller);
         tab.name("tab_" + category.getId());
-        tab.pos(TREE_X + index * (TAB_SIZE + 1), TAB_Y).size(TAB_SIZE, TAB_H);
-        tab.background(GuiTextures.MC_BACKGROUND);
-
-        ParentWidget<?> highlight = new ParentWidget<>();
-        highlight.name("tab_highlight_" + index);
-        highlight.pos(0, 0).size(TAB_SIZE, TAB_H).background(new Rectangle().color(COLOR_TAB_ACTIVE));
-        highlight.setEnabledIf(w -> controller.isInitialised() && controller.getActivePageIndex() == index);
-        tab.child(highlight);
-
+        tab.tab(GuiTextures.TAB_BOTTOM, location);          // sets the 28x32 size + active/inactive backgrounds
+        tab.pos(TREE_X + index * TAB_W, TAB_Y);             // flush, so the start/middle/end caps form one strip
         tab.overlay(new ItemDrawable(tabIcon(category)).asIcon().size(16));
         tab.tooltipBuilder(t -> t.addLine(Text.lang(category.getNameKey())));
-        tab.onMousePressed((context, button) -> {
-            controller.setPage(index);
-            return true;
-        });
         return tab;
     }
 
@@ -280,6 +424,7 @@ public final class ResearchTreeGui {
         canvas.contentSize(MARGIN * 2 + (maxX - minX + 1) * COL_SPACING,
                 MARGIN * 2 + (maxY - minY + 1) * ROW_SPACING);
 
+        // connectors are added before the nodes, so the nodes (opaque tiles) always draw over them
         int connectorColor = category.getConnectorColor();
         for (Research research : nodes) {
             int[] to = layout.get(research.getId());
@@ -298,7 +443,9 @@ public final class ResearchTreeGui {
         return canvas;
     }
 
-    /** The themed canvas background: a tiled texture, else a solid colour, else the default stone tiles. */
+    /**
+     * The themed canvas background: a tiled texture, else a solid colour, else the default stone tiles.
+     */
     private static IDrawable categoryBackground(ResearchCategory category) {
         if (category.getBackgroundTexture() != null) {
             return UITexture.builder()
@@ -334,8 +481,9 @@ public final class ResearchTreeGui {
         ButtonWidget<?> node = new ButtonWidget<>();
         node.name("node_" + rid);
         node.pos(nodeX(col, ox), nodeY(row, oy)).size(NODE, NODE);
+        // every node gets the opaque status tile so it always occludes the connectors routed behind it
+        node.background(nodeBackground(mte, research, node));
         if (!research.getIcon().isEmpty()) {
-            node.background(nodeBackground(mte, research, node));
             node.overlay(new ItemDrawable(research.getIcon()).asIcon().size(16));
         }
         node.tooltipDynamic(t -> {
@@ -360,35 +508,52 @@ public final class ResearchTreeGui {
         return node;
     }
 
+    /**
+     * Routes a prerequisite → research connector as orthogonal legs that stay in the empty gutters between
+     * node cells, so it never runs over a node tile: vertical risers sit in the column gutter beside a node,
+     * and a connector spanning intermediate columns detours its long horizontal run through a row gutter. The
+     * arrowhead always points into the child's near edge.
+     */
     private static void addConnector(ParentWidget<?> canvas, int fromCol, int fromRow, int toCol, int toRow,
                                      int ox, int oy, int color) {
-        int px = nodeX(fromCol, ox) + NODE / 2;
         int py = nodeY(fromRow, oy) + NODE / 2;
-        int cx = nodeX(toCol, ox) + NODE / 2;
         int cy = nodeY(toRow, oy) + NODE / 2;
 
         // Same column: a straight vertical run into the child's near (top/bottom) edge.
-        if (px == cx) {
+        if (fromCol == toCol) {
+            int x = nodeX(fromCol, ox) + NODE / 2;
             int dir = cy >= py ? 1 : -1;
             int tipY = dir > 0 ? nodeY(toRow, oy) - 1 : nodeY(toRow, oy) + NODE;
-            verticalLeg(canvas, px, py + dir * (NODE / 2), tipY, color);
-            addArrowhead(canvas, px, tipY, 0, dir, color);
+            verticalLeg(canvas, x, py + dir * (NODE / 2), tipY, color);
+            addArrowhead(canvas, x, tipY, 0, dir, color);
             return;
         }
 
-        // Route vertical (at the parent's column) then horizontal (along the child's row) so the final approach
-        // — and the arrowhead — points horizontally into the child. Each leg stops at a node edge, so the
-        // connector never runs under the node tiles.
-        boolean rightward = cx > px;
+        boolean rightward = toCol > fromCol;
+        int exitX = rightward ? nodeX(fromCol, ox) + NODE : nodeX(fromCol, ox);
         int tipX = rightward ? nodeX(toCol, ox) - 1 : nodeX(toCol, ox) + NODE;
-        int startX = px;
-        if (py != cy) {
-            int dir = cy > py ? 1 : -1;
-            verticalLeg(canvas, px, py + dir * (NODE / 2), cy, color);
+        int riser1 = rightward ? exitX + GUTTER : exitX - GUTTER; // gutter just past the parent
+
+        if (Math.abs(toCol - fromCol) == 1) {
+            // Adjacent columns: nothing can sit between them, so one riser in the shared gutter is clean.
+            if (py == cy) {
+                horizontalLeg(canvas, exitX, tipX, cy, color);
+            } else {
+                horizontalLeg(canvas, exitX, riser1, py, color);
+                verticalLeg(canvas, riser1, py, cy, color);
+                horizontalLeg(canvas, riser1, tipX, cy, color);
+            }
         } else {
-            startX = rightward ? nodeX(fromCol, ox) + NODE : nodeX(fromCol, ox); // leave the parent at its edge
+            // Spans intermediate columns: detour the long run through the row gutter beside the child's row,
+            // so it crosses those columns only where no node sits.
+            int riser2 = rightward ? nodeX(toCol, ox) - GUTTER : nodeX(toCol, ox) + NODE + GUTTER;
+            int channelY = cy >= py ? nodeY(toRow, oy) - ROWGUT : nodeY(toRow, oy) + NODE + ROWGUT;
+            horizontalLeg(canvas, exitX, riser1, py, color);
+            verticalLeg(canvas, riser1, py, channelY, color);
+            horizontalLeg(canvas, riser1, riser2, channelY, color);
+            verticalLeg(canvas, riser2, channelY, cy, color);
+            horizontalLeg(canvas, riser2, tipX, cy, color);
         }
-        horizontalLeg(canvas, startX, tipX, cy, color);
         addArrowhead(canvas, tipX, cy, rightward ? 1 : -1, 0, color);
     }
 
@@ -400,7 +565,9 @@ public final class ResearchTreeGui {
         canvas.child(line(Math.min(x1, x2), y - 1, Math.abs(x2 - x1), 2, color));
     }
 
-    /** A filled triangular arrowhead built from 1px slices, tip at (tipX,tipY) pointing along (dx,dy). */
+    /**
+     * A filled triangular arrowhead built from 1px slices, tip at (tipX,tipY) pointing along (dx,dy).
+     */
     private static void addArrowhead(ParentWidget<?> canvas, int tipX, int tipY, int dx, int dy, int color) {
         for (int half = ARROW_LEN - 1; half >= 0; half--) {
             if (dx != 0) {
@@ -416,7 +583,7 @@ public final class ResearchTreeGui {
                 .size(Math.max(1, w), Math.max(1, h));
     }
 
-    //////////////////// bottom-left detail panel ////////////////////
+    /// ///////////////// bottom-left detail panel ////////////////////
 
     private static ParentWidget<?> buildDetail(ResearchUnitMachine mte, PanelSyncManager sync) {
         int innerW = DETAIL_W - 2 * INSET;
@@ -434,7 +601,7 @@ public final class ResearchTreeGui {
 
         RichTextWidget description = new RichTextWidget();
         description.name("detail_description");
-        description.pos(INSET, 15).size(innerW, 18);
+        description.pos(INSET, 15).size(innerW, 20);
         description.autoUpdate(true);
         description.textBuilder(rt -> {
             Research r = selected();
@@ -442,20 +609,26 @@ public final class ResearchTreeGui {
         });
         detail.child(description);
 
-        addItemRow(detail, INSET, 35, ResearchTreeGui::inputPerRunAt, "input_item");
+        addItemRow(detail, INSET, 37, ResearchTreeGui::inputPerRunAt, "input_item");
+
+        detail.child(new TextWidget<>(Text.dynamic(() -> {
+            Research r = selected();
+            return r == null ? Component.empty() :
+                    Component.translatable("wfcore.gui.research.steps", r.getRunsRequired());
+        })).pos(INSET, 55).name("detail_steps"));
 
         detail.child(new TextWidget<>(Text.dynamic(() -> {
             Research r = selected();
             return r == null ? Component.empty() :
                     Component.translatable("wfcore.gui.research.cost_per_run", r.getCwuPerRun(), r.getEut());
-        })).pos(INSET, 53).name("detail_cost"));
+        })).pos(INSET, 67).name("detail_cost"));
 
         detail.child(buildActionButton(mte, sync));
 
-        detail.child(new TextWidget<>(Text.lang("wfcore.gui.research.unlocks")).pos(INSET + 110, 53).name("unlocks_label"));
-        addItemRow(detail, INSET + 110, 64, ResearchTreeGui::unlockedAt, 4, "unlock_item");
+        detail.child(new TextWidget<>(Text.lang("wfcore.gui.research.unlocks")).pos(INSET + 140, 37).name("unlocks_label"));
+        addItemRow(detail, INSET + 140, 48, ResearchTreeGui::unlockedAt, 4, "unlock_item");
 
-        addProgressBar(detail, mte, INSET, 85, innerW, 6);
+        addProgressBar(detail, mte, INSET, 106, innerW, 6);
         return detail;
     }
 
@@ -470,7 +643,7 @@ public final class ResearchTreeGui {
 
         ButtonWidget<?> button = new ButtonWidget<>();
         button.name("action_button");
-        button.pos(INSET, 64).size(108, 16).syncHandler("research_action", 0);
+        button.pos(INSET, 82).size(108, 16).syncHandler("research_action", 0);
         button.background(new Rectangle().color(COLOR_BUTTON_DISABLED));
 
         ParentWidget<?> activeFill = new ParentWidget<>();
@@ -522,7 +695,9 @@ public final class ResearchTreeGui {
         };
     }
 
-    /** Why the selected research can (or can't) be acted on; drives the button label, colour and tooltip. */
+    /**
+     * Why the selected research can (or can't) be acted on; drives the button label, colour and tooltip.
+     */
     private static StartState startState(ResearchUnitMachine mte) {
         Research r = selected();
         if (r == null) return StartState.START;
@@ -535,18 +710,12 @@ public final class ResearchTreeGui {
         };
     }
 
-    /** True when the button does something on click (start a ready research, or cancel a queued one). */
+    /**
+     * True when the button does something on click (start a ready research, or cancel a queued one).
+     */
     private static boolean canAct(ResearchUnitMachine mte) {
         StartState s = startState(mte);
         return s == StartState.START || s == StartState.CANCEL;
-    }
-
-    private enum StartState {
-        START,
-        CANCEL,
-        COMPLETE,
-        LOCKED,
-        QUEUE_FULL
     }
 
     private static void addProgressBar(ParentWidget<?> detail, ResearchUnitMachine mte, int x, int y, int w, int h) {
@@ -568,12 +737,12 @@ public final class ResearchTreeGui {
         detail.child(bar);
     }
 
-    //////////////////// bottom-right queue strip ////////////////////
+    /// ///////////////// bottom-right queue strip ////////////////////
 
     private static ParentWidget<?> buildQueue(ResearchUnitMachine mte, PanelSyncManager sync) {
         ParentWidget<?> queue = new ParentWidget<>();
         queue.name("queue");
-        queue.pos(QUEUE_X, BOTTOM_Y).size(QUEUE_W, QUEUE_H);
+        queue.pos(QUEUE_X, QUEUE_Y).size(QUEUE_W, QUEUE_H);
         queue.background(GuiTextures.MC_BACKGROUND);
         queue.child(new TextWidget<>(Text.lang("wfcore.gui.research.queue")).pos(INSET, 4).name("queue_label"));
 
@@ -588,8 +757,7 @@ public final class ResearchTreeGui {
             qb.name("queue_slot_" + i);
             qb.pos(INSET + i * (QUEUE_SLOT + slotGap), 14).size(QUEUE_SLOT, QUEUE_SLOT);
             qb.background(queueBackground(mte, slot));
-            qb.child(new ItemDisplayWidget().item(itemValue(() -> queueIcon(mte, slot)))
-                    .pos(3, 3).size(18).name("queue_item_" + i));
+            qb.overlay(itemIconDrawable(() -> queueIcon(mte, slot)).asIcon().size(18));
             qb.tooltipDynamic(t -> {
                 List<String> q = mte.getClientQueue();
                 if (slot >= q.size()) return;
@@ -608,7 +776,58 @@ public final class ResearchTreeGui {
         return queue;
     }
 
-    //////////////////// item rows ////////////////////
+    /**
+     * The dark GT "display" screen below the queue, showing the controller's live machine status: available
+     * compute, parallel job capacity, how many jobs are active, and a coloured working/idling/paused line.
+     */
+    private static ParentWidget<?> buildScreen(ResearchUnitMachine mte) {
+        ParentWidget<?> screen = new ParentWidget<>();
+        screen.name("status_screen");
+        screen.pos(SCREEN_X, SCREEN_Y).size(SCREEN_W, SCREEN_H);
+        screen.background(GuiTextures.DISPLAY);
+
+        int lh = 12;
+        screen.child(screenLine(() -> Component.translatable("wfcore.gui.research.screen_compute", maxCwu(mte)),
+                INSET).name("screen_compute"));
+        screen.child(screenLine(() -> Component.translatable("wfcore.gui.research.screen_capacity",
+                mte.getJobCapacity()), INSET + lh).name("screen_capacity"));
+        screen.child(screenLine(() -> Component.translatable("wfcore.gui.research.screen_active",
+                activeJobs(mte), mte.getJobCapacity()), INSET + 2 * lh).name("screen_active"));
+        // status line carries its own colour, so it isn't forced white like the readout lines above
+        screen.child(new TextWidget<>(Text.dynamic(() -> statusLine(mte)))
+                .pos(INSET, INSET + 3 * lh + 3).name("screen_status"));
+        return screen;
+    }
+
+    //////////////////// GT-style machine status screen ////////////////////
+
+    /**
+     * A white readout line for the dark screen, positioned at the screen's inset x and the given y.
+     */
+    private static TextWidget<?> screenLine(Supplier<Component> text, int y) {
+        return new TextWidget<>(Text.dynamic(text)).color(0xFFFFFFFF).pos(INSET, y);
+    }
+
+    private static int maxCwu(ResearchUnitMachine mte) {
+        var provider = mte.getComputationProvider();
+        return provider == null ? 0 : provider.getMaxCWUt();
+    }
+
+    private static int activeJobs(ResearchUnitMachine mte) {
+        return Math.min(mte.getClientQueue().size(), mte.getJobCapacity());
+    }
+
+    private static Component statusLine(ResearchUnitMachine mte) {
+        if (!mte.isWorkingEnabled()) {
+            return Component.translatable("wfcore.gui.research.screen_paused").withStyle(net.minecraft.ChatFormatting.RED);
+        }
+        if (activeJobs(mte) > 0) {
+            return Component.translatable("wfcore.gui.research.screen_working").withStyle(net.minecraft.ChatFormatting.GREEN);
+        }
+        return Component.translatable("wfcore.gui.research.screen_idling").withStyle(net.minecraft.ChatFormatting.YELLOW);
+    }
+
+    /// ///////////////// item rows ////////////////////
 
     private static void addItemRow(ParentWidget<?> detail, int x, int y, IntFunction<ItemStack> provider,
                                    String nameTag) {
@@ -619,10 +838,8 @@ public final class ResearchTreeGui {
                                    String nameTag) {
         for (int i = 0; i < count; i++) {
             final int idx = i;
-            ItemDisplayWidget sprite = new ItemDisplayWidget()
-                    .item(itemValue(() -> provider.apply(idx)))
-                    .displayAmount(true);
-            sprite.name(nameTag + "_" + idx).pos(x + i * 18, y).size(18);
+            ParentWidget<?> sprite = itemIcon(() -> provider.apply(idx), 16);
+            sprite.name(nameTag + "_" + idx).pos(x + i * 17, y);
             sprite.tooltipDynamic(t -> {
                 ItemStack s = provider.apply(idx);
                 if (!s.isEmpty()) t.addLine(Text.of(s.getHoverName()));
@@ -630,8 +847,6 @@ public final class ResearchTreeGui {
             detail.child(sprite);
         }
     }
-
-    // ------------------------------------------------------------------ helpers
 
     /**
      * Tabs, in order: every explicitly-registered {@link ResearchCategory} first, then a default category for
@@ -651,6 +866,8 @@ public final class ResearchTreeGui {
         }
         return new ArrayList<>(ordered.values());
     }
+
+    // ------------------------------------------------------------------ helpers
 
     private static Research selected() {
         return SELECTED[0] == null ? null : ResearchRegistry.get(SELECTED[0]);
@@ -682,21 +899,23 @@ public final class ResearchTreeGui {
         return i < items.size() ? items.get(i) : ItemStack.EMPTY;
     }
 
-    private static IValue<ItemStack> itemValue(Supplier<ItemStack> supplier) {
-        return new IValue<>() {
+    /**
+     * A plain icon widget that renders just the item via {@link ItemDrawable} (no slot background) at {@code size}.
+     */
+    private static ParentWidget<?> itemIcon(Supplier<ItemStack> supplier, int size) {
+        ParentWidget<?> w = new ParentWidget<>();
+        w.size(size).background(itemIconDrawable(supplier));
+        return w;
+    }
 
-            @Override
-            public ItemStack getValue() {
-                ItemStack s = supplier.get();
-                return s == null ? ItemStack.EMPTY : s;
-            }
 
-            @Override
-            public void setValue(ItemStack value) {}
-
-            @Override
-            public Class<ItemStack> getValueType() {
-                return ItemStack.class;
+    private static IDrawable itemIconDrawable(Supplier<ItemStack> supplier) {
+        ItemDrawable drawable = new ItemDrawable();
+        return (ctx, x, y, w, h, theme) -> {
+            ItemStack s = supplier.get();
+            if (s != null && !s.isEmpty()) {
+                drawable.setItem(s);
+                drawable.draw(ctx, x, y, w, h, theme);
             }
         };
     }
@@ -715,7 +934,9 @@ public final class ResearchTreeGui {
         return NodeStatus.LOCKED;
     }
 
-    /** Adds one greyed line per still-incomplete prerequisite (incl. cross-category ones) to a tooltip. */
+    /**
+     * Adds one greyed line per still-incomplete prerequisite (incl. cross-category ones) to a tooltip.
+     */
     private static void appendUnmetPrereqs(RichTooltip t, ResearchUnitMachine mte, Research r) {
         ResearchState state = mte.getResearchState();
         for (String prereqId : r.getPrerequisites()) {
@@ -735,19 +956,6 @@ public final class ResearchTreeGui {
             case READY -> Component.translatable("wfcore.gui.research.status_ready", pct).getString();
             case LOCKED -> Component.translatable("wfcore.gui.research.status_locked").getString();
         };
-    }
-
-    private enum NodeStatus {
-        LOCKED,
-        READY,
-        QUEUED,
-        RESEARCHING,
-        COMPLETE
-    }
-
-    private static String modeLabel(ResearchUnitMachine mte) {
-        return Component.translatable(mte.getMode() == ResearchUnitMachine.Mode.CONTROL ?
-                "wfcore.gui.research.control_mode" : "wfcore.gui.research.slave_mode").getString();
     }
 
     private static int nodeX(int col, int ox) {
@@ -786,7 +994,9 @@ public final class ResearchTreeGui {
         };
     }
 
-    /** The tile tint: a research's own {@link Research#getNodeColor() colour} when ready, else status colours. */
+    /**
+     * The tile tint: a research's own {@link Research#getNodeColor() colour} when ready, else status colours.
+     */
     private static int nodeTint(ResearchUnitMachine mte, Research research) {
         return switch (statusOf(mte, research.getId())) {
             case LOCKED -> COLOR_LOCKED;
@@ -801,18 +1011,38 @@ public final class ResearchTreeGui {
         return mcBackground(() -> queueTint(mte, slot));
     }
 
-    /** Empty slots stay dim; a running job glows active, a waiting one shows the queued colour. */
+    /**
+     * Empty slots stay dim; a running job glows active, a waiting one shows the queued colour.
+     */
     private static int queueTint(ResearchUnitMachine mte, int slot) {
         if (slot >= mte.getClientQueue().size()) return COLOR_SLOT;
         return slot < mte.getJobCapacity() ? COLOR_ACTIVE : COLOR_QUEUED;
     }
 
-    /** Tints the nine-slice {@code MC_BACKGROUND} with an ARGB colour fetched each frame (achievement-tile look). */
+    /**
+     * Tints the nine-slice {@code MC_BACKGROUND} with an ARGB colour fetched each frame (achievement-tile look).
+     */
     private static IDrawable mcBackground(java.util.function.IntSupplier color) {
         return (ctx, x, y, w, h, theme) -> {
             Color.setGlColor(color.getAsInt());
             GuiTextures.MC_BACKGROUND.draw(ctx, x, y, w, h);
             Color.resetGlColor();
         };
+    }
+
+    private enum StartState {
+        START,
+        CANCEL,
+        COMPLETE,
+        LOCKED,
+        QUEUE_FULL
+    }
+
+    private enum NodeStatus {
+        LOCKED,
+        READY,
+        QUEUED,
+        RESEARCHING,
+        COMPLETE
     }
 }

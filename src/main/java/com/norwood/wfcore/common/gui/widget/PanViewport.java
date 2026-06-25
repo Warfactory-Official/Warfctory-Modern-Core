@@ -3,6 +3,7 @@ package com.norwood.wfcore.common.gui.widget;
 import brachy.modularui.api.layout.IViewport;
 import brachy.modularui.api.layout.IViewportStack;
 import brachy.modularui.api.widget.Interactable;
+import brachy.modularui.utils.HoveredWidgetList;
 import brachy.modularui.screen.viewport.ModularGuiContext;
 import brachy.modularui.widget.ParentWidget;
 
@@ -84,6 +85,18 @@ public class PanViewport<W extends PanViewport<W>> extends ParentWidget<W> imple
     @Override
     public void transformChildren(IViewportStack stack) {
         stack.translate(-xOffset, -yOffset);
+    }
+
+    /**
+     * The stencil in {@link #preDraw} only clips rendering; without this, children scrolled outside the
+     * viewport are invisible yet still hit-testable. {@code getSelfAt} pushes this viewport onto the hovered
+     * list only when the cursor is inside its visible box, so gate gathering of children on that.
+     */
+    @Override
+    public void getWidgetsAt(IViewportStack stack, HoveredWidgetList widgets, int x, int y) {
+        if (widgets.peek() == this) {
+            IViewport.super.getWidgetsAt(stack, widgets, x, y);
+        }
     }
 
     @Override

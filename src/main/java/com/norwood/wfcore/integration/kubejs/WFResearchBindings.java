@@ -4,6 +4,7 @@ import com.norwood.wfcore.api.research.Research;
 import com.norwood.wfcore.api.research.ResearchCategory;
 import com.norwood.wfcore.api.research.ResearchCategoryRegistry;
 import com.norwood.wfcore.api.research.ResearchRegistry;
+import com.norwood.wfcore.common.recipe.condition.ResearchRecipeCondition;
 
 /**
  * KubeJS binding exposed as {@code WFResearch} in startup scripts.
@@ -37,6 +38,21 @@ public class WFResearchBindings {
 
     public Research.Builder builder(String id) {
         return Research.builder(id);
+    }
+
+    /**
+     * A recipe condition gating a GregTech recipe behind a WFCore research. Attach it to any crafting recipe
+     * so the machine refuses to run until the research is unlocked:
+     *
+     * <pre>{@code
+     * event.recipes.gtceu.assembler('gated')
+     *     .inputItems(Item.of('minecraft:iron_ingot'))
+     *     .outputItems(Item.of('minecraft:iron_block'))
+     *     .addCondition(WFResearch.condition('my_research'))
+     * }</pre>
+     */
+    public ResearchRecipeCondition condition(String researchId) {
+        return new ResearchRecipeCondition(researchId);
     }
 
     public ResearchCategory.Builder category(String id) {

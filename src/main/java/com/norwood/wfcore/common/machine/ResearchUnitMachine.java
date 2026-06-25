@@ -12,10 +12,11 @@ import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
 import com.gregtechceu.gtceu.api.machine.feature.IInteractedMachine;
+import com.gregtechceu.gtceu.api.machine.feature.IMachineLife;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
+import com.gregtechceu.gtceu.api.machine.trait.NotifiableItemStackHandler;
 import com.gregtechceu.gtceu.api.misc.EnergyContainerList;
-import com.gregtechceu.gtceu.common.data.GTItems;
 
 import com.lowdragmc.lowdraglib.syncdata.IContentChangeAware;
 import com.lowdragmc.lowdraglib.syncdata.ITagSerializable;
@@ -39,8 +40,11 @@ import net.minecraftforge.items.IItemHandlerModifiable;
 
 import brachy.modularui.factory.BlockEntityUIFactory;
 import com.norwood.wfcore.api.research.Research;
+import com.norwood.wfcore.api.research.ResearchDataItem;
 import com.norwood.wfcore.api.research.ResearchRegistry;
 import com.norwood.wfcore.api.research.ResearchState;
+import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
+import com.norwood.wfcore.integration.warforge.WarforgeNotifications;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -64,7 +68,8 @@ import java.util.Map;
  * in the input bus.
  */
 public class ResearchUnitMachine extends MultiblockControllerMachine
-                                 implements IOpticalComputationReceiver, IControllable, IInteractedMachine {
+                                 implements IOpticalComputationReceiver, IControllable, IInteractedMachine,
+                                 IMachineLife {
 
     public static final ManagedFieldHolder MANAGED_FIELD_HOLDER = new ManagedFieldHolder(ResearchUnitMachine.class,
             MultiblockControllerMachine.MANAGED_FIELD_HOLDER);
@@ -77,11 +82,14 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     public static final int QUEUE_SIZE = 3;
     private static final int CLUSTER_SCAN_RADIUS = 4;
     private static final int MAX_SLAVES = 16;
-    public static final String STICK_KEY = "wfcore_research";
+    public static final String STICK_KEY = ResearchDataItem.KEY;
 
     private final List<IItemHandlerModifiable> inputInventories = new ArrayList<>();
     private final ResearchState state = new ResearchState();
     private final List<Job> jobs = new ArrayList<>();
+    /** Single "library" slot: a data item/paper the player writes obtained blueprints onto from the GUI. */
+    @Persisted
+    private final NotifiableItemStackHandler libraryInv;
 
     @Persisted
     @DescSynced
@@ -97,6 +105,8 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
 
     // server-side: which research the GUI side-panel buttons act on (last clicked node)
     private String selectedResearchId = "";
+    // server-side: which obtained research the library window will write to the slotted data item
+    private String librarySelectedId = "";
 
     // client-only parse cache of researchSync
     private CompoundTag parsedFrom;
@@ -113,6 +123,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
 
     public ResearchUnitMachine(IMachineBlockEntity holder) {
         super(holder);
+        this.libraryInv = new NotifiableItemStackHandler(this, 1, IO.IN).setFilter(ResearchDataItem::isDataItem);
     }
 
     @Override
@@ -294,24 +305,55 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     private void completeResearch(Research research) {
         state.setCompletedRuns(research.getId(), research.getRunsRequired());
         state.setPartialCWU(research.getId(), 0);
-        // TODO(warforge): write a research data stick / publish to the faction library once WarForge is ported.
+        if (WarforgeIntegration.isLoaded()) {
+            WarforgeNotifications.researchCompleted(getLevel(), getPos(), research);
+        }
     }
 
-    /** Marks any research whose data stick is present in the input bus as complete (external import). */
+    /** Marks any research whose data item is present in the input bus as complete (external import). */
     private void importCompletedFromSticks() {
         for (IItemHandlerModifiable inv : inputInventories) {
             for (int slot = 0; slot < inv.getSlots(); slot++) {
-                ItemStack stack = inv.getStackInSlot(slot);
-                if (stack.isEmpty() || !stack.is(GTItems.TOOL_DATA_STICK.asItem()) || !stack.hasTag()) continue;
-                String id = stack.getTag().getString(STICK_KEY);
-                if (id.isEmpty()) continue;
-                Research research = ResearchRegistry.get(id);
-                if (research != null && !state.isComplete(id)) {
-                    state.setCompletedRuns(id, research.getRunsRequired());
-                    pushResearchSync();
+                for (String id : ResearchDataItem.readAll(inv.getStackInSlot(slot))) {
+                    Research research = ResearchRegistry.get(id);
+                    if (research != null && !state.isComplete(id)) {
+                        state.setCompletedRuns(id, research.getRunsRequired());
+                        pushResearchSync();
+                    }
                 }
             }
         }
+    }
+
+    //////////////////// library (blueprint write) ////////////////////
+
+    public NotifiableItemStackHandler getLibraryInv() {
+        return libraryInv;
+    }
+
+    /** Picks which obtained research the library window's write button will imprint (set from the GUI list). */
+    public void selectLibrary(String researchId) {
+        this.librarySelectedId = researchId == null ? "" : researchId;
+    }
+
+    /**
+     * Writes the selected obtained research onto the data item/paper in the library slot, appending to the next
+     * free entry if it already holds blueprints. The research must have its full path complete. Returns true
+     * when something was written.
+     */
+    public boolean writeLibrary() {
+        if (librarySelectedId.isEmpty() || !state.isPathComplete(librarySelectedId)) return false;
+        if (ResearchRegistry.get(librarySelectedId) == null) return false;
+        ItemStack item = libraryInv.storage.getStackInSlot(0);
+        if (!ResearchDataItem.write(item, librarySelectedId)) return false;
+        libraryInv.storage.setStackInSlot(0, item);
+        markDirty();
+        return true;
+    }
+
+    @Override
+    public void onMachineRemoved() {
+        clearInventory(libraryInv.storage);
     }
 
     //////////////////// player actions ////////////////////

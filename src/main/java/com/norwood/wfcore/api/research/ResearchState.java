@@ -7,6 +7,9 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * Per-network research progress (the research database). Tracks, for each research, how many runs are
  * complete and the partial compute banked into the in-progress run. Persisted in the controller's NBT so a
@@ -49,6 +52,26 @@ public final class ResearchState {
         if (r == null) return false;
         for (String prereq : r.getPrerequisites()) {
             if (!isComplete(prereq)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * True if this research and its entire prerequisite chain are complete. A recipe counts as unlocked only
+     * when the full path is done, not just the single node - so importing one high-tier data stick alone does
+     * not grant a recipe whose research still has unfinished ancestors.
+     */
+    public boolean isPathComplete(String researchId) {
+        return isPathComplete(researchId, new HashSet<>());
+    }
+
+    private boolean isPathComplete(String researchId, Set<String> visiting) {
+        if (!isComplete(researchId)) return false;
+        Research r = ResearchRegistry.get(researchId);
+        if (r == null) return false;
+        if (!visiting.add(researchId)) return true; // cycle guard
+        for (String prereq : r.getPrerequisites()) {
+            if (!isPathComplete(prereq, visiting)) return false;
         }
         return true;
     }
