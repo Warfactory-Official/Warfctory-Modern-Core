@@ -92,7 +92,7 @@ public class WFCore {
             LOGGER.info("Compute registries: {} CPU item(s), {} RAM item(s)",
                     com.norwood.wfcore.common.compute.CPURegistry.size(),
                     com.norwood.wfcore.common.compute.RAMRegistry.size());
-            // com.norwood.wfcore.common.research.WFResearches.register();
+//            com.norwood.wfcore.common.research.WFResearches.registerTest();
             com.norwood.wfcore.common.recipe.condition.WFRecipeConditions.init();
             UIFactory.register(VehicleUIFactory.INSTANCE);
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");

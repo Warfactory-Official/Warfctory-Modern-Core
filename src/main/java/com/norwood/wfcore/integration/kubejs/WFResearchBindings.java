@@ -33,6 +33,11 @@ import com.norwood.wfcore.common.recipe.condition.ResearchRecipeCondition;
  *     .unlocks(Item.of('minecraft:repeater'))
  *     .register()
  * }</pre>
+ *
+ * <p>
+ * All colours are {@code 0xAARRGGBB} (alpha first). Full-alpha literals such as {@code 0xFF60C060} are
+ * supported directly — the colour setters take a {@code long} so KubeJS/Rhino doesn't reject values above
+ * {@code 0x7FFFFFFF}. A bare {@code 0x60C060} renders fully transparent (alpha 0); always include the alpha byte.
  */
 public class WFResearchBindings {
 

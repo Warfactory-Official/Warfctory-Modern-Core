@@ -205,9 +205,12 @@ public final class Research {
             return this;
         }
 
-        /** Tints the node tile (ARGB) when the research is available; locked/queued/done keep status colours. */
-        public Builder nodeColor(int argb) {
-            this.nodeColor = argb;
+        /**
+         * Tints the node tile (ARGB) when the research is available; locked/queued/done keep status colours.
+         * Accepts {@code long} so KubeJS full-alpha literals like 0xFF2F6BD8 work.
+         */
+        public Builder nodeColor(long argb) {
+            this.nodeColor = (int) argb;
             return this;
         }
 

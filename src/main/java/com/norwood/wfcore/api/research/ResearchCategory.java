@@ -103,13 +103,15 @@ public final class ResearchCategory {
             return this;
         }
 
-        public Builder backgroundColor(int argb) {
-            this.backgroundColor = argb;
+        /** Solid canvas background (ARGB). Accepts {@code long} so KubeJS full-alpha literals like 0xFF101814 work. */
+        public Builder backgroundColor(long argb) {
+            this.backgroundColor = (int) argb;
             return this;
         }
 
-        public Builder connectorColor(int argb) {
-            this.connectorColor = argb;
+        /** Connector line colour (ARGB). Accepts {@code long} so KubeJS full-alpha literals like 0xFF60C060 work. */
+        public Builder connectorColor(long argb) {
+            this.connectorColor = (int) argb;
             return this;
         }
 

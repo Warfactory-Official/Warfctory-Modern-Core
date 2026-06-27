@@ -7,7 +7,7 @@ import com.modularmods.mcgltf.IGltfModelReceiver;
 import com.modularmods.mcgltf.RenderedGltfModel;
 import com.modularmods.mcgltf.RenderedGltfScene;
 import com.modularmods.mcgltf.animation.GltfAnimationCreator;
-import de.javagl.jgltf.model.AnimationModel;
+import com.modularmods.mcgltf.shadow.de.javagl.jgltf.model.AnimationModel;
 
 import java.util.List;
 import java.util.Locale;

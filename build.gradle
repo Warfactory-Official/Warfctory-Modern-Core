@@ -19,6 +19,9 @@ sourceSets {
 repositories {
     mavenLocal()
     mavenCentral()
+    flatDir {
+        dirs 'libs'
+    }
     maven {
         name = 'GTCEu Maven'
         url = 'https://maven.gtceu.com'
@@ -84,6 +87,7 @@ legacyForge {
     configurations.named("additionalRuntimeClasspath").configure {
         extendsFrom(configurations.shade)
     }
+
 
 
     parchment {
@@ -176,7 +180,7 @@ dependencies {
         exclude group: "org.spongepowered", module: "mixin"
     }
 
-    modImplementation("curse.maven:${mcgltf_version}")
+    modImplementation("com.modularmods:mcgltf:1.20.1")
 
 
     modCompileOnly("maven.modrinth:embeddium:0.3.31+mc1.20.1") { transitive = false }

@@ -17,7 +17,7 @@ public final class WFResearches {
 
     private WFResearches() {}
 
-    public static void register() {
+    public static void registerTest() {
         registerCategories();
 
         // ---------------------------------------------------------------- Electronics: AUTO (branch + merge x2)
