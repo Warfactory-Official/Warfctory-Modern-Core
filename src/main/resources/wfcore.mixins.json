@@ -9,7 +9,8 @@
     "VehicleEntitySetEnergyInvoker",
     "DataAccessHatchResearchShareMixin",
     "ItemStackEnchantMixin",
-    "EnchantmentHelperMixin"
+    "EnchantmentHelperMixin",
+    "ServerLifecycleHooksMixin"
   ],
   "client": [
     "NamePlateMixin",
