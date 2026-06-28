@@ -17,6 +17,7 @@ import com.gregtechceu.gtceu.api.registry.registrate.MachineBuilder;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
+import com.gregtechceu.gtceu.common.data.GTRecipeModifiers;
 import com.gregtechceu.gtceu.common.data.models.GTMachineModels;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
@@ -27,6 +28,9 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
 import com.norwood.wfcore.common.machine.ACHatchBlockEntity;
 import com.norwood.wfcore.common.machine.ACHatchPartMachine;
+import com.norwood.wfcore.common.machine.DrillRigBlockEntity;
+import com.norwood.wfcore.common.machine.DrillRigMachine;
+import com.norwood.wfcore.common.machine.DrillRigStructure;
 import com.norwood.wfcore.common.machine.LargeBlastFurnaceMachine;
 import com.norwood.wfcore.common.machine.LargeTransformerMachine;
 import com.norwood.wfcore.common.machine.LightGroundVehicleFactoryMachine;
@@ -70,6 +74,7 @@ public class WFMachines {
     public static MultiblockMachineDefinition RESEARCH_UNIT;
     public static MultiblockMachineDefinition RADAR;
     public static MultiblockMachineDefinition LIGHT_GROUND_VEHICLE_FACTORY;
+    public static MultiblockMachineDefinition DRILL_RIG;
 
     public static void init() {
         AC_INPUT_HATCH = WF_MACHINES.machine("ac_input_hatch",
@@ -291,6 +296,47 @@ public class WFMachines {
                         .build())
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
                         WFCore.id("block/multiblock/vehicle_factory"))
+                .register();
+
+        DRILL_RIG = WF_MACHINES.multiblock("drill_rig", DrillRigMachine::new,
+                MetaMachineBlock::new, MetaMachineItem::new, DrillRigBlockEntity::new)
+                .langValue("Drilling Rig")
+                // The animated GLTF rig is drawn by our own GltfMachineRenderer (registered in WFClientEvents).
+                // GTM's default BER would clobber it (see RadarMachine), so disable it; the casing/overlay still
+                // render from the chunk-mesh baked model.
+                .hasBER(false)
+                .rotationState(RotationState.NON_Y_AXIS)
+                .recipeType(WFRecipeTypes.DRILLING)
+                .recipeModifier(GTRecipeModifiers.OC_NON_PERFECT)
+                .appearanceBlock(GTBlocks.CASING_STEEL_SOLID)
+                .pattern(definition -> {
+                    var pattern = FactoryBlockPattern.start(
+                            RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT);
+                    for (String[] aisle : DrillRigStructure.AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(GTBlocks.CASING_STEEL_SOLID.get()))
+                            .where('B', frames(GTMaterials.Steel)
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
+                                            .setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.EXPORT_ITEMS).setMinGlobalLimited(1)
+                                            .setMaxGlobalLimited(3))
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMaxGlobalLimited(3))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMaxGlobalLimited(3)))
+                            .where('M', abilities(PartAbility.MUFFLER))
+                            .where('C', blocks(GTBlocks.CASING_STEEL_GEARBOX.get()))
+                            .where('D', blocks(GTBlocks.LIGHT_CONCRETE.get()))
+                            .where('E', blocks(GTBlocks.CASING_STEEL_PIPE.get()))
+                            .where('F', blocks(WFBlocks.DRILL_HEAD.get()))
+                            .where('G', blocks(GTBlocks.CASING_GRATE.get()))
+                            .where('H', any())
+                            .where(' ', any())
+                            .build();
+                })
+                .workableCasingModel(GTCEu.id("block/casings/solid/machine_casing_solid_steel"),
+                        GTCEu.id("block/machines/miner"))
                 .register();
 
         // WarForge integration: only when WarForge is present. The chunk-reinforcer machines reference

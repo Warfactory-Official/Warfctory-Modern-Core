@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "wfcore:mining_charge",
+    "wfcore:deep_mining_charge"
+  ]
+}

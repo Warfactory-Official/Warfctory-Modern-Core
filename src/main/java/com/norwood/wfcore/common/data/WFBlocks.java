@@ -1,17 +1,24 @@
 package com.norwood.wfcore.common.data;
 
+import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.common.data.models.GTModels;
 import com.gregtechceu.gtceu.data.recipe.CustomTags;
 
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.BlockTags;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraftforge.client.model.generators.ConfiguredModel;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
+import com.norwood.wfcore.common.block.DepositBlock;
+import com.norwood.wfcore.common.block.MiningChargeBlock;
+import com.norwood.wfcore.common.machine.DepositBlockEntity;
+import com.norwood.wfcore.common.machine.MiningChargeBlockEntity;
 import com.norwood.wfcore.common.pipenet.ac.ACPipeBlock;
 import com.norwood.wfcore.common.pipenet.ac.ACPipeBlockEntity;
 import com.norwood.wfcore.common.pipenet.ac.ACPipeBlockItem;
@@ -29,6 +36,12 @@ public class WFBlocks {
 
     public static BlockEntry<Block> ALUMINIUM_SHEET_CASING;
     public static BlockEntry<BoltableCasingBlock> BOLTABLE_CASING;
+    public static BlockEntry<Block> DRILL_HEAD;
+    public static BlockEntry<DepositBlock> DEPOSIT;
+    public static BlockEntityEntry<DepositBlockEntity> DEPOSIT_BE;
+    public static BlockEntry<MiningChargeBlock> MINING_CHARGE;
+    public static BlockEntry<MiningChargeBlock> DEEP_MINING_CHARGE;
+    public static BlockEntityEntry<MiningChargeBlockEntity> MINING_CHARGE_BE;
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public static final BlockEntry<ACPipeBlock>[] AC_PIPES = new BlockEntry[ACPipeType.VALUES.length];
@@ -37,6 +50,56 @@ public class WFBlocks {
     public static void init() {
         ALUMINIUM_SHEET_CASING = createCasingBlock("aluminium_sheet_casing",
                 WFCore.id("block/casings/aluminium_sheet_casing"));
+
+        // Drill head: the 'F' of the drilling-rig structure. Placeholder steel-casing art for now.
+        DRILL_HEAD = createCasingBlock("drill_head",
+                GTCEu.id("block/casings/solid/machine_casing_solid_steel"));
+
+        // Bedrock-floor deposit block: unbreakable, drops nothing, drawn by its block-entity renderer.
+        DEPOSIT = WF_MACHINES.block("deposit", DepositBlock::new)
+                .initialProperties(() -> Blocks.BEDROCK)
+                .properties(p -> p.strength(-1.0F, 3_600_000.0F)
+                        .noLootTable()
+                        .isValidSpawn((state, level, pos, ent) -> false))
+                .exBlockstate(GTModels.cubeAllModel(new ResourceLocation("minecraft", "block/bedrock")))
+                .register();
+        DEPOSIT_BE = WF_MACHINES.blockEntity("deposit", DepositBlockEntity::new)
+                .validBlock(DEPOSIT)
+                .register();
+
+        // Demolition charge: cube blast (radius 3) that mines only natural blocks, fortune II on ores. Inert
+        // to fire/flint and steel; only a detonator sets it off. Tier 1 breaks surface stone/dirt/ores.
+        // Blockstate/models/item-model are hand-authored (top/side/bottom + armed variants), so datagen is
+        // suppressed with noop and the JSON under resources/assets/wfcore drives rendering.
+        MINING_CHARGE = WF_MACHINES.block("mining_charge", p -> new MiningChargeBlock(p, 3, 2, 1))
+                .initialProperties(() -> Blocks.IRON_BLOCK)
+                .properties(p -> p.strength(0.8F).sound(SoundType.METAL)
+                        .isValidSpawn((state, level, pos, ent) -> false))
+                .lang("Mining Charge")
+                .blockstate(NonNullBiConsumer.noop())
+                .tag(BlockTags.MINEABLE_WITH_PICKAXE)
+                .item(BlockItem::new)
+                .model(NonNullBiConsumer.noop())
+                .build()
+                .register();
+
+        // Tier 2 charge: also chews through the deepslate/tuff matrix (see deep_blast_breakable tag).
+        DEEP_MINING_CHARGE = WF_MACHINES.block("deep_mining_charge", p -> new MiningChargeBlock(p, 3, 2, 2))
+                .initialProperties(() -> Blocks.IRON_BLOCK)
+                .properties(p -> p.strength(0.8F).sound(SoundType.METAL)
+                        .isValidSpawn((state, level, pos, ent) -> false))
+                .lang("Deep Mining Charge")
+                .blockstate(NonNullBiConsumer.noop())
+                .tag(BlockTags.MINEABLE_WITH_PICKAXE)
+                .item(BlockItem::new)
+                .model(NonNullBiConsumer.noop())
+                .build()
+                .register();
+
+        // Shared block entity for both charge tiers; stores the placer's UUID.
+        MINING_CHARGE_BE = WF_MACHINES.blockEntity("mining_charge", MiningChargeBlockEntity::new)
+                .validBlocks(MINING_CHARGE, DEEP_MINING_CHARGE)
+                .register();
 
         for (int i = 0; i < ACPipeType.VALUES.length; i++) {
             registerACPipe(i);

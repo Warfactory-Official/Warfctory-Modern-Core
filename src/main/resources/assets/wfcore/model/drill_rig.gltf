@@ -1,0 +1,20 @@
+{
+  "asset": {
+    "version": "2.0",
+    "generator": "WFCore placeholder — replace with the real animated drilling-rig model. Name animations 'idle'/'running' (append '_loop' to loop, e.g. 'running_loop')."
+  },
+  "scene": 0,
+  "scenes": [
+    {
+      "name": "Scene",
+      "nodes": [
+        0
+      ]
+    }
+  ],
+  "nodes": [
+    {
+      "name": "drill_rig_placeholder"
+    }
+  ]
+}

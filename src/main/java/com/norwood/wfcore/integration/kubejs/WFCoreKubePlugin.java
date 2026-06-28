@@ -13,6 +13,7 @@ public class WFCoreKubePlugin extends KubeJSPlugin {
             event.add("WFResearch", new WFResearchBindings());
             event.add("WFLoot", new WFLootBindings());
             event.add("WFEnchant", new WFEnchantBindings());
+            event.add("WFDeposits", new WFDepositBindings());
         }
     }
 }

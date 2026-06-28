@@ -8,6 +8,7 @@ import com.gregtechceu.gtceu.common.item.CoverPlaceBehavior;
 import net.minecraft.resources.ResourceLocation;
 
 import com.norwood.wfcore.common.item.BoltToolItem;
+import com.norwood.wfcore.common.item.DetonatorItem;
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
 import com.norwood.wfcore.common.item.SiegeDefenseTesterItem;
 import com.tterrag.registrate.util.entry.ItemEntry;
@@ -20,6 +21,7 @@ import static com.norwood.wfcore.WFCore.WF_MACHINES;
 public class WFItems {
 
     public static ItemEntry<BoltToolItem> BOLT_TOOL;
+    public static ItemEntry<DetonatorItem> DETONATOR;
     public static ItemEntry<PackagedVehicleItem> PACKAGED_VEHICLE;
     public static ItemEntry<SiegeDefenseTesterItem> SIEGE_DEFENSE_TESTER;
 
@@ -32,6 +34,14 @@ public class WFItems {
         BOLT_TOOL = WF_MACHINES.item("bolt_tool", BoltToolItem::new)
                 .lang("Bolt Tool")
                 .model((ctx, prov) -> prov.generated(ctx, GTCEu.id("item/tools/wrench")))
+                .register();
+
+        // Wireless detonator: sneak-link up to 5 mining charges, right-click to set them all off.
+        // Placeholder flint-and-steel art (the trigger device, despite charges being inert to actual flint).
+        DETONATOR = WF_MACHINES.item("detonator", DetonatorItem::new)
+                .lang("Detonator")
+                .properties(p -> p.stacksTo(1))
+                .model((ctx, prov) -> prov.generated(ctx, new ResourceLocation("minecraft", "item/flint_and_steel")))
                 .register();
 
         PACKAGED_VEHICLE = WF_MACHINES.item("packaged_vehicle", PackagedVehicleItem::new)

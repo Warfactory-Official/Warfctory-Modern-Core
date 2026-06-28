@@ -1,0 +1,34 @@
+{
+  "mining_charge_blast": {
+    "category": "blocks",
+    "subtitle": "wfcore.subtitle.mining_charge_blast",
+    "sounds": [
+      "wfcore:mining_charge/blast_1",
+      "wfcore:mining_charge/blast_2",
+      "wfcore:mining_charge/blast_3",
+      "wfcore:mining_charge/blast_4"
+    ]
+  },
+  "mining_charge_blast_distant": {
+    "category": "blocks",
+    "subtitle": "wfcore.subtitle.mining_charge_blast",
+    "sounds": [
+      "wfcore:mining_charge/blast_distant_1",
+      "wfcore:mining_charge/blast_distant_2"
+    ]
+  },
+  "detonator_arm": {
+    "category": "blocks",
+    "subtitle": "wfcore.subtitle.detonator_arm",
+    "sounds": [
+      "wfcore:detonator/arm"
+    ]
+  },
+  "detonator_detonate": {
+    "category": "players",
+    "subtitle": "wfcore.subtitle.detonator_detonate",
+    "sounds": [
+      "wfcore:detonator/detonate"
+    ]
+  }
+}

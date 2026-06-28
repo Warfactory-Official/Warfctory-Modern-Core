@@ -24,6 +24,11 @@ public final class WFCoreConfig {
     private static final int DEFAULT_ENERGY_TO_FLUID_RATIO = 10;
     private static final int DEFAULT_REFUEL_INTERVAL_TICKS = 20;
     private static final boolean DEFAULT_CLEAR_STRUCTURE_LOOT = true;
+    private static final int DEFAULT_DEPOSIT_YIELD_MIN = 2000;
+    private static final int DEFAULT_DEPOSIT_YIELD_MAX = 8000;
+    private static final boolean DEFAULT_DEPOSIT_WORLDGEN_ENABLED = true;
+    private static final boolean DEFAULT_DEPOSIT_SCATTER = true;
+    private static final int DEFAULT_DEPOSIT_WORLDGEN_RARITY = 24;
     private static final String DEFAULT_CONFIG = """
             # WFCore configuration
             # vehicles:
@@ -43,11 +48,26 @@ public final class WFCoreConfig {
             # Empty every chest and fishing loot table by default; repopulate or whitelist via KubeJS (WFLoot).
             clearStructureLoot: true
             vehicles: []
+            # Drillable bedrock deposits. defaultYield is the per-block yield range used when a deposit type
+            # (built-in or KubeJS) does not specify its own. worldgen.rarity is "1 in N chunks".
+            deposits:
+              defaultYieldMin: 2000
+              defaultYieldMax: 8000
+              worldgen:
+                enabled: true
+                # Ambient weighted scatter across the world. Turn off to rely only on KubeJS nodes/regions.
+                scatter: true
+                rarity: 24
             """;
 
     private static volatile int energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
     private static volatile int refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
     private static volatile boolean clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
+    private static volatile int depositYieldMin = DEFAULT_DEPOSIT_YIELD_MIN;
+    private static volatile int depositYieldMax = DEFAULT_DEPOSIT_YIELD_MAX;
+    private static volatile boolean depositWorldgenEnabled = DEFAULT_DEPOSIT_WORLDGEN_ENABLED;
+    private static volatile boolean depositScatter = DEFAULT_DEPOSIT_SCATTER;
+    private static volatile int depositWorldgenRarity = DEFAULT_DEPOSIT_WORLDGEN_RARITY;
 
     private WFCoreConfig() {}
 
@@ -62,6 +82,29 @@ public final class WFCoreConfig {
     /** When true, WFCore empties every chest/fishing loot table on load unless KubeJS overrides or keeps it. */
     public static boolean isClearStructureLoot() {
         return clearStructureLoot;
+    }
+
+    /** Default per-block deposit yield range, used when a deposit type does not set its own. */
+    public static int getDefaultYieldMin() {
+        return depositYieldMin;
+    }
+
+    public static int getDefaultYieldMax() {
+        return depositYieldMax;
+    }
+
+    public static boolean isDepositWorldgenEnabled() {
+        return depositWorldgenEnabled;
+    }
+
+    /** When true, deposits also scatter randomly across the world (in addition to KubeJS nodes/regions). */
+    public static boolean isDepositScatterEnabled() {
+        return depositScatter;
+    }
+
+    /** Deposit worldgen rarity, as "1 in N chunks". */
+    public static int getDepositWorldgenRarity() {
+        return depositWorldgenRarity;
     }
 
     public static void load() {
@@ -102,9 +145,31 @@ public final class WFCoreConfig {
         energyToFluidRatio = positiveInt(root.get("energyToFluidRatio"), DEFAULT_ENERGY_TO_FLUID_RATIO);
         refuelIntervalTicks = positiveInt(root.get("refuelIntervalTicks"), DEFAULT_REFUEL_INTERVAL_TICKS);
         clearStructureLoot = boolValue(root.get("clearStructureLoot"), DEFAULT_CLEAR_STRUCTURE_LOOT);
+        parseDeposits(root.get("deposits"));
         SuperbOverrides.setOverrideDataMap(parseVehicleOverrides(root.get("vehicles")));
         WFCore.LOGGER.info("Loaded WFCore YAML config: {} vehicle overrides, energy ratio {}, refuel interval {} ticks",
                 SuperbOverrides.overrideDataMap.size(), energyToFluidRatio, refuelIntervalTicks);
+    }
+
+    private static void parseDeposits(Object rawDeposits) {
+        depositYieldMin = DEFAULT_DEPOSIT_YIELD_MIN;
+        depositYieldMax = DEFAULT_DEPOSIT_YIELD_MAX;
+        depositWorldgenEnabled = DEFAULT_DEPOSIT_WORLDGEN_ENABLED;
+        depositScatter = DEFAULT_DEPOSIT_SCATTER;
+        depositWorldgenRarity = DEFAULT_DEPOSIT_WORLDGEN_RARITY;
+        if (!(rawDeposits instanceof Map<?, ?> deposits)) {
+            return;
+        }
+        depositYieldMin = positiveInt(deposits.get("defaultYieldMin"), DEFAULT_DEPOSIT_YIELD_MIN);
+        depositYieldMax = positiveInt(deposits.get("defaultYieldMax"), DEFAULT_DEPOSIT_YIELD_MAX);
+        if (depositYieldMax < depositYieldMin) {
+            depositYieldMax = depositYieldMin;
+        }
+        if (deposits.get("worldgen") instanceof Map<?, ?> worldgen) {
+            depositWorldgenEnabled = boolValue(worldgen.get("enabled"), DEFAULT_DEPOSIT_WORLDGEN_ENABLED);
+            depositScatter = boolValue(worldgen.get("scatter"), DEFAULT_DEPOSIT_SCATTER);
+            depositWorldgenRarity = positiveInt(worldgen.get("rarity"), DEFAULT_DEPOSIT_WORLDGEN_RARITY);
+        }
     }
 
     private static Map<String, SuperbOverrides.OverrideData> parseVehicleOverrides(Object rawVehicles) {

@@ -1,6 +1,7 @@
 {
   "values": [
     "wfcore:aluminium_sheet_casing",
+    "wfcore:drill_head",
     "wfcore:boltable_casing"
   ]
 }

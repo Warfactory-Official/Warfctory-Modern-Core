@@ -14,8 +14,10 @@ import net.minecraftforge.fml.ModLoadingContext;
 public final class WFRecipeConditions {
 
     public static final String RESEARCH_NAME = "research_wfcore";
+    public static final String DEPOSIT_NAME = "deposit_wfcore";
 
     public static RecipeConditionType<ResearchRecipeCondition> RESEARCH;
+    public static RecipeConditionType<DepositRecipeCondition> DEPOSIT;
 
     private static boolean initialized;
 
@@ -37,6 +39,8 @@ public final class WFRecipeConditions {
             if (wasFrozen) GTRegistries.RECIPE_CONDITIONS.unfreeze();
             RESEARCH = GTRegistries.RECIPE_CONDITIONS.register(RESEARCH_NAME,
                     new RecipeConditionType<>(ResearchRecipeCondition::new, ResearchRecipeCondition.CODEC));
+            DEPOSIT = GTRegistries.RECIPE_CONDITIONS.register(DEPOSIT_NAME,
+                    new RecipeConditionType<>(DepositRecipeCondition::new, DepositRecipeCondition.CODEC));
             if (wasFrozen) GTRegistries.RECIPE_CONDITIONS.freeze();
         } finally {
             ctx.setActiveContainer(previous);

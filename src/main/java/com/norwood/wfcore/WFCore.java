@@ -52,6 +52,10 @@ public class WFCore {
         modEventBus.addGenericListener(MachineDefinition.class, this::registerMachines);
         modEventBus.addGenericListener(SoundEntry.class, this::registerSounds);
 
+        com.norwood.wfcore.common.worldgen.WFFeatures.init(modEventBus);
+        com.norwood.wfcore.common.particle.WFParticles.PARTICLE_TYPES.register(modEventBus);
+        com.norwood.wfcore.common.sound.WFSounds.SOUNDS.register(modEventBus);
+
         // Most other events are fired on Forge's bus.
         // If we want to use annotations to register event listeners,
         // we need to register our object like this!
@@ -85,6 +89,7 @@ public class WFCore {
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             WFCoreConfig.load();
+            com.norwood.wfcore.common.deposit.WFDeposits.registerDefaults();
             com.norwood.wfcore.radar.RadarConfig.load();
             com.norwood.wfcore.common.fluid.CoolantRegistry.register();
             com.norwood.wfcore.common.compute.CPURegistry.register();
@@ -92,7 +97,7 @@ public class WFCore {
             LOGGER.info("Compute registries: {} CPU item(s), {} RAM item(s)",
                     com.norwood.wfcore.common.compute.CPURegistry.size(),
                     com.norwood.wfcore.common.compute.RAMRegistry.size());
-//            com.norwood.wfcore.common.research.WFResearches.registerTest();
+            // com.norwood.wfcore.common.research.WFResearches.registerTest();
             com.norwood.wfcore.common.recipe.condition.WFRecipeConditions.init();
             UIFactory.register(VehicleUIFactory.INSTANCE);
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");
