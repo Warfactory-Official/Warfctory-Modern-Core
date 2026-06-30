@@ -175,8 +175,9 @@ public class WFMachines {
                         .aisle("XXX", "XXX", "XXX")
                         .where('S', controller(blocks(definition.getBlock())))
                         .where('X', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()).setMinGlobalLimited(8)
-                                .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1))
-                                .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1))
+                                .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1).setMaxGlobalLimited(2))
+                                .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1).setMaxGlobalLimited(1))
+                                .or(abilities(PartAbility.IMPORT_FLUIDS).setMaxGlobalLimited(1))
                                 .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMinGlobalLimited(1)))
                         .build())
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
