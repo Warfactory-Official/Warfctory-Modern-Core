@@ -38,7 +38,7 @@ public class WFRecipeTypes {
         GTRegistries.register(BuiltInRegistries.RECIPE_TYPE, id, LARGE_BLAST_FURNACE);
         GTRegistries.register(BuiltInRegistries.RECIPE_SERIALIZER, id, new GTRecipeSerializer());
         GTRegistries.RECIPE_TYPES.register(id, LARGE_BLAST_FURNACE);
-        LARGE_BLAST_FURNACE.setMaxIOSize(2, 1, 0, 0)
+        LARGE_BLAST_FURNACE.setMaxIOSize(2, 1, 0, 1)
                 .setProgressBar(GuiTextures.PROGRESS_BAR_ARROW, ProgressTexture.FillDirection.LEFT_TO_RIGHT)
                 .setMaxTooltips(1)
                 .setSound(GTSoundEntries.FURNACE);
@@ -60,10 +60,11 @@ public class WFRecipeTypes {
      * can add their own recipes to {@code wfcore:large_blast_furnace}.
      */
     public static void addDefaultRecipes(Consumer<FinishedRecipe> provider) {
-        LARGE_BLAST_FURNACE.recipeBuilder(WFCore.id("steel_from_iron"))
+        LARGE_BLAST_FURNACE.recipeBuilder(WFCore.id("liquid_steel_from_iron"))
                 .inputItems(TagPrefix.ingot, GTMaterials.Iron)
                 .inputItems(TagPrefix.dust, GTMaterials.Coal, 2)
-                .outputItems(TagPrefix.ingot, GTMaterials.Steel)
+                .outputFluids(GTMaterials.Steel.getFluid(144))
+                .outputItems(TagPrefix.dustTiny, GTMaterials.DarkAsh)
                 .duration(1200)
                 .save(provider);
 

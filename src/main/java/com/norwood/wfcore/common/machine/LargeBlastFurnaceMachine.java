@@ -2,11 +2,17 @@ package com.norwood.wfcore.common.machine;
 
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
+import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IFluidRenderMulti;
 import com.gregtechceu.gtceu.api.machine.multiblock.WorkableMultiblockMachine;
 import com.gregtechceu.gtceu.api.machine.trait.RecipeLogic;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
+import com.gregtechceu.gtceu.api.recipe.GTRecipe;
+import com.gregtechceu.gtceu.api.recipe.content.ContentModifier;
+import com.gregtechceu.gtceu.api.recipe.modifier.ModifierFunction;
+import com.gregtechceu.gtceu.api.recipe.modifier.RecipeModifier;
+import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.config.ConfigHolder;
 import com.gregtechceu.gtceu.utils.GTUtil;
 
@@ -45,6 +51,9 @@ public class LargeBlastFurnaceMachine extends WorkableMultiblockMachine implemen
 
     private TickableSubscription hurtSubscription;
 
+    /** Number of formed side chambers (0-2); drives parallelism via {@link #modifyRecipe}. */
+    private int sideChambers;
+
     @DescSynced
     @RequireRerender
     private @NotNull Set<BlockPos> fluidBlockOffsets = new HashSet<>();
@@ -79,6 +88,37 @@ public class LargeBlastFurnaceMachine extends WorkableMultiblockMachine implemen
     public void onStructureFormed() {
         super.onStructureFormed();
         IFluidRenderMulti.super.onStructureFormed();
+        this.sideChambers = countSideChambers();
+    }
+
+    /** Each Steel Firebox flanking the core is one side chamber (0-2). Rotation/flip agnostic. */
+    private int countSideChambers() {
+        var level = getLevel();
+        var state = getMultiblockState();
+        if (level == null || state == null) return 0;
+        int fireboxes = 0;
+        for (BlockPos pos : state.getCache()) {
+            if (level.getBlockState(pos).is(GTBlocks.FIREBOX_STEEL.get())) fireboxes++;
+        }
+        return Math.min(2, fireboxes);
+    }
+
+    public int getSideChambers() {
+        return sideChambers;
+    }
+
+    public static ModifierFunction modifyRecipe(MetaMachine machine, GTRecipe recipe) {
+        if (!(machine instanceof LargeBlastFurnaceMachine furnace)) {
+            return RecipeModifier.nullWrongType(LargeBlastFurnaceMachine.class, machine);
+        }
+        int chambers = furnace.getSideChambers();
+        int parallels = Math.min(6, 2 + 2 * chambers);
+        double durationMultiplier = 1.0 - 0.05 * chambers;
+        return ModifierFunction.builder()
+                .modifyAllContents(ContentModifier.multiplier(parallels))
+                .parallels(parallels)
+                .durationMultiplier(durationMultiplier)
+                .build();
     }
 
     @Override

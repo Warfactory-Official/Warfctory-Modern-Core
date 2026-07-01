@@ -171,6 +171,9 @@ dependencies {
     // KubeJS (research authoring). Compile-only: the modpack provides KubeJS + Rhino + Architectury at runtime.
     modCompileOnly("curse.maven:kubejs-238086:5853326") { transitive = false }
     modCompileOnly("curse.maven:rhino-416294:6186971") { transitive = false }
+    modRuntimeOnly("curse.maven:forgematica-912441:6438641")
+    modRuntimeOnly("curse.maven:mafglib-910766:6763273")
+    modCompileOnly("curse.maven:mafglib-910766:6763273") { transitive = false }
 
     modRuntimeOnly "curse.maven:gtceu-terminals-1423461:8275858"
     compileOnly 'org.projectlombok:lombok:1.18.24'

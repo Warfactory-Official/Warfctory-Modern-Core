@@ -59,19 +59,22 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
             return;
         }
 
-        // The controller's BER runs every frame (it is a global block entity), so the render mask is
-        // driven from here: register the hidden structure blocks once the multiblock forms and drop them
-        // again when it breaks. Idempotent — getHiddenBlocks() is only queried on the forming edge.
         boolean formed = animated.shouldRenderModel();
-        boolean masked = RenderMaskManager.isControllerMasked(be.getBlockPos());
-        if (formed && !masked) {
-            RenderMaskManager.addDisableModel(be.getBlockPos(), animated.getHiddenBlocks());
-        } else if (!formed && masked) {
-            RenderMaskManager.removeDisableModel(be.getBlockPos());
+
+        boolean realLevel = be.getLevel() != null && be.getLevel() == Minecraft.getInstance().level;
+
+        if (realLevel) {
+
+            boolean masked = RenderMaskManager.isControllerMasked(be.getBlockPos());
+            if (formed && !masked) {
+                RenderMaskManager.addDisableModel(be.getBlockPos(), animated.getHiddenBlocks());
+            } else if (!formed && masked) {
+                RenderMaskManager.removeDisableModel(be.getBlockPos());
+            }
         }
 
-        if (!formed || model.scene == null || model.animations == null) {
-            return; // not formed, or model not loaded on the client yet
+        if (!formed || !realLevel || model.scene == null || model.animations == null) {
+            return; // not formed, off-world preview, or model not loaded on the client yet
         }
 
         AnimationController controller = controllers.computeIfAbsent(be, k -> new AnimationController());

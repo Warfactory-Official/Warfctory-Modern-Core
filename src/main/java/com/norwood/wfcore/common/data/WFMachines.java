@@ -15,14 +15,14 @@ import com.gregtechceu.gtceu.api.pattern.FactoryBlockPattern;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.api.registry.registrate.MachineBuilder;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
+import com.gregtechceu.gtceu.common.data.GCYMBlocks;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.data.GTRecipeModifiers;
 import com.gregtechceu.gtceu.common.data.models.GTMachineModels;
-import com.gregtechceu.gtceu.utils.GTUtil;
 
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
@@ -53,7 +53,6 @@ import static com.gregtechceu.gtceu.api.pattern.Predicates.air;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.any;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.blocks;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.controller;
-import static com.gregtechceu.gtceu.api.pattern.Predicates.custom;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.frames;
 import static com.gregtechceu.gtceu.api.pattern.Predicates.states;
 import static com.gregtechceu.gtceu.common.data.models.GTMachineModels.createWorkableCasingMachineModel;
@@ -170,15 +169,32 @@ public class WFMachines {
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
                         RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
-                        .aisle("XXX", "XSX", "XXX")
-                        .aisle("XXX", "XXX", "XXX")
-                        .aisle("XXX", "XXX", "XXX")
+                        .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
+                        .aisle(" BBBBB ", " DEEED ", " DEEED ", " DEEED ", " BBBBB ", "       ", "       ")
+                        .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
+                        .aisle("AAAAAAA", "CCCCCCC", "CGGGGGC", "CGGGGGC", "CGGGGGC", "CCCCCCC", "AAAAAAA")
+                        .aisle("AAAAAAA", "CCCCCCC", "CG   GS", "CG   GC", "CG   GC", "CCCCCCC", "AAAAAAA")
+                        .aisle("AAAAAAA", "CCCCCCC", "CGGGGGC", "CGGGGGC", "CGGGGGC", "CCCCCCC", "AAAAAAA")
+                        .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
+                        .aisle(" BBBBB ", " D   F ", " D   F ", " D   F ", " BBBBB ", "       ", "       ")
+                        .aisle(" BBBBB ", " B   F ", " B   F ", " B   F ", " BBBBB ", "       ", "       ")
+                        .aisle(" BBBBB ", " D   F ", " D   F ", " D   F ", " BBBBB ", "       ", "       ")
+                        .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
                         .where('S', controller(blocks(definition.getBlock())))
-                        .where('X', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()).setMinGlobalLimited(8)
-                                .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1).setMaxGlobalLimited(2))
-                                .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1).setMaxGlobalLimited(1))
-                                .or(abilities(PartAbility.IMPORT_FLUIDS).setMaxGlobalLimited(1))
-                                .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMinGlobalLimited(1)))
+                        .where('A', blocks(GTBlocks.STEEL_HULL.get()))
+                        .where('B', blocks(GTBlocks.MACHINE_CASING_LV.get())
+                                .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1).setMaxGlobalLimited(2,
+                                        1))
+                                .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1).setMaxGlobalLimited(1,
+                                        1))
+                                .or(abilities(PartAbility.IMPORT_FLUIDS).setMaxGlobalLimited(1, 1))
+                                .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMinGlobalLimited(1, 1)))
+                        .where('C', blocks(GTBlocks.CASING_STEEL_SOLID.get()))
+                        .where('D', frames(WFMaterials.GalvanizedSteel))
+                        .where('E', blocks(GTBlocks.FIREBOX_STEEL.get()))
+                        .where('F', blocks(GTBlocks.CASING_TEMPERED_GLASS.get()))
+                        .where('G', blocks(GTBlocks.COIL_CUPRONICKEL.get()))
+                        .where(' ', any())
                         .build())
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
                         WFCore.id("block/multiblock/research_unit"))
@@ -209,21 +225,30 @@ public class WFMachines {
                 .langValue("Large Blast Furnace")
                 .rotationState(RotationState.NON_Y_AXIS)
                 .recipeType(WFRecipeTypes.LARGE_BLAST_FURNACE)
+                .recipeModifier(LargeBlastFurnaceMachine::modifyRecipe)
+                .tooltips(Component.translatable("wfcore.machine.large_blast_furnace.tooltip1"),
+                        Component.translatable("wfcore.machine.large_blast_furnace.tooltip2"),
+                        Component.translatable("wfcore.machine.large_blast_furnace.tooltip3"),
+                        Component.translatable("wfcore.machine.large_blast_furnace.tooltip4"))
                 .appearanceBlock(GTBlocks.CASING_PRIMITIVE_BRICKS)
                 .pattern(definition -> FactoryBlockPattern.start(
                         RelativeDirection.RIGHT, RelativeDirection.UP, RelativeDirection.BACK)
-                        .aisle("#XXX#", "#XXX#", "#XXX#", "#####", "#####", "#####", "#####")
-                        .aisle("XXXXX", "X&&&X", "XX#XX", "#XXX#", "##X##", "##X##", "#XXX#")
-                        .aisle("XXXXX", "X&&&X", "X###X", "#X#X#", "#X#X#", "#X#X#", "#X#X#")
-                        .aisle("XXXXX", "X&&&X", "XX#XX", "#XXX#", "##X##", "##X##", "#XXX#")
-                        .aisle("#XXX#", "#XYX#", "#XXX#", "#####", "#####", "#####", "#####")
+                        // 3x3x3 primitive-brick central chamber (X, controller Y on the front face).
+                        // A Steel Firebox (G) on the left and/or right is an optional side chamber that
+                        // adds parallel; L is its optional brick shell. Both default to air, so the
+                        // furnace forms and runs with 0, 1 or 2 chambers.
+                        .aisle("  XXX  ", "  XYX  ", "  XXX  ")
+                        .aisle("  XXX  ", "LGX#XGL", "  XXX  ")
+                        .aisle("  XXX  ", "  XXX  ", "  XXX  ")
+                        .where('Y', controller(blocks(definition.getBlock())))
                         .where('X', blocks(GTBlocks.CASING_PRIMITIVE_BRICKS.get())
                                 .or(abilities(PartAbility.IMPORT_ITEMS))
                                 .or(abilities(PartAbility.EXPORT_ITEMS))
                                 .or(abilities(PartAbility.EXPORT_FLUIDS)))
                         .where('#', air())
-                        .where('&', air().or(custom(bws -> GTUtil.isBlockSnow(bws.getBlockState()), null)))
-                        .where('Y', controller(blocks(definition.getBlock())))
+                        .where('G', blocks(GTBlocks.FIREBOX_STEEL.get()).or(air()))
+                        .where('L', blocks(GTBlocks.CASING_PRIMITIVE_BRICKS.get()).or(air()))
+                        .where(' ', any())
                         .build())
                 .model(createWorkableCasingMachineModel(
                         GTCEu.id("block/casings/solid/machine_primitive_bricks"),
@@ -252,19 +277,20 @@ public class WFMachines {
                     }
                     return pattern
                             .where('A', controller(blocks(definition.getBlock())))
-                            .where('B', blocks(matBlock(GTMaterials.Aluminium)))
-                            .where('C', blocks(matBlock(GTMaterials.Steel)))
-                            .where('D', blocks(matBlock(GTMaterials.Lead)))
-                            .where('E', frames(GTMaterials.Aluminium))
-                            .where('F', frames(WFMaterials.GalvanizedSteel))
-                            .where('G', blocks(Blocks.SMOOTH_STONE))
-                            .where('H', blocks(Blocks.COPPER_BLOCK))
-                            .where('J', states(WFBlocks.BOLTABLE_CASING.get().defaultBlockState()
-                                    .setValue(BoltableCasingBlock.BOLTED, true)))
+                            .where('B', blocks(GCYMBlocks.CASING_INDUSTRIAL_STEAM.get()))
+                            .where('C', frames(WFMaterials.GalvanizedSteel))
+                            .where('D', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()))
                             .where('K', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get())
-                                    .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMaxGlobalLimited(1)))
-                            .where('I', abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
-                                    .or(blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()).setMaxGlobalLimited(4)))
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
+                                            .setMaxGlobalLimited(2, 1))
+                                    .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMaxGlobalLimited(1, 1)))
+                            .where('E', blocks(GCYMBlocks.CASING_ATOMIC.get()))
+                            .where('F', blocks(GTBlocks.CASING_BRONZE_BRICKS.get()))
+                            .where('G', blocks(matBlock(WFMaterials.GalvanizedSteel)))
+                            .where('H', states(WFBlocks.BOLTABLE_CASING.get().defaultBlockState()
+                                    .setValue(BoltableCasingBlock.BOLTED, false)))
+                            .where('I', frames(GTMaterials.Aluminium))
+                            .where('J', blocks(matBlock(GTMaterials.Aluminium)))
                             .where(' ', any())
                             .build();
                 })

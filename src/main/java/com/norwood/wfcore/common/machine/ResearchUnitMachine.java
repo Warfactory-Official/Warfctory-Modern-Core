@@ -1,5 +1,6 @@
 package com.norwood.wfcore.common.machine;
 
+import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.IControllable;
 import com.gregtechceu.gtceu.api.capability.IEnergyContainer;
 import com.gregtechceu.gtceu.api.capability.IOpticalComputationProvider;
@@ -17,6 +18,7 @@ import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.machine.trait.NotifiableItemStackHandler;
 import com.gregtechceu.gtceu.api.misc.EnergyContainerList;
+import com.gregtechceu.gtceu.utils.GTUtil;
 
 import com.lowdragmc.lowdraglib.syncdata.IContentChangeAware;
 import com.lowdragmc.lowdraglib.syncdata.ITagSerializable;
@@ -121,6 +123,10 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     private TickableSubscription tickSub;
     private long tickCounter;
 
+    /** Lowest energy-hatch tier the research unit will run at; below this it forms but won't process. */
+    private static final int MIN_TIER = GTValues.LV;
+    private int voltageTier = -1;
+
     public ResearchUnitMachine(IMachineBlockEntity holder) {
         super(holder);
         this.libraryInv = new NotifiableItemStackHandler(this, 1, IO.IN).setFilter(ResearchDataItem::isDataItem);
@@ -155,6 +161,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
             }
         }
         this.energyContainer = new EnergyContainerList(energy);
+        this.voltageTier = GTUtil.getTierByVoltage(energyContainer.getInputVoltage());
         pushResearchSync();
         if (!isRemote()) {
             tickSub = subscribeServerTick(this::tickResearch);
@@ -165,6 +172,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     public void onStructureInvalid() {
         super.onStructureInvalid();
         this.energyContainer = new EnergyContainerList(new ArrayList<>());
+        this.voltageTier = -1;
         this.inputInventories.clear();
         this.computationProvider = null;
         this.jobs.clear();
@@ -246,6 +254,10 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         }
         // SLAVE units only lend parallel slots to an adjacent CONTROL; they never process themselves.
         if (slaveMode || !isWorkingEnabled || jobs.isEmpty()) {
+            return;
+        }
+        // Formed but under-powered: an energy hatch below LV won't drive the research logic.
+        if (voltageTier < MIN_TIER) {
             return;
         }
 
