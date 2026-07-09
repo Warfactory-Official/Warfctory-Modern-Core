@@ -29,6 +29,7 @@ public final class WFCoreConfig {
     private static final boolean DEFAULT_DEPOSIT_WORLDGEN_ENABLED = true;
     private static final boolean DEFAULT_DEPOSIT_SCATTER = true;
     private static final int DEFAULT_DEPOSIT_WORLDGEN_RARITY = 24;
+    private static final boolean DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED = false;
     private static final String DEFAULT_CONFIG = """
             # WFCore configuration
             # vehicles:
@@ -58,6 +59,9 @@ public final class WFCoreConfig {
                 # Ambient weighted scatter across the world. Turn off to rely only on KubeJS nodes/regions.
                 scatter: true
                 rarity: 24
+            # Dev tool: numpad-driven live editor for animated-machine model offsets (see IAnimatedMachine).
+            # Off by default so the numpad bindings and HUD stay inert for normal players.
+            modelTransformDebugEnabled: false
             """;
 
     private static volatile int energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
@@ -68,6 +72,7 @@ public final class WFCoreConfig {
     private static volatile boolean depositWorldgenEnabled = DEFAULT_DEPOSIT_WORLDGEN_ENABLED;
     private static volatile boolean depositScatter = DEFAULT_DEPOSIT_SCATTER;
     private static volatile int depositWorldgenRarity = DEFAULT_DEPOSIT_WORLDGEN_RARITY;
+    private static volatile boolean modelTransformDebugEnabled = DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED;
 
     private WFCoreConfig() {}
 
@@ -107,6 +112,11 @@ public final class WFCoreConfig {
         return depositWorldgenRarity;
     }
 
+    /** Dev tool gate: the numpad model-transform debugger (see IAnimatedMachine) only arms when this is true. */
+    public static boolean isModelTransformDebugEnabled() {
+        return modelTransformDebugEnabled;
+    }
+
     public static void load() {
         Path configDir = FMLPaths.CONFIGDIR.get();
         Path configFile = configDir.resolve(FILE_NAME);
@@ -125,6 +135,7 @@ public final class WFCoreConfig {
             energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
             refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
             clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
+            modelTransformDebugEnabled = DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED;
             SuperbOverrides.setOverrideDataMap(Map.of());
         }
     }
@@ -138,6 +149,7 @@ public final class WFCoreConfig {
             energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
             refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
             clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
+            modelTransformDebugEnabled = DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED;
             SuperbOverrides.setOverrideDataMap(Map.of());
             return;
         }
@@ -145,6 +157,8 @@ public final class WFCoreConfig {
         energyToFluidRatio = positiveInt(root.get("energyToFluidRatio"), DEFAULT_ENERGY_TO_FLUID_RATIO);
         refuelIntervalTicks = positiveInt(root.get("refuelIntervalTicks"), DEFAULT_REFUEL_INTERVAL_TICKS);
         clearStructureLoot = boolValue(root.get("clearStructureLoot"), DEFAULT_CLEAR_STRUCTURE_LOOT);
+        modelTransformDebugEnabled = boolValue(root.get("modelTransformDebugEnabled"),
+                DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED);
         parseDeposits(root.get("deposits"));
         SuperbOverrides.setOverrideDataMap(parseVehicleOverrides(root.get("vehicles")));
         WFCore.LOGGER.info("Loaded WFCore YAML config: {} vehicle overrides, energy ratio {}, refuel interval {} ticks",

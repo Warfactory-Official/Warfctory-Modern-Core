@@ -15,7 +15,6 @@ import com.gregtechceu.gtceu.api.pattern.FactoryBlockPattern;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.api.registry.registrate.MachineBuilder;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
-import com.gregtechceu.gtceu.common.data.GCYMBlocks;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.data.GTRecipeModifiers;
@@ -277,15 +276,15 @@ public class WFMachines {
                     }
                     return pattern
                             .where('A', controller(blocks(definition.getBlock())))
-                            .where('B', blocks(GCYMBlocks.CASING_INDUSTRIAL_STEAM.get()))
+                            .where('B', blocks(WFBlocks.CONCRETE_BASE.get()))
                             .where('C', frames(WFMaterials.GalvanizedSteel))
                             .where('D', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()))
                             .where('K', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get())
                                     .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
                                             .setMaxGlobalLimited(2, 1))
                                     .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMaxGlobalLimited(1, 1)))
-                            .where('E', blocks(GCYMBlocks.CASING_ATOMIC.get()))
-                            .where('F', blocks(GTBlocks.CASING_BRONZE_BRICKS.get()))
+                            .where('E', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get()))
+                            .where('F', blocks(WFBlocks.CONDENSED_CABLES.get()))
                             .where('G', blocks(matBlock(WFMaterials.GalvanizedSteel)))
                             .where('H', states(WFBlocks.BOLTABLE_CASING.get().defaultBlockState()
                                     .setValue(BoltableCasingBlock.BOLTED, false)))

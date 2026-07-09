@@ -35,6 +35,11 @@ public final class RenderMaskManager {
         return multiDisabled.containsKey(controllerPos);
     }
 
+    /** Controller positions of every currently formed, on-screen animated machine (render/main thread only). */
+    public static Set<BlockPos> getMaskedControllers() {
+        return multiDisabled.keySet();
+    }
+
     public static void addDisableModel(BlockPos controllerPos, Collection<BlockPos> poses) {
         if (poses == null || poses.isEmpty()) {
             return;

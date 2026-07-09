@@ -303,10 +303,10 @@ public class RadarMachine extends MultiblockControllerMachine
     @Override
     public Vec3 getModelTransform() {
         return switch (getFrontFacing()) {
-            case WEST -> new Vec3(-3, 10, 1);
-            case EAST -> new Vec3(4, 10, 0);
-            case NORTH -> new Vec3(0, 10, -3);
-            case SOUTH -> new Vec3(1, 10, 4);
+            case WEST -> new Vec3(-4.5, 10, 0.5);
+            case EAST -> new Vec3(5.5, 10, 0.5);
+            case NORTH -> new Vec3(0.5, 10, -4.5);
+            case SOUTH -> new Vec3(0.5, 10, 5.5);
             default -> Vec3.ZERO;
         };
     }

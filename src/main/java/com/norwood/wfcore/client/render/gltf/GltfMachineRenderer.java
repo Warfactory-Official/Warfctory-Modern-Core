@@ -19,6 +19,7 @@ import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.norwood.wfcore.WFCore;
+import com.norwood.wfcore.client.debug.ModelTransformDebug;
 import com.norwood.wfcore.client.render.mask.RenderMaskManager;
 import com.norwood.wfcore.mixin.LightTextureAccessor;
 import org.joml.Matrix3f;
@@ -86,7 +87,7 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         }
 
         poseStack.pushPose();
-        var transform = animated.getModelTransform();
+        var transform = ModelTransformDebug.resolve(animated, machine.getFrontFacing());
         poseStack.translate(transform.x, transform.y, transform.z);
         applyOrientation(poseStack, machine);
 
