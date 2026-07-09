@@ -191,8 +191,8 @@ public class WFBlocks {
 
     /** A solid fortification block with its own hardness and blast resistance (see {@code strength(F, F)}). */
     private static BlockEntry<Block> createArmorBlock(String name, Block base, SoundType sound, float hardness,
-                                                       float resistance, ResourceLocation texture,
-                                                       TagKey<Block> tool) {
+                                                      float resistance, ResourceLocation texture,
+                                                      TagKey<Block> tool) {
         return WF_MACHINES.block(name, Block::new)
                 .initialProperties(() -> base)
                 .properties(p -> p.strength(hardness, resistance).sound(sound)
