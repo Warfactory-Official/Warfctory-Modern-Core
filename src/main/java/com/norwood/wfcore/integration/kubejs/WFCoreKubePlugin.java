@@ -15,6 +15,7 @@ public class WFCoreKubePlugin extends KubeJSPlugin {
             event.add("WFLoot", new WFLootBindings());
             event.add("WFEnchant", new WFEnchantBindings());
             event.add("WFDeposits", new WFDepositBindings());
+            event.add("WFBlocks", new WFBlockBindings());
         }
     }
 }

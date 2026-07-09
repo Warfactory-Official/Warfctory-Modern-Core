@@ -1,7 +1,12 @@
 {
   "values": [
     "wfcore:aluminium_sheet_casing",
+    "wfcore:galvanized_steel_casing",
+    "wfcore:condensed_cables",
+    "wfcore:concrete_base",
     "wfcore:drill_head",
+    "wfcore:hardened_steel",
+    "wfcore:tungsten_plating",
     "wfcore:boltable_casing"
   ]
 }

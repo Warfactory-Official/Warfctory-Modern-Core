@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "mixins.wfcore.refmap.json",
   "mixins": [
+    "BlockBehaviourAccessor",
     "SuperbWarfareInvMixin",
     "VehicleEntitySetEnergyInvoker",
     "DataAccessHatchResearchShareMixin",

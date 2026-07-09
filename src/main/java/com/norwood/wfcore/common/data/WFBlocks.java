@@ -7,6 +7,7 @@ import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -36,6 +37,9 @@ public class WFBlocks {
 
     public static BlockEntry<Block> ALUMINIUM_SHEET_CASING;
     public static BlockEntry<BoltableCasingBlock> BOLTABLE_CASING;
+    public static BlockEntry<Block> GALVANIZED_STEEL_CASING;
+    public static BlockEntry<Block> CONDENSED_CABLES;
+    public static BlockEntry<Block> CONCRETE_BASE;
     public static BlockEntry<Block> DRILL_HEAD;
     public static BlockEntry<DepositBlock> DEPOSIT;
     public static BlockEntityEntry<DepositBlockEntity> DEPOSIT_BE;
@@ -47,9 +51,27 @@ public class WFBlocks {
     public static final BlockEntry<ACPipeBlock>[] AC_PIPES = new BlockEntry[ACPipeType.VALUES.length];
     public static BlockEntityEntry<ACPipeBlockEntity> AC_PIPE_BE;
 
+    // Fortification blocks. Hardness is mining difficulty; resistance is blast toughness (see WFBlockResistances
+    // for balance notes: values are calibrated against superb-warfare's grenade/RPG/mortar/missile arsenal so
+    // that reinforced concrete and up survive an infantry-portable explosive in a single block, while sandbags,
+    // HESCO and ballistic glass are soft cover rather than proof armor).
+    public static BlockEntry<Block> SANDBAGS;
+    public static BlockEntry<Block> HESCO_BASTION;
+    public static BlockEntry<Block> BALLISTIC_GLASS;
+    public static BlockEntry<Block> STANDARD_CONCRETE;
+    public static BlockEntry<Block> REINFORCED_CONCRETE;
+    public static BlockEntry<Block> HARDENED_STEEL;
+    public static BlockEntry<Block> TUNGSTEN_PLATING;
+
     public static void init() {
         ALUMINIUM_SHEET_CASING = createCasingBlock("aluminium_sheet_casing",
                 WFCore.id("block/casings/aluminium_sheet_casing"));
+        GALVANIZED_STEEL_CASING = createCasingBlock("galvanized_steel_casing",
+                WFCore.id("block/casings/galvanized_steel_casing"));
+        CONDENSED_CABLES = createCasingBlock("condensed_cables",
+                WFCore.id("block/casings/condensed_cables"));
+        CONCRETE_BASE = createCasingBlock("concrete_base",
+                WFCore.id("block/casings/concrete_base"));
 
         // Drill head: the 'F' of the drilling-rig structure. Placeholder steel-casing art for now.
         DRILL_HEAD = createCasingBlock("drill_head",
@@ -109,6 +131,26 @@ public class WFBlocks {
                 .validBlocks(AC_PIPES)
                 .register();
 
+        SANDBAGS = createArmorBlock("sandbags", Blocks.SAND, SoundType.SAND, 0.5F, 9.0F,
+                ResourceLocation.fromNamespaceAndPath("minecraft", "block/sand"), BlockTags.MINEABLE_WITH_SHOVEL);
+        HESCO_BASTION = createArmorBlock("hesco_bastion", Blocks.GRAVEL, SoundType.GRAVEL, 1.0F, 17.0F,
+                ResourceLocation.fromNamespaceAndPath("minecraft", "block/gravel"), BlockTags.MINEABLE_WITH_SHOVEL);
+        BALLISTIC_GLASS = createArmorBlock("ballistic_glass", Blocks.GLASS, SoundType.GLASS, 3.0F, 7.0F,
+                ResourceLocation.fromNamespaceAndPath("minecraft", "block/glass"), BlockTags.MINEABLE_WITH_PICKAXE);
+        STANDARD_CONCRETE = createArmorBlock("standard_concrete", Blocks.LIGHT_GRAY_CONCRETE, SoundType.STONE, 2.0F,
+                22.0F, ResourceLocation.fromNamespaceAndPath("minecraft", "block/light_gray_concrete"),
+                BlockTags.MINEABLE_WITH_PICKAXE);
+        REINFORCED_CONCRETE = createArmorBlock("reinforced_concrete", Blocks.POLISHED_DEEPSLATE, SoundType.DEEPSLATE,
+                6.0F, 46.0F, ResourceLocation.fromNamespaceAndPath("minecraft", "block/polished_deepslate"),
+                BlockTags.MINEABLE_WITH_PICKAXE);
+        // Placeholder art reusing GTCEu's steel/tungstensteel casing textures until this mod has its own.
+        HARDENED_STEEL = createArmorBlock("hardened_steel", Blocks.IRON_BLOCK, SoundType.METAL, 10.0F, 75.0F,
+                GTCEu.id("block/casings/solid/machine_casing_solid_steel"),
+                CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WRENCH);
+        TUNGSTEN_PLATING = createArmorBlock("tungsten_plating", Blocks.IRON_BLOCK, SoundType.METAL, 20.0F, 130.0F,
+                GTCEu.id("block/casings/solid/machine_casing_robust_tungstensteel"),
+                CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WRENCH);
+
         BOLTABLE_CASING = WF_MACHINES
                 .block("boltable_casing", BoltableCasingBlock::new)
                 .initialProperties(() -> Blocks.IRON_BLOCK)
@@ -143,6 +185,22 @@ public class WFBlocks {
                 .item(ACPipeBlockItem::new)
                 .model(NonNullBiConsumer.noop())
                 .color(() -> ACPipeBlockItem::tintColor)
+                .build()
+                .register();
+    }
+
+    /** A solid fortification block with its own hardness and blast resistance (see {@code strength(F, F)}). */
+    private static BlockEntry<Block> createArmorBlock(String name, Block base, SoundType sound, float hardness,
+                                                       float resistance, ResourceLocation texture,
+                                                       TagKey<Block> tool) {
+        return WF_MACHINES.block(name, Block::new)
+                .initialProperties(() -> base)
+                .properties(p -> p.strength(hardness, resistance).sound(sound)
+                        .isValidSpawn((state, level, pos, ent) -> false))
+                .addLayer(() -> RenderType::solid)
+                .exBlockstate(GTModels.cubeAllModel(texture))
+                .tag(tool)
+                .item(BlockItem::new)
                 .build()
                 .register();
     }

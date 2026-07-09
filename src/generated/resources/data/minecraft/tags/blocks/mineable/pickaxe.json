@@ -1,6 +1,9 @@
 {
   "values": [
     "wfcore:mining_charge",
-    "wfcore:deep_mining_charge"
+    "wfcore:deep_mining_charge",
+    "wfcore:ballistic_glass",
+    "wfcore:standard_concrete",
+    "wfcore:reinforced_concrete"
   ]
 }

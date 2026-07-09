@@ -17,6 +17,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegisterEvent;
@@ -42,6 +43,7 @@ public class WFCore {
 
         modEventBus.addListener(this::onRegister);
         modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener(this::loadComplete);
         modEventBus.addListener(com.norwood.wfcore.common.capability.WFCapabilities::register);
 
         modEventBus.addListener(this::addMaterialRegistries);
@@ -63,6 +65,7 @@ public class WFCore {
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.radar.RadarRegistryHandler());
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.radar.Retrofitter.INSTANCE);
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.compute.WFComputeTooltips());
+        MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.block.WFBlockResistanceTooltip());
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.loot.WFLootEvents());
 
         WF_MACHINES.registerRegistrate();
@@ -90,6 +93,7 @@ public class WFCore {
         event.enqueueWork(() -> {
             WFCoreConfig.load();
             com.norwood.wfcore.common.deposit.WFDeposits.registerDefaults();
+            com.norwood.wfcore.common.block.WFBlockResistances.registerDefaults();
             com.norwood.wfcore.radar.RadarConfig.load();
             com.norwood.wfcore.common.fluid.CoolantRegistry.register();
             com.norwood.wfcore.common.compute.CPURegistry.register();
@@ -103,6 +107,11 @@ public class WFCore {
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");
             LOGGER.info("Look, I found a {}!", Items.DIAMOND);
         });
+    }
+
+    /** Runs after every mod's blocks are registered and startup scripts (KubeJS included) have executed. */
+    private void loadComplete(final FMLLoadCompleteEvent event) {
+        event.enqueueWork(com.norwood.wfcore.common.block.WFBlockResistances::apply);
     }
 
     /**
