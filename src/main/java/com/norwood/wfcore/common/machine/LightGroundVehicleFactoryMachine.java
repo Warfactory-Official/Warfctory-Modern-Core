@@ -3,9 +3,12 @@ package com.norwood.wfcore.common.machine;
 import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 
+import com.lowdragmc.lowdraglib.syncdata.annotation.DescSynced;
+import com.lowdragmc.lowdraglib.syncdata.annotation.Persisted;
 import com.lowdragmc.lowdraglib.syncdata.field.ManagedFieldHolder;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -32,6 +35,17 @@ public class LightGroundVehicleFactoryMachine extends AbstractVehicleFactoryMach
             LightGroundVehicleFactoryMachine.class,
             AbstractVehicleFactoryMachine.MANAGED_FIELD_HOLDER);
 
+    private static final long NO_POS = Long.MIN_VALUE;
+
+     // Min/max corners of the concrete bed,
+    @Persisted
+    @DescSynced
+    private long bedMinKey = NO_POS;
+
+    @Persisted
+    @DescSynced
+    private long bedMaxKey = NO_POS;
+
     public LightGroundVehicleFactoryMachine(IMachineBlockEntity holder, Object... args) {
         super(holder, args);
     }
@@ -39,6 +53,45 @@ public class LightGroundVehicleFactoryMachine extends AbstractVehicleFactoryMach
     @Override
     public ManagedFieldHolder getFieldHolder() {
         return MANAGED_FIELD_HOLDER;
+    }
+
+    @Override
+    public float getSpawnYaw() {
+        return getFrontFacing().getClockWise().toYRot();
+    }
+
+
+    @Override
+    public void onStructureFormed() {
+        super.onStructureFormed(); // resolves spawnPosKey
+        Level level = getLevel();
+        if (level == null) {
+            return;
+        }
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+        for (BlockPos pos : getMultiblockState().getCache()) {
+            if (level.getBlockState(pos).is(GTBlocks.LIGHT_CONCRETE.get())) {
+                if (pos.getX() < minX) minX = pos.getX();
+                if (pos.getY() < minY) minY = pos.getY();
+                if (pos.getZ() < minZ) minZ = pos.getZ();
+                if (pos.getX() > maxX) maxX = pos.getX();
+                if (pos.getY() > maxY) maxY = pos.getY();
+                if (pos.getZ() > maxZ) maxZ = pos.getZ();
+            }
+        }
+        if (maxX >= minX) {
+            // Bed is a single Y layer, so minY == maxY here.
+            this.bedMinKey = new BlockPos(minX, minY, minZ).asLong();
+            this.bedMaxKey = new BlockPos(maxX, maxY, maxZ).asLong();
+        }
+    }
+
+    @Override
+    public void onStructureInvalid() {
+        super.onStructureInvalid();
+        this.bedMinKey = NO_POS;
+        this.bedMaxKey = NO_POS;
     }
 
     @Override
@@ -66,9 +119,29 @@ public class LightGroundVehicleFactoryMachine extends AbstractVehicleFactoryMach
         return new BlockPos((int) (sx / n), (int) (sy / n) + 1, (int) (sz / n));
     }
 
+    /**
+     * Full concrete-bed footprint extruded 4 blocks upward — the "keep-clear" overlay shown to
+     * players. The corners are read from the {@code @DescSynced} fields resolved on the server and
+     * synced to the client, so this works on both sides without touching the structure cache.
+     *
+     * <p>
+     * Note: the hard deploy obstruction check ({@link #isSpawnClear} / {@link #isDeployBlocked})
+     * is intentionally left unchanged — it still tests only the vehicle's entity footprint around the
+     * spawn point, not the full bed.
+     */
     @Override
     public AABB getClearanceBox() {
-        return new AABB(getSpawnPos()).inflate(1.0, 0.0, 1.0).expandTowards(0.0, 1.0, 0.0);
+        if (bedMinKey == NO_POS || bedMaxKey == NO_POS) {
+            // Not yet synced (structure just forming or not formed); fall back to the single-block default.
+            return super.getClearanceBox();
+        }
+        BlockPos min = BlockPos.of(bedMinKey);
+        BlockPos max = BlockPos.of(bedMaxKey);
+        // bedY == min.getY() == max.getY() (single Y layer).
+        int bedY = min.getY();
+        // Footprint: full bed x/z extent; vertical: from one above the bed surface up 4 blocks.
+        return new AABB(min.getX(), bedY + 1, min.getZ(),
+                max.getX() + 1, bedY + 1 + 4, max.getZ() + 1);
     }
 
     @Override
