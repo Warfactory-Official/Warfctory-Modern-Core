@@ -49,9 +49,11 @@ public final class WFComputeTooltips {
             var cover = WFItems.COOLING_FAN_COVERS[tier];
             if (cover != null && stack.is(cover.get())) {
                 var tooltip = event.getToolTip();
-                tooltip.add(Component.translatable("wfcore.tooltip.cooling_fan_cover.line1").withStyle(ChatFormatting.AQUA));
-                tooltip.add(Component.translatable("wfcore.tooltip.cooling_fan_cover.line2", tier + 1, GTValues.VN[tier])
-                        .withStyle(ChatFormatting.GRAY));
+                tooltip.add(Component.translatable("wfcore.tooltip.cooling_fan_cover.line1")
+                        .withStyle(ChatFormatting.AQUA));
+                tooltip.add(
+                        Component.translatable("wfcore.tooltip.cooling_fan_cover.line2", tier + 1, GTValues.VN[tier])
+                                .withStyle(ChatFormatting.GRAY));
                 break;
             }
         }
