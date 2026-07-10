@@ -18,43 +18,43 @@ public final class WFCoreConfig {
     // Default constants (kept so callers that reference DEFAULT_* still compile,
     // and so the volatile fields have sane pre-load values).
     // -------------------------------------------------------------------------
-    private static final int     DEFAULT_ENERGY_TO_FLUID_RATIO      = 10;
-    private static final int     DEFAULT_REFUEL_INTERVAL_TICKS       = 20;
-    private static final boolean DEFAULT_CLEAR_STRUCTURE_LOOT        = true;
-    private static final int     DEFAULT_DEPOSIT_YIELD_MIN           = 2000;
-    private static final int     DEFAULT_DEPOSIT_YIELD_MAX           = 8000;
-    private static final boolean DEFAULT_DEPOSIT_WORLDGEN_ENABLED    = true;
-    private static final boolean DEFAULT_DEPOSIT_SCATTER             = true;
-    private static final int     DEFAULT_DEPOSIT_WORLDGEN_RARITY     = 24;
+    private static final int DEFAULT_ENERGY_TO_FLUID_RATIO = 10;
+    private static final int DEFAULT_REFUEL_INTERVAL_TICKS = 20;
+    private static final boolean DEFAULT_CLEAR_STRUCTURE_LOOT = true;
+    private static final int DEFAULT_DEPOSIT_YIELD_MIN = 2000;
+    private static final int DEFAULT_DEPOSIT_YIELD_MAX = 8000;
+    private static final boolean DEFAULT_DEPOSIT_WORLDGEN_ENABLED = true;
+    private static final boolean DEFAULT_DEPOSIT_SCATTER = true;
+    private static final int DEFAULT_DEPOSIT_WORLDGEN_RARITY = 24;
     private static final boolean DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED = false;
 
     // -------------------------------------------------------------------------
     // Volatile cache fields — pre-initialised to defaults so getters are safe
     // even before the config file is loaded.
     // -------------------------------------------------------------------------
-    private static volatile int     energyToFluidRatio      = DEFAULT_ENERGY_TO_FLUID_RATIO;
-    private static volatile int     refuelIntervalTicks      = DEFAULT_REFUEL_INTERVAL_TICKS;
-    private static volatile boolean clearStructureLoot       = DEFAULT_CLEAR_STRUCTURE_LOOT;
-    private static volatile int     depositYieldMin          = DEFAULT_DEPOSIT_YIELD_MIN;
-    private static volatile int     depositYieldMax          = DEFAULT_DEPOSIT_YIELD_MAX;
-    private static volatile boolean depositWorldgenEnabled   = DEFAULT_DEPOSIT_WORLDGEN_ENABLED;
-    private static volatile boolean depositScatter           = DEFAULT_DEPOSIT_SCATTER;
-    private static volatile int     depositWorldgenRarity    = DEFAULT_DEPOSIT_WORLDGEN_RARITY;
+    private static volatile int energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
+    private static volatile int refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
+    private static volatile boolean clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
+    private static volatile int depositYieldMin = DEFAULT_DEPOSIT_YIELD_MIN;
+    private static volatile int depositYieldMax = DEFAULT_DEPOSIT_YIELD_MAX;
+    private static volatile boolean depositWorldgenEnabled = DEFAULT_DEPOSIT_WORLDGEN_ENABLED;
+    private static volatile boolean depositScatter = DEFAULT_DEPOSIT_SCATTER;
+    private static volatile int depositWorldgenRarity = DEFAULT_DEPOSIT_WORLDGEN_RARITY;
     private static volatile boolean modelTransformDebugEnabled = DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED;
 
     // -------------------------------------------------------------------------
     // ForgeConfigSpec handles
     // -------------------------------------------------------------------------
-    private static final ForgeConfigSpec.IntValue                       ENERGY_TO_FLUID_RATIO;
-    private static final ForgeConfigSpec.IntValue                       REFUEL_INTERVAL_TICKS;
-    private static final ForgeConfigSpec.BooleanValue                   CLEAR_STRUCTURE_LOOT;
-    private static final ForgeConfigSpec.BooleanValue                   MODEL_TRANSFORM_DEBUG_ENABLED;
+    private static final ForgeConfigSpec.IntValue ENERGY_TO_FLUID_RATIO;
+    private static final ForgeConfigSpec.IntValue REFUEL_INTERVAL_TICKS;
+    private static final ForgeConfigSpec.BooleanValue CLEAR_STRUCTURE_LOOT;
+    private static final ForgeConfigSpec.BooleanValue MODEL_TRANSFORM_DEBUG_ENABLED;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> VEHICLES;
-    private static final ForgeConfigSpec.IntValue                       DEPOSIT_YIELD_MIN;
-    private static final ForgeConfigSpec.IntValue                       DEPOSIT_YIELD_MAX;
-    private static final ForgeConfigSpec.BooleanValue                   DEPOSIT_WORLDGEN_ENABLED;
-    private static final ForgeConfigSpec.BooleanValue                   DEPOSIT_SCATTER;
-    private static final ForgeConfigSpec.IntValue                       DEPOSIT_WORLDGEN_RARITY;
+    private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MIN;
+    private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MAX;
+    private static final ForgeConfigSpec.BooleanValue DEPOSIT_WORLDGEN_ENABLED;
+    private static final ForgeConfigSpec.BooleanValue DEPOSIT_SCATTER;
+    private static final ForgeConfigSpec.IntValue DEPOSIT_WORLDGEN_RARITY;
 
     public static final ForgeConfigSpec SPEC;
 
@@ -70,11 +70,13 @@ public final class WFCoreConfig {
                 .defineInRange("refuelIntervalTicks", DEFAULT_REFUEL_INTERVAL_TICKS, 1, Integer.MAX_VALUE);
 
         CLEAR_STRUCTURE_LOOT = builder
-                .comment("Empty every chest and fishing loot table by default; repopulate or whitelist via KubeJS (WFLoot).")
+                .comment(
+                        "Empty every chest and fishing loot table by default; repopulate or whitelist via KubeJS (WFLoot).")
                 .define("clearStructureLoot", DEFAULT_CLEAR_STRUCTURE_LOOT);
 
         MODEL_TRANSFORM_DEBUG_ENABLED = builder
-                .comment("Dev tool: numpad-driven live editor for animated-machine model offsets (see IAnimatedMachine). Off by default so the numpad bindings and HUD stay inert for normal players.")
+                .comment(
+                        "Dev tool: numpad-driven live editor for animated-machine model offsets (see IAnimatedMachine). Off by default so the numpad bindings and HUD stay inert for normal players.")
                 .define("modelTransformDebugEnabled", DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED);
 
         VEHICLES = builder
@@ -83,12 +85,12 @@ public final class WFCoreConfig {
                         "  \"vehicleId; maxFuel=4000; fluids=fluidId=ratio,fluidId=ratio; storageSize=40; storageColumns=10\"",
                         "Every field after the id is optional. An entry only takes effect if it sets fluids or storageSize.",
                         "storageSize switches the vehicle to WFCore's resizable ModularUI storage; storageColumns is the grid width (default 9).",
-                        "Example: \"superbwarfare:example_vehicle; maxFuel=4000; fluids=minecraft:lava=1.0,minecraft:water=0.5; storageSize=40; storageColumns=10\""
-                )
+                        "Example: \"superbwarfare:example_vehicle; maxFuel=4000; fluids=minecraft:lava=1.0,minecraft:water=0.5; storageSize=40; storageColumns=10\"")
                 .defineList("vehicles", List.of(), o -> o instanceof String);
 
-        builder.comment("Drillable bedrock deposits. defaultYield is the per-block yield range used when a deposit type (built-in or KubeJS) does not specify its own.")
-               .push("deposits");
+        builder.comment(
+                "Drillable bedrock deposits. defaultYield is the per-block yield range used when a deposit type (built-in or KubeJS) does not specify its own.")
+                .push("deposits");
 
         DEPOSIT_YIELD_MIN = builder
                 .defineInRange("defaultYieldMin", DEFAULT_DEPOSIT_YIELD_MIN, 1, Integer.MAX_VALUE);
@@ -96,8 +98,9 @@ public final class WFCoreConfig {
         DEPOSIT_YIELD_MAX = builder
                 .defineInRange("defaultYieldMax", DEFAULT_DEPOSIT_YIELD_MAX, 1, Integer.MAX_VALUE);
 
-        builder.comment("Ambient weighted scatter across the world. Turn scatter off to rely only on KubeJS nodes/regions. rarity is \"1 in N chunks\".")
-               .push("worldgen");
+        builder.comment(
+                "Ambient weighted scatter across the world. Turn scatter off to rely only on KubeJS nodes/regions. rarity is \"1 in N chunks\".")
+                .push("worldgen");
 
         DEPOSIT_WORLDGEN_ENABLED = builder
                 .define("enabled", DEFAULT_DEPOSIT_WORLDGEN_ENABLED);
@@ -165,15 +168,15 @@ public final class WFCoreConfig {
     // -------------------------------------------------------------------------
 
     public static void bake() {
-        energyToFluidRatio      = ENERGY_TO_FLUID_RATIO.get();
-        refuelIntervalTicks     = REFUEL_INTERVAL_TICKS.get();
-        clearStructureLoot      = CLEAR_STRUCTURE_LOOT.get();
+        energyToFluidRatio = ENERGY_TO_FLUID_RATIO.get();
+        refuelIntervalTicks = REFUEL_INTERVAL_TICKS.get();
+        clearStructureLoot = CLEAR_STRUCTURE_LOOT.get();
         modelTransformDebugEnabled = MODEL_TRANSFORM_DEBUG_ENABLED.get();
-        depositYieldMin         = DEPOSIT_YIELD_MIN.get();
-        depositYieldMax         = Math.max(DEPOSIT_YIELD_MAX.get(), depositYieldMin);
-        depositWorldgenEnabled  = DEPOSIT_WORLDGEN_ENABLED.get();
-        depositScatter          = DEPOSIT_SCATTER.get();
-        depositWorldgenRarity   = DEPOSIT_WORLDGEN_RARITY.get();
+        depositYieldMin = DEPOSIT_YIELD_MIN.get();
+        depositYieldMax = Math.max(DEPOSIT_YIELD_MAX.get(), depositYieldMin);
+        depositWorldgenEnabled = DEPOSIT_WORLDGEN_ENABLED.get();
+        depositScatter = DEPOSIT_SCATTER.get();
+        depositWorldgenRarity = DEPOSIT_WORLDGEN_RARITY.get();
         SuperbOverrides.setOverrideDataMap(parseVehicleOverrides(VEHICLES.get()));
         WFCore.LOGGER.info(
                 "Loaded WFCore TOML config: {} vehicle overrides, energy ratio {}, refuel interval {} ticks",
@@ -212,7 +215,7 @@ public final class WFCoreConfig {
                     continue;
                 }
 
-                String key   = t.substring(0, eqIdx).trim();
+                String key = t.substring(0, eqIdx).trim();
                 String value = t.substring(eqIdx + 1).trim();
 
                 switch (key) {
@@ -265,7 +268,7 @@ public final class WFCoreConfig {
             int eqIdx = e.indexOf('=');
             if (eqIdx < 0) continue;
 
-            String fluidId   = e.substring(0, eqIdx).trim();
+            String fluidId = e.substring(0, eqIdx).trim();
             String ratioText = e.substring(eqIdx + 1).trim();
 
             if (fluidId.isBlank()) continue;
