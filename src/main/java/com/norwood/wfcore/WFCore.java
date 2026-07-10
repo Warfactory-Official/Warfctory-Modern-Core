@@ -15,7 +15,10 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -24,6 +27,7 @@ import net.minecraftforge.registries.RegisterEvent;
 
 import com.norwood.wfcore.config.WFCoreConfig;
 import com.norwood.wfcore.gui.VehicleUIFactory;
+import com.norwood.wfcore.radar.RadarConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -40,6 +44,11 @@ public class WFCore {
 
     public WFCore() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+
+        // Forge-native TOML config. Registration + baking replace the old snakeyaml wfcore.yaml/radar.yaml.
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, WFCoreConfig.SPEC, "wfcore.toml");
+        ModLoadingContext.get().registerConfig(ModConfig.Type.COMMON, RadarConfig.SPEC, "wfcore-radar.toml");
+        modEventBus.addListener(this::onModConfig);
 
         modEventBus.addListener(this::onRegister);
         modEventBus.addListener(this::commonSetup);
@@ -83,6 +92,16 @@ public class WFCore {
         return new ResourceLocation(MOD_ID, path);
     }
 
+    /** Re-bakes cached config values whenever Forge loads or reloads one of our TOML files. */
+    private void onModConfig(final ModConfigEvent event) {
+        ModConfig config = event.getConfig();
+        if (config.getSpec() == WFCoreConfig.SPEC) {
+            WFCoreConfig.bake();
+        } else if (config.getSpec() == RadarConfig.SPEC) {
+            RadarConfig.bake();
+        }
+    }
+
     private void onRegister(RegisterEvent event) {
         event.register(ForgeRegistries.Keys.ENTITY_DATA_SERIALIZERS, x -> {
             x.register(new ResourceLocation(MOD_ID, "superb_fluid_stack"), FLUID_STACK_ENTITY_DATA_SERIALIZER);
@@ -91,10 +110,8 @@ public class WFCore {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
-            WFCoreConfig.load();
             com.norwood.wfcore.common.deposit.WFDeposits.registerDefaults();
             com.norwood.wfcore.common.block.WFBlockResistances.registerDefaults();
-            com.norwood.wfcore.radar.RadarConfig.load();
             com.norwood.wfcore.common.fluid.CoolantRegistry.register();
             com.norwood.wfcore.common.compute.CPURegistry.register();
             com.norwood.wfcore.common.compute.RAMRegistry.register();

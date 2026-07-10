@@ -18,7 +18,7 @@ import com.norwood.wfcore.WFCore;
  *
  * <p>
  * The holder sync data carries the entity id <em>and</em> the server-authoritative slot/column counts, so the client
- * rebuilds an identically-sized grid regardless of its local {@code wfcore.yaml}. Register {@link #INSTANCE} on both
+ * rebuilds an identically-sized grid regardless of its local {@code wfcore.toml}. Register {@link #INSTANCE} on both
  * sides ({@code WFCore} common setup) so the client can resolve the open packet.
  */
 public class VehicleUIFactory extends UIFactory<VehicleEntity> {

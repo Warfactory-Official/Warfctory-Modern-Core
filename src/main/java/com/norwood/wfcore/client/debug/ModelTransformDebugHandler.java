@@ -44,7 +44,7 @@ public class ModelTransformDebugHandler {
                 Minecraft mc = Minecraft.getInstance();
                 if (mc.player != null) {
                     mc.player.displayClientMessage(Component.literal(
-                            "§c[WFCore] Model transform debug is disabled - set modelTransformDebugEnabled: true in wfcore.yaml"),
+                            "§c[WFCore] Model transform debug is disabled - set modelTransformDebugEnabled = true in wfcore.toml"),
                             true);
                 }
             }

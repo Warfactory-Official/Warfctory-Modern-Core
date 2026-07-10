@@ -52,7 +52,7 @@ public final class ModelTransformDebug {
 
     /**
      * Arms/disarms the debugger. Enabling is refused (a no-op) unless {@code modelTransformDebugEnabled}
-     * is set in {@code wfcore.yaml}, so the numpad bindings and HUD stay inert for normal players even
+     * is set in {@code wfcore.toml}, so the numpad bindings and HUD stay inert for normal players even
      * though the keybinds are always registered.
      *
      * @return the resulting enabled state, so callers can tell a config-gated refusal from a real toggle

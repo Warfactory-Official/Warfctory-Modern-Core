@@ -2,79 +2,122 @@ package com.norwood.wfcore.config;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraftforge.fml.loading.FMLPaths;
+import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import com.norwood.wfcore.SuperbOverrides;
 import com.norwood.wfcore.WFCore;
-import org.yaml.snakeyaml.Yaml;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
 public final class WFCoreConfig {
 
-    private static final String FILE_NAME = "wfcore.yaml";
-    private static final int DEFAULT_ENERGY_TO_FLUID_RATIO = 10;
-    private static final int DEFAULT_REFUEL_INTERVAL_TICKS = 20;
-    private static final boolean DEFAULT_CLEAR_STRUCTURE_LOOT = true;
-    private static final int DEFAULT_DEPOSIT_YIELD_MIN = 2000;
-    private static final int DEFAULT_DEPOSIT_YIELD_MAX = 8000;
-    private static final boolean DEFAULT_DEPOSIT_WORLDGEN_ENABLED = true;
-    private static final boolean DEFAULT_DEPOSIT_SCATTER = true;
-    private static final int DEFAULT_DEPOSIT_WORLDGEN_RARITY = 24;
+    // -------------------------------------------------------------------------
+    // Default constants (kept so callers that reference DEFAULT_* still compile,
+    // and so the volatile fields have sane pre-load values).
+    // -------------------------------------------------------------------------
+    private static final int     DEFAULT_ENERGY_TO_FLUID_RATIO      = 10;
+    private static final int     DEFAULT_REFUEL_INTERVAL_TICKS       = 20;
+    private static final boolean DEFAULT_CLEAR_STRUCTURE_LOOT        = true;
+    private static final int     DEFAULT_DEPOSIT_YIELD_MIN           = 2000;
+    private static final int     DEFAULT_DEPOSIT_YIELD_MAX           = 8000;
+    private static final boolean DEFAULT_DEPOSIT_WORLDGEN_ENABLED    = true;
+    private static final boolean DEFAULT_DEPOSIT_SCATTER             = true;
+    private static final int     DEFAULT_DEPOSIT_WORLDGEN_RARITY     = 24;
     private static final boolean DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED = false;
-    private static final String DEFAULT_CONFIG = """
-            # WFCore configuration
-            # vehicles:
-            #   - id: "superbwarfare:example_vehicle"
-            #     # --- fluid fuel (optional) ---
-            #     maxFuel: 4000
-            #     fluids:
-            #       minecraft:lava: 1.0
-            #       minecraft:water: 0.5
-            #     # --- storage (optional) ---
-            #     # storageSize switches this vehicle to WFCore's resizable ModularUI storage.
-            #     # storageColumns is the grid width (defaults to 9); rows wrap and scroll past 6 rows.
-            #     storageSize: 40
-            #     storageColumns: 10
-            energyToFluidRatio: 10
-            refuelIntervalTicks: 20
-            # Empty every chest and fishing loot table by default; repopulate or whitelist via KubeJS (WFLoot).
-            clearStructureLoot: true
-            vehicles: []
-            # Drillable bedrock deposits. defaultYield is the per-block yield range used when a deposit type
-            # (built-in or KubeJS) does not specify its own. worldgen.rarity is "1 in N chunks".
-            deposits:
-              defaultYieldMin: 2000
-              defaultYieldMax: 8000
-              worldgen:
-                enabled: true
-                # Ambient weighted scatter across the world. Turn off to rely only on KubeJS nodes/regions.
-                scatter: true
-                rarity: 24
-            # Dev tool: numpad-driven live editor for animated-machine model offsets (see IAnimatedMachine).
-            # Off by default so the numpad bindings and HUD stay inert for normal players.
-            modelTransformDebugEnabled: false
-            """;
 
-    private static volatile int energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
-    private static volatile int refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
-    private static volatile boolean clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
-    private static volatile int depositYieldMin = DEFAULT_DEPOSIT_YIELD_MIN;
-    private static volatile int depositYieldMax = DEFAULT_DEPOSIT_YIELD_MAX;
-    private static volatile boolean depositWorldgenEnabled = DEFAULT_DEPOSIT_WORLDGEN_ENABLED;
-    private static volatile boolean depositScatter = DEFAULT_DEPOSIT_SCATTER;
-    private static volatile int depositWorldgenRarity = DEFAULT_DEPOSIT_WORLDGEN_RARITY;
+    // -------------------------------------------------------------------------
+    // Volatile cache fields — pre-initialised to defaults so getters are safe
+    // even before the config file is loaded.
+    // -------------------------------------------------------------------------
+    private static volatile int     energyToFluidRatio      = DEFAULT_ENERGY_TO_FLUID_RATIO;
+    private static volatile int     refuelIntervalTicks      = DEFAULT_REFUEL_INTERVAL_TICKS;
+    private static volatile boolean clearStructureLoot       = DEFAULT_CLEAR_STRUCTURE_LOOT;
+    private static volatile int     depositYieldMin          = DEFAULT_DEPOSIT_YIELD_MIN;
+    private static volatile int     depositYieldMax          = DEFAULT_DEPOSIT_YIELD_MAX;
+    private static volatile boolean depositWorldgenEnabled   = DEFAULT_DEPOSIT_WORLDGEN_ENABLED;
+    private static volatile boolean depositScatter           = DEFAULT_DEPOSIT_SCATTER;
+    private static volatile int     depositWorldgenRarity    = DEFAULT_DEPOSIT_WORLDGEN_RARITY;
     private static volatile boolean modelTransformDebugEnabled = DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED;
 
+    // -------------------------------------------------------------------------
+    // ForgeConfigSpec handles
+    // -------------------------------------------------------------------------
+    private static final ForgeConfigSpec.IntValue                       ENERGY_TO_FLUID_RATIO;
+    private static final ForgeConfigSpec.IntValue                       REFUEL_INTERVAL_TICKS;
+    private static final ForgeConfigSpec.BooleanValue                   CLEAR_STRUCTURE_LOOT;
+    private static final ForgeConfigSpec.BooleanValue                   MODEL_TRANSFORM_DEBUG_ENABLED;
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> VEHICLES;
+    private static final ForgeConfigSpec.IntValue                       DEPOSIT_YIELD_MIN;
+    private static final ForgeConfigSpec.IntValue                       DEPOSIT_YIELD_MAX;
+    private static final ForgeConfigSpec.BooleanValue                   DEPOSIT_WORLDGEN_ENABLED;
+    private static final ForgeConfigSpec.BooleanValue                   DEPOSIT_SCATTER;
+    private static final ForgeConfigSpec.IntValue                       DEPOSIT_WORLDGEN_RARITY;
+
+    public static final ForgeConfigSpec SPEC;
+
+    static {
+        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
+
+        ENERGY_TO_FLUID_RATIO = builder
+                .comment("Forge energy produced per millibucket of fluid fuel consumed.")
+                .defineInRange("energyToFluidRatio", DEFAULT_ENERGY_TO_FLUID_RATIO, 1, Integer.MAX_VALUE);
+
+        REFUEL_INTERVAL_TICKS = builder
+                .comment("How often (in ticks) a fuelled vehicle tops up from its fluid tank.")
+                .defineInRange("refuelIntervalTicks", DEFAULT_REFUEL_INTERVAL_TICKS, 1, Integer.MAX_VALUE);
+
+        CLEAR_STRUCTURE_LOOT = builder
+                .comment("Empty every chest and fishing loot table by default; repopulate or whitelist via KubeJS (WFLoot).")
+                .define("clearStructureLoot", DEFAULT_CLEAR_STRUCTURE_LOOT);
+
+        MODEL_TRANSFORM_DEBUG_ENABLED = builder
+                .comment("Dev tool: numpad-driven live editor for animated-machine model offsets (see IAnimatedMachine). Off by default so the numpad bindings and HUD stay inert for normal players.")
+                .define("modelTransformDebugEnabled", DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED);
+
+        VEHICLES = builder
+                .comment(
+                        "Per-vehicle fuel/storage overrides. One quoted entry per line, format:",
+                        "  \"vehicleId; maxFuel=4000; fluids=fluidId=ratio,fluidId=ratio; storageSize=40; storageColumns=10\"",
+                        "Every field after the id is optional. An entry only takes effect if it sets fluids or storageSize.",
+                        "storageSize switches the vehicle to WFCore's resizable ModularUI storage; storageColumns is the grid width (default 9).",
+                        "Example: \"superbwarfare:example_vehicle; maxFuel=4000; fluids=minecraft:lava=1.0,minecraft:water=0.5; storageSize=40; storageColumns=10\""
+                )
+                .defineList("vehicles", List.of(), o -> o instanceof String);
+
+        builder.comment("Drillable bedrock deposits. defaultYield is the per-block yield range used when a deposit type (built-in or KubeJS) does not specify its own.")
+               .push("deposits");
+
+        DEPOSIT_YIELD_MIN = builder
+                .defineInRange("defaultYieldMin", DEFAULT_DEPOSIT_YIELD_MIN, 1, Integer.MAX_VALUE);
+
+        DEPOSIT_YIELD_MAX = builder
+                .defineInRange("defaultYieldMax", DEFAULT_DEPOSIT_YIELD_MAX, 1, Integer.MAX_VALUE);
+
+        builder.comment("Ambient weighted scatter across the world. Turn scatter off to rely only on KubeJS nodes/regions. rarity is \"1 in N chunks\".")
+               .push("worldgen");
+
+        DEPOSIT_WORLDGEN_ENABLED = builder
+                .define("enabled", DEFAULT_DEPOSIT_WORLDGEN_ENABLED);
+
+        DEPOSIT_SCATTER = builder
+                .define("scatter", DEFAULT_DEPOSIT_SCATTER);
+
+        DEPOSIT_WORLDGEN_RARITY = builder
+                .defineInRange("rarity", DEFAULT_DEPOSIT_WORLDGEN_RARITY, 1, Integer.MAX_VALUE);
+
+        builder.pop(2);
+
+        SPEC = builder.build();
+    }
+
     private WFCoreConfig() {}
+
+    // -------------------------------------------------------------------------
+    // Public API — unchanged signatures
+    // -------------------------------------------------------------------------
 
     public static int getEnergyToFluidRatio() {
         return energyToFluidRatio;
@@ -117,160 +160,128 @@ public final class WFCoreConfig {
         return modelTransformDebugEnabled;
     }
 
-    public static void load() {
-        Path configDir = FMLPaths.CONFIGDIR.get();
-        Path configFile = configDir.resolve(FILE_NAME);
+    // -------------------------------------------------------------------------
+    // Bake — called by WFCore on ModConfigEvent
+    // -------------------------------------------------------------------------
 
-        try {
-            Files.createDirectories(configDir);
-            if (Files.notExists(configFile)) {
-                Files.writeString(configFile, DEFAULT_CONFIG, StandardCharsets.UTF_8);
-            }
-
-            try (Reader reader = Files.newBufferedReader(configFile, StandardCharsets.UTF_8)) {
-                parse(reader);
-            }
-        } catch (IOException | RuntimeException e) {
-            WFCore.LOGGER.error("Failed to load WFCore YAML config from {}", configFile, e);
-            energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
-            refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
-            clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
-            modelTransformDebugEnabled = DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED;
-            SuperbOverrides.setOverrideDataMap(Map.of());
-        }
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void parse(Reader reader) {
-        Yaml yaml = new Yaml();
-        Object loaded = yaml.load(reader);
-        if (!(loaded instanceof Map<?, ?> root)) {
-            WFCore.LOGGER.warn("WFCore config was empty or not a map; using defaults");
-            energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
-            refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
-            clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
-            modelTransformDebugEnabled = DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED;
-            SuperbOverrides.setOverrideDataMap(Map.of());
-            return;
-        }
-
-        energyToFluidRatio = positiveInt(root.get("energyToFluidRatio"), DEFAULT_ENERGY_TO_FLUID_RATIO);
-        refuelIntervalTicks = positiveInt(root.get("refuelIntervalTicks"), DEFAULT_REFUEL_INTERVAL_TICKS);
-        clearStructureLoot = boolValue(root.get("clearStructureLoot"), DEFAULT_CLEAR_STRUCTURE_LOOT);
-        modelTransformDebugEnabled = boolValue(root.get("modelTransformDebugEnabled"),
-                DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED);
-        parseDeposits(root.get("deposits"));
-        SuperbOverrides.setOverrideDataMap(parseVehicleOverrides(root.get("vehicles")));
-        WFCore.LOGGER.info("Loaded WFCore YAML config: {} vehicle overrides, energy ratio {}, refuel interval {} ticks",
+    public static void bake() {
+        energyToFluidRatio      = ENERGY_TO_FLUID_RATIO.get();
+        refuelIntervalTicks     = REFUEL_INTERVAL_TICKS.get();
+        clearStructureLoot      = CLEAR_STRUCTURE_LOOT.get();
+        modelTransformDebugEnabled = MODEL_TRANSFORM_DEBUG_ENABLED.get();
+        depositYieldMin         = DEPOSIT_YIELD_MIN.get();
+        depositYieldMax         = Math.max(DEPOSIT_YIELD_MAX.get(), depositYieldMin);
+        depositWorldgenEnabled  = DEPOSIT_WORLDGEN_ENABLED.get();
+        depositScatter          = DEPOSIT_SCATTER.get();
+        depositWorldgenRarity   = DEPOSIT_WORLDGEN_RARITY.get();
+        SuperbOverrides.setOverrideDataMap(parseVehicleOverrides(VEHICLES.get()));
+        WFCore.LOGGER.info(
+                "Loaded WFCore TOML config: {} vehicle overrides, energy ratio {}, refuel interval {} ticks",
                 SuperbOverrides.overrideDataMap.size(), energyToFluidRatio, refuelIntervalTicks);
     }
 
-    private static void parseDeposits(Object rawDeposits) {
-        depositYieldMin = DEFAULT_DEPOSIT_YIELD_MIN;
-        depositYieldMax = DEFAULT_DEPOSIT_YIELD_MAX;
-        depositWorldgenEnabled = DEFAULT_DEPOSIT_WORLDGEN_ENABLED;
-        depositScatter = DEFAULT_DEPOSIT_SCATTER;
-        depositWorldgenRarity = DEFAULT_DEPOSIT_WORLDGEN_RARITY;
-        if (!(rawDeposits instanceof Map<?, ?> deposits)) {
-            return;
-        }
-        depositYieldMin = positiveInt(deposits.get("defaultYieldMin"), DEFAULT_DEPOSIT_YIELD_MIN);
-        depositYieldMax = positiveInt(deposits.get("defaultYieldMax"), DEFAULT_DEPOSIT_YIELD_MAX);
-        if (depositYieldMax < depositYieldMin) {
-            depositYieldMax = depositYieldMin;
-        }
-        if (deposits.get("worldgen") instanceof Map<?, ?> worldgen) {
-            depositWorldgenEnabled = boolValue(worldgen.get("enabled"), DEFAULT_DEPOSIT_WORLDGEN_ENABLED);
-            depositScatter = boolValue(worldgen.get("scatter"), DEFAULT_DEPOSIT_SCATTER);
-            depositWorldgenRarity = positiveInt(worldgen.get("rarity"), DEFAULT_DEPOSIT_WORLDGEN_RARITY);
-        }
-    }
+    // -------------------------------------------------------------------------
+    // Vehicle override parsing — string-line based (replaces snakeyaml parsing)
+    // -------------------------------------------------------------------------
 
-    private static Map<String, SuperbOverrides.OverrideData> parseVehicleOverrides(Object rawVehicles) {
+    private static Map<String, SuperbOverrides.OverrideData> parseVehicleOverrides(List<? extends String> lines) {
         Map<String, SuperbOverrides.OverrideData> overrides = new LinkedHashMap<>();
 
-        if (rawVehicles instanceof List<?> list) {
-            for (Object entry : list) {
-                if (!(entry instanceof Map<?, ?> vehicleMap)) {
-                    continue;
-                }
-                String id = stringValue(vehicleMap.get("id"));
-                if (id == null || id.isBlank()) {
-                    continue;
-                }
-                SuperbOverrides.OverrideData data = buildOverride(id, vehicleMap);
-                if (data != null) {
-                    overrides.put(id, data);
-                }
-            }
-            return overrides;
-        }
+        for (String raw : lines) {
+            if (raw == null) continue;
+            String line = raw.trim();
+            if (line.isEmpty()) continue;
 
-        if (rawVehicles instanceof Map<?, ?> map) {
-            for (Map.Entry<?, ?> entry : map.entrySet()) {
-                String id = stringValue(entry.getKey());
-                if (id == null || id.isBlank()) {
+            String id = null;
+            int maxFuel = 4000;
+            Integer storageSize = null;
+            int storageColumns = 9;
+            Map<Fluid, Float> fluidMap = new LinkedHashMap<>();
+
+            String[] tokens = line.split(";");
+            for (String token : tokens) {
+                String t = token.trim();
+                if (t.isEmpty()) continue;
+
+                int eqIdx = t.indexOf('=');
+                if (eqIdx < 0) {
+                    // Bare token — treat as vehicle id
+                    if (id == null) {
+                        id = t;
+                    }
                     continue;
                 }
-                if (!(entry.getValue() instanceof Map<?, ?> vehicleMap)) {
-                    continue;
-                }
-                SuperbOverrides.OverrideData data = buildOverride(id, vehicleMap);
-                if (data != null) {
-                    overrides.put(id, data);
+
+                String key   = t.substring(0, eqIdx).trim();
+                String value = t.substring(eqIdx + 1).trim();
+
+                switch (key) {
+                    case "id" -> id = value;
+                    case "maxFuel" -> {
+                        Integer v = parseIntOr(value, null);
+                        if (v != null && v > 0) maxFuel = v;
+                    }
+                    case "storageSize" -> storageSize = parsePositiveIntOrNull(value);
+                    case "storageColumns" -> {
+                        Integer v = parseIntOr(value, null);
+                        if (v != null && v > 0) storageColumns = v;
+                    }
+                    case "fluids", "fluidConsumption" -> {
+                        if (fluidMap.isEmpty()) {
+                            fluidMap = parseFluidSubMap(value);
+                        }
+                    }
+                    default -> { /* ignore unknown keys */ }
                 }
             }
+
+            if (id == null || id.isBlank()) continue;
+
+            if (fluidMap.isEmpty() && storageSize == null) {
+                WFCore.LOGGER.warn(
+                        "Skipping WFCore vehicle override {} because it defines neither fluids nor storageSize", id);
+                continue;
+            }
+
+            overrides.put(id, new SuperbOverrides.OverrideData(maxFuel, fluidMap, storageSize, storageColumns));
         }
 
         return overrides;
     }
 
     /**
-     * Build an override from a single vehicle entry. An entry is kept when it customizes fuel (defines fluids)
-     * <em>or</em> storage (defines a positive {@code storageSize}); entries that do neither are skipped.
+     * Parse a fluid sub-map from a value string like {@code minecraft:lava=1.0,minecraft:water=0.5}.
+     * Fluid ids contain ':' but never '=', so splitting on the first '=' is safe.
      */
-    private static SuperbOverrides.OverrideData buildOverride(String id, Map<?, ?> vehicleMap) {
-        int maxFuel = positiveInt(vehicleMap.get("maxFuel"), 4000);
-        Map<Fluid, Float> fluidMap = parseFluidMap(vehicleMap.get("fluids"));
-        if (fluidMap.isEmpty()) {
-            fluidMap = parseFluidMap(vehicleMap.get("fluidConsumption"));
-        }
-
-        Integer storageSize = positiveIntOrNull(vehicleMap.get("storageSize"));
-        int storageColumns = positiveInt(vehicleMap.get("storageColumns"), 9);
-
-        if (fluidMap.isEmpty() && storageSize == null) {
-            WFCore.LOGGER.warn("Skipping WFCore vehicle override {} because it defines neither fluids nor storageSize",
-                    id);
-            return null;
-        }
-
-        return new SuperbOverrides.OverrideData(maxFuel, fluidMap, storageSize, storageColumns);
-    }
-
-    private static Map<Fluid, Float> parseFluidMap(Object rawFluids) {
+    private static Map<Fluid, Float> parseFluidSubMap(String value) {
         Map<Fluid, Float> fluidMap = new LinkedHashMap<>();
+        if (value == null || value.isBlank()) return fluidMap;
 
-        if (!(rawFluids instanceof Map<?, ?> map)) {
-            return fluidMap;
-        }
+        String[] entries = value.split(",");
+        for (String entry : entries) {
+            String e = entry.trim();
+            if (e.isEmpty()) continue;
 
-        for (Map.Entry<?, ?> entry : map.entrySet()) {
-            String key = stringValue(entry.getKey());
-            Float ratio = floatValue(entry.getValue());
-            if (key == null || ratio == null || ratio <= 0.0f) {
+            int eqIdx = e.indexOf('=');
+            if (eqIdx < 0) continue;
+
+            String fluidId   = e.substring(0, eqIdx).trim();
+            String ratioText = e.substring(eqIdx + 1).trim();
+
+            if (fluidId.isBlank()) continue;
+
+            Float ratio = parseFloatOrNull(ratioText);
+            if (ratio == null || ratio <= 0.0f) continue;
+
+            ResourceLocation rl = ResourceLocation.tryParse(fluidId);
+            if (rl == null) {
+                WFCore.LOGGER.warn("Ignoring invalid fluid id '{}' in WFCore config", fluidId);
                 continue;
             }
 
-            ResourceLocation fluidId = ResourceLocation.tryParse(key);
-            if (fluidId == null) {
-                WFCore.LOGGER.warn("Ignoring invalid fluid id '{}' in WFCore config", key);
-                continue;
-            }
-
-            Fluid fluid = ForgeRegistries.FLUIDS.getValue(fluidId);
+            Fluid fluid = ForgeRegistries.FLUIDS.getValue(rl);
             if (fluid == null) {
-                WFCore.LOGGER.warn("Ignoring unknown fluid '{}' in WFCore config", key);
+                WFCore.LOGGER.warn("Ignoring unknown fluid '{}' in WFCore config", fluidId);
                 continue;
             }
 
@@ -280,55 +291,36 @@ public final class WFCoreConfig {
         return fluidMap;
     }
 
-    private static int positiveInt(Object value, int fallback) {
-        Integer parsed = integerValue(value);
-        return parsed == null || parsed <= 0 ? fallback : parsed;
-    }
+    // -------------------------------------------------------------------------
+    // Small parsing helpers (String-typed, replacing the old Object-typed ones)
+    // -------------------------------------------------------------------------
 
-    private static Integer positiveIntOrNull(Object value) {
-        Integer parsed = integerValue(value);
-        return parsed == null || parsed <= 0 ? null : parsed;
-    }
-
-    private static Integer integerValue(Object value) {
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        String text = stringValue(value);
-        if (text == null || text.isBlank()) {
-            return null;
-        }
+    /** Returns {@code fallback} (which may be null) if {@code text} is blank or unparseable. */
+    private static Integer parseIntOr(String text, Integer fallback) {
+        if (text == null || text.isBlank()) return fallback;
         try {
             return Integer.parseInt(text.trim());
+        } catch (NumberFormatException ignored) {
+            return fallback;
+        }
+    }
+
+    private static Integer parsePositiveIntOrNull(String text) {
+        if (text == null || text.isBlank()) return null;
+        try {
+            int v = Integer.parseInt(text.trim());
+            return v > 0 ? v : null;
         } catch (NumberFormatException ignored) {
             return null;
         }
     }
 
-    private static boolean boolValue(Object value, boolean fallback) {
-        if (value instanceof Boolean b) {
-            return b;
-        }
-        String text = stringValue(value);
-        return text == null || text.isBlank() ? fallback : Boolean.parseBoolean(text);
-    }
-
-    private static Float floatValue(Object value) {
-        if (value instanceof Number number) {
-            return number.floatValue();
-        }
-        String text = stringValue(value);
-        if (text == null || text.isBlank()) {
-            return null;
-        }
+    private static Float parseFloatOrNull(String text) {
+        if (text == null || text.isBlank()) return null;
         try {
             return Float.parseFloat(text.trim());
         } catch (NumberFormatException ignored) {
             return null;
         }
-    }
-
-    private static String stringValue(Object value) {
-        return value == null ? null : String.valueOf(value).trim();
     }
 }

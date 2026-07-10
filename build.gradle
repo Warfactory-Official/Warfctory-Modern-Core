@@ -150,7 +150,6 @@ apply from: "$rootDir/gradle/scripts/spotless.gradle"
 dependencies {
     compileOnly("org.jetbrains:annotations:26.0.1")
 
-    shade("org.yaml:snakeyaml:2.2")
     shade("org.apache.commons:commons-math3:3.6.1")
 
 
