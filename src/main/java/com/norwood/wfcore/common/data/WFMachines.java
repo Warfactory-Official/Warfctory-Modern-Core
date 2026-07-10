@@ -32,6 +32,7 @@ import com.norwood.wfcore.common.machine.DrillRigMachine;
 import com.norwood.wfcore.common.machine.DrillRigStructure;
 import com.norwood.wfcore.common.machine.LargeBlastFurnaceMachine;
 import com.norwood.wfcore.common.machine.LargeTransformerMachine;
+import com.norwood.wfcore.common.machine.CreativeComputationSinkMachine;
 import com.norwood.wfcore.common.machine.LightGroundVehicleFactoryMachine;
 import com.norwood.wfcore.common.machine.MainframeMachine;
 import com.norwood.wfcore.common.machine.PrinterMachine;
@@ -66,6 +67,7 @@ public class WFMachines {
     public static MachineDefinition RAM_SLOT;
     public static MachineDefinition COOLING_FAN;
     public static MachineDefinition COOLING_LIQUID;
+    public static MachineDefinition CREATIVE_COMPUTATION_SINK;
     public static MultiblockMachineDefinition LARGE_TRANSFORMER;
     public static MultiblockMachineDefinition LARGE_BLAST_FURNACE;
     public static MultiblockMachineDefinition MAINFRAME;
@@ -125,6 +127,10 @@ public class WFMachines {
                 .langValue("Cooling Fan")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.GPC_COOLER)
+                .tooltips(Component.translatable("wfcore.machine.cooling_fan.tooltip1"),
+                        Component.translatable("wfcore.machine.cooling_fan.tooltip2"),
+                        Component.translatable("wfcore.machine.cooling_fan.tooltip3"),
+                        Component.translatable("wfcore.machine.cooling_fan.tooltip4"))
                 .tier(GTValues.HV)
                 .overlayTieredHullModel("cooling_fan")
                 .register();
@@ -133,19 +139,34 @@ public class WFMachines {
                 .langValue("Liquid Cooler")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.GPC_COOLER)
+                .tooltips(Component.translatable("wfcore.machine.cooling_liquid.tooltip1"),
+                        Component.translatable("wfcore.machine.cooling_liquid.tooltip2"),
+                        Component.translatable("wfcore.machine.cooling_liquid.tooltip3"))
                 .tier(GTValues.HV)
                 .overlayTieredHullModel("cooling_liquid")
+                .register();
+
+        // Debug/load-test tool: drains a configurable CWU/t from an attached computation provider. Mirrors
+        // GregTech's creative_computation_provider (same MAX-hull + optical overlay look), but consumes.
+        CREATIVE_COMPUTATION_SINK = WF_MACHINES
+                .machine("creative_computation_sink", CreativeComputationSinkMachine::new)
+                .langValue("Creative Computation Sink")
+                .rotationState(RotationState.NONE)
+                .model(GTMachineModels.createSingleOverlayTieredHullMachineModel(
+                        GTCEu.id("block/overlay/machine/overlay_data_hatch_optical"),
+                        GTCEu.id("block/overlay/machine/overlay_data_hatch_optical_emissive")))
+                .tier(GTValues.MAX)
                 .register();
 
         MAINFRAME = WF_MACHINES.multiblock("mainframe", MainframeMachine::new)
                 .langValue("Computation Mainframe")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
-                        RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
-                        .aisle("AA", "CC", "CC", "CC", "AA")
+                        RelativeDirection.BACK, RelativeDirection.UP, RelativeDirection.RIGHT)
+                        .aisle("SA", "CC", "CC", "CC", "AA")
                         .aisle("VA", "XV", "XV", "XV", "VA")
                         .setRepeatable(2, 6)
-                        .aisle("SA", "CC", "CC", "CC", "AA")
+                        .aisle("AA", "CC", "CC", "CC", "AA")
                         .where('S', controller(blocks(definition.getBlock())))
                         .where('A', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()))
                         .where('V', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()))

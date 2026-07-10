@@ -51,7 +51,7 @@ public final class CPURegistry {
                            long minPower      // Idle/baseline power draw (EU/t)
     ) {
 
-        private static final double EU_TO_HEAT_RATIO = 0.05;
+        private static final double EU_TO_HEAT_RATIO = 0.04;
 
         public double getCurrentEfficency(long power) {
             if (power < minPower) return 0;

@@ -417,7 +417,10 @@ public class MainframeMachine extends MultiblockControllerMachine
         public double calculateTemperatureChange(boolean forceCoolWithActive) {
             long maxCWUt = Math.max(1, getMaxCWUt());
             int maxCoolingDemand = getMaxCoolingDemand();
-            double temperatureIncrease = (double) maxCoolingDemand * allocatedCWUt / maxCWUt;
+            // ΔT = net heat / thermal mass. Heat generation is divided by the same thermalMass the coolers use,
+            // so the two sides share units: thermalMass cancels at equilibrium (it only sets how fast temp moves),
+            // and the machine actually reaches a steady state instead of running away in a handful of ticks.
+            double temperatureIncrease = (double) maxCoolingDemand * allocatedCWUt / maxCWUt / totalThermalMass;
 
             double passiveCoolingDone = 0;
             for (ICooler cooler : passiveCoolers) {

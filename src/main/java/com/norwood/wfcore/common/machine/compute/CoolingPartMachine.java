@@ -18,6 +18,18 @@ import com.norwood.wfcore.common.fluid.CoolantRegistry;
  */
 public class CoolingPartMachine extends MultiblockPartMachine implements ICooler {
 
+    /**
+     * Passive cooling coefficient per effective fan tier. A bare fan is tier 0 (coefficient = base·1); a
+     * Cooling Fan Cover raises the effective tier to LV..EV (1..4), so a covered fan cools (tier+1)× a bare
+     * one. Higher coefficient ⇒ more heat bled per °C the mainframe runs above ambient.
+     */
+    public static final double PASSIVE_BASE_COEFF = 0.05;
+    /**
+     * Scales a liquid cooler's raw draw (mB · coolant heat capacity) into a mainframe cooling rate, so a
+     * single cooler is a few CPUs' worth of cooling rather than dozens.
+     */
+    public static final double ACTIVE_COOL_SCALE = 0.1;
+
     private final boolean isLiquid;
 
     public CoolingPartMachine(IMachineBlockEntity holder, boolean isLiquid) {
@@ -33,10 +45,10 @@ public class CoolingPartMachine extends MultiblockPartMachine implements ICooler
     @Override
     public double getPassiveCoolingRate(double currentTemp, double thermalMass, double ambient) {
         if (isLiquid || currentTemp <= ambient) return 0;
-        // A cooling-fan cover on the exposed face boosts passive cooling proportionally to its tier
-        // (LV..EV -> tier 1..4); a bare fan hatch bleeds heat slowly.
-        int fanTier = getFanTier();
-        double coolingCoefficient = (fanTier > 0) ? 0.05 * fanTier : 0.01;
+        // Effective fan tier: 0 for a bare hatch, or LV..EV (1..4) from a Cooling Fan Cover on the exposed
+        // face. A covered fan therefore cools (tier + 1)x a bare one. Cooling scales with how far above
+        // ambient the mainframe runs (Newton's law of cooling), so a hot mainframe sheds heat faster.
+        double coolingCoefficient = PASSIVE_BASE_COEFF * (getFanTier() + 1);
         return (coolingCoefficient * (currentTemp - ambient)) / thermalMass;
     }
 
@@ -59,7 +71,7 @@ public class CoolingPartMachine extends MultiblockPartMachine implements ICooler
             CoolantRegistry.CoolantSettings settings = CoolantRegistry.get(stack.getFluid());
             if (settings == null) continue;
             int available = Math.min(getFluidUsagePerTick(), stack.getAmount());
-            return (available * settings.heatCapacity()) / thermalMass;
+            return (available * settings.heatCapacity() * ACTIVE_COOL_SCALE) / thermalMass;
         }
         return 0;
     }
@@ -92,13 +104,13 @@ public class CoolingPartMachine extends MultiblockPartMachine implements ICooler
                     if (!drained.isEmpty() && drained.getAmount() > 0) {
                         hotStack.setAmount(drained.getAmount());
                         out.fill(hotStack, IFluidHandler.FluidAction.EXECUTE);
-                        return (drained.getAmount() * settings.heatCapacity()) / thermalMass;
+                        return (drained.getAmount() * settings.heatCapacity() * ACTIVE_COOL_SCALE) / thermalMass;
                     }
                 }
             } else {
                 FluidStack drained = in.drain(drainTarget, IFluidHandler.FluidAction.EXECUTE);
                 if (!drained.isEmpty() && drained.getAmount() > 0) {
-                    return (drained.getAmount() * settings.heatCapacity()) / thermalMass;
+                    return (drained.getAmount() * settings.heatCapacity() * ACTIVE_COOL_SCALE) / thermalMass;
                 }
             }
         }
