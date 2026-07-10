@@ -7,6 +7,7 @@ import com.gregtechceu.gtceu.utils.ResearchManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraftforge.common.capabilities.ForgeCapabilities;
@@ -14,11 +15,15 @@ import net.minecraftforge.items.IItemHandler;
 
 import com.flansmod.warforge.api.WarforgeAPI;
 import com.flansmod.warforge.common.WarForgeMod;
+import com.flansmod.warforge.common.util.DimBlockPos;
 import com.flansmod.warforge.common.util.DimChunkPos;
 import com.flansmod.warforge.server.Faction;
+import com.norwood.wfcore.api.research.ResearchAccessCache;
 import com.norwood.wfcore.api.research.ResearchDataItem;
 import com.norwood.wfcore.common.machine.ResearchUnitMachine;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -52,7 +57,26 @@ public final class FactionLibraryAccess {
         if (world == null || world.isClientSide || pos == null || researchId == null) return false;
         UUID faction = WarForgeMod.FACTIONS.getClaim(new DimChunkPos(world.dimension(), pos));
         if (faction == null || Faction.nullUuid.equals(faction)) return false;
-        return WarforgeAPI.anyLoadedClaimedTile(faction, be -> tileHasResearch(be, researchId));
+
+        Boolean cached = ResearchAccessCache.peek(faction, researchId);
+        if (cached != null) {
+            return cached;
+        }
+        boolean result = WarforgeAPI.anyLoadedClaimedTile(faction, be -> tileHasResearch(be, researchId));
+        UUID factionId = faction;
+        ResearchAccessCache.record(faction, researchId, result, () -> collectClaimedChunks(factionId));
+        return result;
+    }
+
+    private static Set<ResearchAccessCache.ChunkKey> collectClaimedChunks(UUID factionId) {
+        Faction faction = WarForgeMod.FACTIONS.getFaction(factionId);
+        if (faction == null) return Set.of();
+        Set<ResearchAccessCache.ChunkKey> chunks = new HashSet<>();
+        for (DimBlockPos claim : faction.claims.keySet()) {
+            DimChunkPos cpos = claim.toChunkPos();
+            chunks.add(new ResearchAccessCache.ChunkKey(cpos.dim, ChunkPos.asLong(cpos.x, cpos.z)));
+        }
+        return chunks;
     }
 
     private static boolean tileHoldsData(BlockEntity be) {
