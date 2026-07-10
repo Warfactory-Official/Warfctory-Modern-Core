@@ -312,6 +312,11 @@ public class RadarMachine extends MultiblockControllerMachine
     }
 
     @Override
+    public Vec3 getModelScale() {
+        return new Vec3(1.25, 1.25, 1.25);
+    }
+
+    @Override
     public boolean shouldRenderModel() {
         return isFormed();
     }

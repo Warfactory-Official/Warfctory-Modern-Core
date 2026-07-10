@@ -39,6 +39,11 @@ public interface IAnimatedMachine {
         return Vec3.ZERO;
     }
 
+    /** Local render-space scale applied before orientation, per axis (1.0 = model's built size). */
+    default Vec3 getModelScale() {
+        return new Vec3(1, 1, 1);
+    }
+
     /** Whether the model should be drawn this frame (e.g. only when the multiblock is formed). */
     default boolean shouldRenderModel() {
         return true;

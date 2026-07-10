@@ -8,7 +8,6 @@ import com.lowdragmc.lowdraglib.syncdata.annotation.Persisted;
 import com.lowdragmc.lowdraglib.syncdata.field.ManagedFieldHolder;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.Entity;
@@ -37,7 +36,7 @@ public class LightGroundVehicleFactoryMachine extends AbstractVehicleFactoryMach
 
     private static final long NO_POS = Long.MIN_VALUE;
 
-     // Min/max corners of the concrete bed,
+    // Min/max corners of the concrete bed,
     @Persisted
     @DescSynced
     private long bedMinKey = NO_POS;
@@ -59,7 +58,6 @@ public class LightGroundVehicleFactoryMachine extends AbstractVehicleFactoryMach
     public float getSpawnYaw() {
         return getFrontFacing().getClockWise().toYRot();
     }
-
 
     @Override
     public void onStructureFormed() {

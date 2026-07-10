@@ -14,6 +14,7 @@ public final class ResearchAccessCache {
     public record ChunkKey(ResourceKey<Level> dimension, long chunkPos) {}
 
     private static final class Entry {
+
         final Map<String, Boolean> results = new ConcurrentHashMap<>();
         volatile Set<ChunkKey> watched = Set.of();
     }
@@ -28,7 +29,6 @@ public final class ResearchAccessCache {
         Entry entry = BY_FACTION.get(faction);
         return entry == null ? null : entry.results.get(researchId);
     }
-
 
     public static void record(UUID faction, String researchId, boolean value,
                               Supplier<Set<ChunkKey>> claimedChunks) {

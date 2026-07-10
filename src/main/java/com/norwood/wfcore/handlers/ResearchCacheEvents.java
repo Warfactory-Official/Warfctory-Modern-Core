@@ -10,7 +10,6 @@ import net.minecraftforge.fml.common.Mod;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.api.research.ResearchAccessCache;
 
-
 @Mod.EventBusSubscriber(modid = WFCore.MOD_ID)
 public final class ResearchCacheEvents {
 

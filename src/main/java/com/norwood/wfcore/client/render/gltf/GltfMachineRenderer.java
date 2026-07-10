@@ -89,6 +89,8 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         poseStack.pushPose();
         var transform = ModelTransformDebug.resolve(animated, machine.getFrontFacing());
         poseStack.translate(transform.x, transform.y, transform.z);
+        var scale = animated.getModelScale();
+        poseStack.scale((float) scale.x, (float) scale.y, (float) scale.z);
         applyOrientation(poseStack, machine);
 
         // McGLTF's vanilla path uploads CURRENT_POSE as the shader ModelViewMat, so it must already
