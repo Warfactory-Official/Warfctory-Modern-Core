@@ -19,42 +19,18 @@ import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.data.GTRecipeModifiers;
 import com.gregtechceu.gtceu.common.data.models.GTMachineModels;
-
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.level.block.Block;
-
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
-import com.norwood.wfcore.common.machine.ACHatchBlockEntity;
-import com.norwood.wfcore.common.machine.ACHatchPartMachine;
-import com.norwood.wfcore.common.machine.CreativeComputationSinkMachine;
-import com.norwood.wfcore.common.machine.DrillRigBlockEntity;
-import com.norwood.wfcore.common.machine.DrillRigMachine;
-import com.norwood.wfcore.common.machine.DrillRigStructure;
-import com.norwood.wfcore.common.machine.LargeBlastFurnaceMachine;
-import com.norwood.wfcore.common.machine.LargeTransformerMachine;
-import com.norwood.wfcore.common.machine.LightGroundVehicleFactoryMachine;
-import com.norwood.wfcore.common.machine.MainframeMachine;
-import com.norwood.wfcore.common.machine.PrinterMachine;
-import com.norwood.wfcore.common.machine.RadarBlockEntity;
-import com.norwood.wfcore.common.machine.RadarMachine;
-import com.norwood.wfcore.common.machine.RadarStructure;
-import com.norwood.wfcore.common.machine.ResearchUnitBlockEntity;
-import com.norwood.wfcore.common.machine.ResearchUnitMachine;
-import com.norwood.wfcore.common.machine.VehicleFactoryBlockEntity;
+import com.norwood.wfcore.common.machine.*;
 import com.norwood.wfcore.common.machine.compute.CPUSlotPartMachine;
 import com.norwood.wfcore.common.machine.compute.CoolingPartMachine;
 import com.norwood.wfcore.common.machine.compute.RAMSlotPartMachine;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 import com.norwood.wfcore.integration.warforge.WarforgeMachines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.block.Block;
 
-import static com.gregtechceu.gtceu.api.pattern.Predicates.abilities;
-import static com.gregtechceu.gtceu.api.pattern.Predicates.air;
-import static com.gregtechceu.gtceu.api.pattern.Predicates.any;
-import static com.gregtechceu.gtceu.api.pattern.Predicates.blocks;
-import static com.gregtechceu.gtceu.api.pattern.Predicates.controller;
-import static com.gregtechceu.gtceu.api.pattern.Predicates.frames;
-import static com.gregtechceu.gtceu.api.pattern.Predicates.states;
+import static com.gregtechceu.gtceu.api.pattern.Predicates.*;
 import static com.gregtechceu.gtceu.common.data.models.GTMachineModels.createWorkableCasingMachineModel;
 import static com.norwood.wfcore.WFCore.WF_MACHINES;
 
@@ -78,9 +54,9 @@ public class WFMachines {
 
     public static void init() {
         AC_INPUT_HATCH = WF_MACHINES.machine("ac_input_hatch",
-                MachineDefinition::new,
-                holder -> new ACHatchPartMachine(holder, GTValues.EV, false),
-                MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
+                        MachineDefinition::new,
+                        holder -> new ACHatchPartMachine(holder, GTValues.EV, false),
+                        MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
                 .langValue("AC Input Hatch")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.AC_INPUT)
@@ -89,9 +65,9 @@ public class WFMachines {
                 .register();
 
         AC_OUTPUT_HATCH = WF_MACHINES.machine("ac_output_hatch",
-                MachineDefinition::new,
-                holder -> new ACHatchPartMachine(holder, GTValues.EV, true),
-                MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
+                        MachineDefinition::new,
+                        holder -> new ACHatchPartMachine(holder, GTValues.EV, true),
+                        MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
                 .langValue("AC Output Hatch")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.AC_OUTPUT)
@@ -162,7 +138,7 @@ public class WFMachines {
                 .langValue("Computation Mainframe")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
-                        RelativeDirection.BACK, RelativeDirection.UP, RelativeDirection.RIGHT)
+                                RelativeDirection.BACK, RelativeDirection.UP, RelativeDirection.RIGHT)
                         .aisle("SA", "CC", "CC", "CC", "AA")
                         .aisle("VA", "XV", "XV", "XV", "VA")
                         .setRepeatable(2, 6)
@@ -186,11 +162,11 @@ public class WFMachines {
                 .register();
 
         RESEARCH_UNIT = WF_MACHINES.multiblock("research_unit", ResearchUnitMachine::new,
-                MetaMachineBlock::new, MetaMachineItem::new, ResearchUnitBlockEntity::new)
+                        MetaMachineBlock::new, MetaMachineItem::new, ResearchUnitBlockEntity::new)
                 .langValue("Research Unit")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
-                        RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
+                                RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
                         .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
                         .aisle(" BBBBB ", " DEEED ", " DEEED ", " DEEED ", " BBBBB ", "       ", "       ")
                         .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
@@ -226,7 +202,7 @@ public class WFMachines {
                 .langValue("Large Transformer")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
-                        RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
+                                RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
                         .aisle("XXX", "XSX", "XXX")
                         .aisle("XXX", "XXX", "XXX")
                         .aisle("XXX", "XXX", "XXX")
@@ -254,7 +230,7 @@ public class WFMachines {
                         Component.translatable("wfcore.machine.large_blast_furnace.tooltip4"))
                 .appearanceBlock(GTBlocks.CASING_PRIMITIVE_BRICKS)
                 .pattern(definition -> FactoryBlockPattern.start(
-                        RelativeDirection.RIGHT, RelativeDirection.UP, RelativeDirection.BACK)
+                                RelativeDirection.RIGHT, RelativeDirection.UP, RelativeDirection.BACK)
                         // 3x3x3 primitive-brick central chamber (X, controller Y on the front face).
                         // A Steel Firebox (G) on the left and/or right is an optional side chamber that
                         // adds parallel; L is its optional brick shell. Both default to air, so the
@@ -280,7 +256,7 @@ public class WFMachines {
                 .register();
 
         RADAR = WF_MACHINES.multiblock("radar", RadarMachine::new,
-                MetaMachineBlock::new, MetaMachineItem::new, RadarBlockEntity::new)
+                        MetaMachineBlock::new, MetaMachineItem::new, RadarBlockEntity::new)
                 .langValue("Radar")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 // The dish is drawn by our own GltfMachineRenderer (registered via EntityRenderersEvent).
@@ -326,29 +302,50 @@ public class WFMachines {
                 .langValue("MV Light Ground Vehicle Factory")
                 .recipeType(VehicleFactoryRecipes.VEHICLE_ASSEMBLER)
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
-                .pattern(definition -> FactoryBlockPattern.start(
-                        RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
-                        .aisle("KKKKKKKK", "KKKKKKKK", "KKKKKKKK", "KKKCKKKK")
-                        .aisle("KKKKKKKK", "K      K", "K      K", "KKKKKKKK")
-                        .aisle("KKKKKKKK", "K      K", "K      K", "KKKKKKKK")
-                        .aisle("KKKKKKKK", "K      K", "K      K", "KKKKKKKK")
-                        .aisle("KKKKKKKK", "K      K", "K      K", "KKKKKKKK")
-                        .aisle("KKKKKKKK", "K      K", "K      K", "KKKKKKKK")
-                        .aisle("KKKKKKKK", "K      K", "K      K", "KKKKKKKK")
-                        .aisle("KKKKKKKK", "KKKKKKKK", "KKKKKKKK", "KKKKKKKK")
-                        .where('C', controller(blocks(definition.getBlock())))
-                        .where('K', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()).setMinGlobalLimited(40)
-                                .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1).setMaxGlobalLimited(2))
-                                .or(abilities(PartAbility.IMPORT_ITEMS).setMaxGlobalLimited(4))
-                                .or(abilities(PartAbility.IMPORT_FLUIDS).setMaxGlobalLimited(4)))
-                        .where(' ', any())
-                        .build())
-                .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
+                .allowFlip(false)
+                .pattern(definition -> {
+                    final String[][] AISLES = {
+                            {"HAA         AAH", "CCC         CCC", "AAA         AAA", "               ", "               ", "               ", "               ", "               ", "               ", "               ", "               "},
+                            {"HAAAAAAAAAAAAAH", "CCC         CCC", "AAA         AAA", " C           C ", " C           C ", " C           C ", " A           A ", "  C         C  ", "   C       C   ", "    GFFFFFG    ", "               "},
+                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", " F           F ", "               ", "               ", "               ", "  F         F  ", "               ", "               ", "               "},
+                            {"  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ", " F           F ", "               ", "               ", "  F         F  ", "               ", "               ", "               "},
+                            {"  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ", "               ", " F           F ", "               ", "               ", "   F       F   ", "               ", "               "},
+                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", "               ", "               ", "               ", " F           F ", "               ", "   F       F   ", "               ", "               "},
+                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCS", "AAA         AAA", " C           C ", " C           C ", " C           C ", " A           A ", "  C         C  ", "   C       C   ", "    C     C    ", "     G   G     "},
+                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", "               ", "               ", "               ", " F           F ", "               ", "   F       F   ", "               ", "               "},
+                            {"  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ", "               ", " F           F ", "               ", "               ", "   F       F   ", "               ", "               "},
+                            {"  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ", " F           F ", "               ", "               ", "  F         F  ", "               ", "               ", "               "},
+                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", " F           F ", "               ", "               ", "               ", "  F         F  ", "               ", "               ", "               "},
+                            {"HAAAAAAAAAAAAAH", "CCC         CCC", "AAA         AAA", " C           C ", " C           C ", " C           C ", " A           A ", "  C         C  ", "   C       C   ", "    GFFFFFG    ", "               "},
+                            {"HAA         AAH", "CCC         CCC", "AAA         AAA", "               ", "               ", "               ", "               ", "               ", "               ", "               ", "               "},
+                    };
+                    var pattern = FactoryBlockPattern.start();
+                    for (String[] aisle : AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(GTBlocks.STEEL_HULL.get())) // gtceu:steel_machine_casing x168
+                            .where('B', blocks(GTBlocks.FIREBOX_STEEL.get())) // gtceu:steel_firebox_casing[active=false] x8
+                            .where('C', blocks(GTBlocks.CASING_STEEL_SOLID.get())) // gtceu:solid_machine_casing x138
+                            .where('D', blocks(GTBlocks.REINFORCED_STONE.get())) // gtceu:reinforced_stone x18
+                            .where('E', blocks(GTBlocks.LIGHT_CONCRETE.get())) // gtceu:light_concrete x63
+                            .where('F', frames(GTMaterials.Steel)) // gtceu:steel_frame x42
+                            .where('G', blocks(GTBlocks.MACHINE_CASING_LV.get())) // gtceu:lv_machine_casing x6
+                            .where('H', blocks(GTBlocks.STEEL_HULL.get())
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.DATA_ACCESS))) // gtceu:steel_machine_casing x168
+                            .where(' ', any()).build();
+
+                })
+                .workableCasingModel(GTBlocks.STEEL_HULL.getId(),
                         WFCore.id("block/multiblock/vehicle_factory"))
                 .register();
 
         DRILL_RIG = WF_MACHINES.multiblock("drill_rig", DrillRigMachine::new,
-                MetaMachineBlock::new, MetaMachineItem::new, DrillRigBlockEntity::new)
+                        MetaMachineBlock::new, MetaMachineItem::new, DrillRigBlockEntity::new)
                 .langValue("Drilling Rig")
                 // The animated GLTF rig is drawn by our own GltfMachineRenderer (registered in WFClientEvents).
                 // GTM's default BER would clobber it (see RadarMachine), so disable it; the casing/overlay still
