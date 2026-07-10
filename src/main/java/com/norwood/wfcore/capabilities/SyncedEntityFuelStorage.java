@@ -30,7 +30,10 @@ public class SyncedEntityFuelStorage extends FluidTank {
     public int fill(FluidStack resource, FluidAction action) {
         int filled = super.fill(resource, action);
         if (action.execute() && filled > 0 && entityData != null && fluidDataAccessor != null) {
-            entityData.set(fluidDataAccessor, this.fluid);
+            // Force the sync (3rd arg) and pass a copy. FluidTank mutates `this.fluid` in place and
+            // FluidStack#equals ignores the amount, so the plain SynchedEntityData#set(key, value) sees
+            // every post-fill drain as "unchanged" and never re-broadcasts it — freezing the client gauge.
+            entityData.set(fluidDataAccessor, this.fluid.copy(), true);
         }
         return filled;
     }
@@ -39,7 +42,7 @@ public class SyncedEntityFuelStorage extends FluidTank {
     public @NotNull FluidStack drain(int maxDrain, FluidAction action) {
         FluidStack drained = super.drain(maxDrain, action);
         if (action.execute() && !drained.isEmpty() && entityData != null && fluidDataAccessor != null) {
-            entityData.set(fluidDataAccessor, this.fluid);
+            entityData.set(fluidDataAccessor, this.fluid.copy(), true);
         }
         return drained;
     }
@@ -52,11 +55,25 @@ public class SyncedEntityFuelStorage extends FluidTank {
         return this.fluid;
     }
 
+    // FluidTank#getFluidAmount and #getFluidInTank read the raw `fluid` field directly, bypassing the synced
+    // getFluid() above. On the client that field is never updated (only the server drains), so the energy
+    // gauge — which is getEnergy() -> getFluidAmount() * ratio — would stay full while the server is empty.
+    // Delegate both to getFluid() so every read comes from the synced value.
+    @Override
+    public int getFluidAmount() {
+        return getFluid().getAmount();
+    }
+
+    @Override
+    public @NotNull FluidStack getFluidInTank(int tank) {
+        return getFluid();
+    }
+
     @Override
     public void setFluid(FluidStack stack) {
         super.setFluid(stack);
         if (entityData != null && fluidDataAccessor != null) {
-            entityData.set(fluidDataAccessor, stack);
+            entityData.set(fluidDataAccessor, stack.copy(), true);
         }
     }
 

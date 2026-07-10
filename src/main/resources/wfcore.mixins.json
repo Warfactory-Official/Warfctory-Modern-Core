@@ -7,6 +7,7 @@
   "mixins": [
     "BlockBehaviourAccessor",
     "SuperbWarfareInvMixin",
+    "VehicleFoliageBreakerMixin",
     "VehicleEntitySetEnergyInvoker",
     "DataAccessHatchResearchShareMixin",
     "ItemStackEnchantMixin",

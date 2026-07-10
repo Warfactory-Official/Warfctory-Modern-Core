@@ -50,6 +50,7 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.BooleanValue CLEAR_STRUCTURE_LOOT;
     private static final ForgeConfigSpec.BooleanValue MODEL_TRANSFORM_DEBUG_ENABLED;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> VEHICLES;
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> FOLIAGE_BREAKERS;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MIN;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MAX;
     private static final ForgeConfigSpec.BooleanValue DEPOSIT_WORLDGEN_ENABLED;
@@ -87,6 +88,12 @@ public final class WFCoreConfig {
                         "storageSize switches the vehicle to WFCore's resizable ModularUI storage; storageColumns is the grid width (default 9).",
                         "Example: \"superbwarfare:example_vehicle; maxFuel=4000; fluids=minecraft:lava=1.0,minecraft:water=0.5; storageSize=40; storageColumns=10\"")
                 .defineList("vehicles", List.of(), o -> o instanceof String);
+
+        FOLIAGE_BREAKERS = builder
+                .comment(
+                        "Vehicle ids that plough through and break cacti, wood logs and leaves as they drive.",
+                        "Example: [\"superbwarfare:lav_150\", \"superbwarfare:truck\"]")
+                .defineList("foliageBreakers", List.of(), o -> o instanceof String);
 
         builder.comment(
                 "Drillable bedrock deposits. defaultYield is the per-block yield range used when a deposit type (built-in or KubeJS) does not specify its own.")
@@ -178,6 +185,7 @@ public final class WFCoreConfig {
         depositScatter = DEPOSIT_SCATTER.get();
         depositWorldgenRarity = DEPOSIT_WORLDGEN_RARITY.get();
         SuperbOverrides.setOverrideDataMap(parseVehicleOverrides(VEHICLES.get()));
+        SuperbOverrides.setFoliageBreakers(FOLIAGE_BREAKERS.get());
         WFCore.LOGGER.info(
                 "Loaded WFCore TOML config: {} vehicle overrides, energy ratio {}, refuel interval {} ticks",
                 SuperbOverrides.overrideDataMap.size(), energyToFluidRatio, refuelIntervalTicks);

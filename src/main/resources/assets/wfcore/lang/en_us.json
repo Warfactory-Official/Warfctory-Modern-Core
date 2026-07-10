@@ -15,6 +15,7 @@
   "wfcore.gui.radar.start_scan": "Start Scan",
   "wfcore.machine.printer.tooltip": "Prints a written report of bases found in radar scan data.",
   "wfcore.machine.vehicle_factory.tooltip": "Assembles a vehicle and deploys it in front of the factory. Recipes are programmable (KubeJS); the recipe's output item is the vehicle.",
+  "wfcore.vehicle_factory.obstructed": "Deploy area obstructed",
   "wfcore.machine.large_transformer.tooltip": "Converts DC EU to/from AC EU, cooled by coolant. Needs one AC Input and one AC Output hatch, plus DC energy hatches and a coolant input.",
   "wfcore.machine.mainframe.tooltip": "Provides computation (CWU/t) to research units and radars. CPUs supply compute, RAM caps throughput, coolers fight heat. Output it through a Computation Transmission Hatch.",
   "wfcore.machine.cooling_fan.tooltip1": "§9Passive cooler.§r Vents the mainframe's heat to the surrounding air — no coolant needed.",

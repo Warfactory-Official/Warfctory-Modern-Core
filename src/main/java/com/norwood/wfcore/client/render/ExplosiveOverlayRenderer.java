@@ -82,8 +82,9 @@ public final class ExplosiveOverlayRenderer {
         buffers.endBatch(WFRenderTypes.EXPLOSIVE_OVERLAY);
     }
 
-    private static void box(VertexConsumer vc, Matrix4f m, float x0, float y0, float z0, float x1, float y1, float z1,
-                            float r, float g, float b, float a) {
+    /** Reusable translucent-box emitter (also used by the vehicle-factory clearance overlay). Cull is off. */
+    static void box(VertexConsumer vc, Matrix4f m, float x0, float y0, float z0, float x1, float y1, float z1,
+                    float r, float g, float b, float a) {
         // Cull is off, so winding is irrelevant; 6 quads.
         v(vc, m, x0, y0, z0, r, g, b, a);
         v(vc, m, x1, y0, z0, r, g, b, a);

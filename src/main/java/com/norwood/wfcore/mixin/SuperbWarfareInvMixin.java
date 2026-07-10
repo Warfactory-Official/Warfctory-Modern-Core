@@ -72,6 +72,9 @@ public abstract class SuperbWarfareInvMixin extends Entity
     protected int wfcore$uiSlots = -1;
     @Unique
     protected int wfcore$uiCols = -1;
+    // Carries the sub-millibucket remainder of fuel-per-tick between consumeEnergy calls (see below).
+    @Unique
+    private double wfcore$drainRemainder;
 
     public SuperbWarfareInvMixin(EntityType<?> entityType, Level level) {
         super(entityType, level);
@@ -237,7 +240,7 @@ public abstract class SuperbWarfareInvMixin extends Entity
         if (this.wfcore$usesFluidFuel && this.wfcore$fluidTank != null) {
             FluidStack currentFluid = this.wfcore$fluidTank.getFluid();
 
-            if (!currentFluid.isEmpty()) {
+            if (!currentFluid.isEmpty() && amount > 0) {
                 String id = this.wfcore$vehicleId;
                 float efficiency = 1.0f;
 
@@ -247,9 +250,16 @@ public abstract class SuperbWarfareInvMixin extends Entity
                 }
 
                 double effectiveRatio = WFCoreConfig.getEnergyToFluidRatio() * Math.max(0.0001d, efficiency);
-                int mbToDrain = (int) Math.ceil(amount / effectiveRatio);
+
+                // Superb Warfare calls consumeEnergy() every tick with a small energy cost. Rounding each call
+                // up with ceil() forced a minimum of 1 mB drained per tick (20 mB/s), emptying the tank in
+                // seconds no matter the real cost. Convert to a fractional mB and carry the sub-millibucket
+                // remainder across ticks so the drain tracks actual energy consumption.
+                this.wfcore$drainRemainder += amount / effectiveRatio;
+                int mbToDrain = (int) this.wfcore$drainRemainder;
 
                 if (mbToDrain > 0) {
+                    this.wfcore$drainRemainder -= mbToDrain;
                     this.wfcore$fluidTank.drain(mbToDrain, IFluidHandler.FluidAction.EXECUTE);
                 }
             }
