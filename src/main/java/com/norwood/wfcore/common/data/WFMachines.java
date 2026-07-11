@@ -22,6 +22,10 @@ import com.gregtechceu.gtceu.common.data.GTRecipeModifiers;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 import com.gregtechceu.gtceu.common.data.models.GTMachineModels;
 import com.gregtechceu.gtceu.common.machine.multiblock.steam.SteamParallelMultiblockMachine;
+
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.block.Block;
+
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
 import com.norwood.wfcore.common.machine.*;
@@ -30,8 +34,6 @@ import com.norwood.wfcore.common.machine.compute.CoolingPartMachine;
 import com.norwood.wfcore.common.machine.compute.RAMSlotPartMachine;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 import com.norwood.wfcore.integration.warforge.WarforgeMachines;
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.level.block.Block;
 
 import static com.gregtechceu.gtceu.api.pattern.Predicates.*;
 import static com.gregtechceu.gtceu.common.data.models.GTMachineModels.createWorkableCasingMachineModel;
@@ -58,9 +60,9 @@ public class WFMachines {
 
     public static void init() {
         AC_INPUT_HATCH = WF_MACHINES.machine("ac_input_hatch",
-                        MachineDefinition::new,
-                        holder -> new ACHatchPartMachine(holder, GTValues.EV, false),
-                        MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
+                MachineDefinition::new,
+                holder -> new ACHatchPartMachine(holder, GTValues.EV, false),
+                MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
                 .langValue("AC Input Hatch")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.AC_INPUT)
@@ -69,9 +71,9 @@ public class WFMachines {
                 .register();
 
         AC_OUTPUT_HATCH = WF_MACHINES.machine("ac_output_hatch",
-                        MachineDefinition::new,
-                        holder -> new ACHatchPartMachine(holder, GTValues.EV, true),
-                        MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
+                MachineDefinition::new,
+                holder -> new ACHatchPartMachine(holder, GTValues.EV, true),
+                MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
                 .langValue("AC Output Hatch")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.AC_OUTPUT)
@@ -115,7 +117,6 @@ public class WFMachines {
                 .overlayTieredHullModel("cooling_fan")
                 .register();
 
-
         STEAM_WIREMILL = WF_MACHINES.multiblock("steam_wiremill", SteamParallelMultiblockMachine::new)
                 .langValue("Steam Wiremill ").rotationState(RotationState.NON_Y_AXIS)
                 .recipeType(GTRecipeTypes.WIREMILL_RECIPES)
@@ -123,7 +124,7 @@ public class WFMachines {
                 .addOutputLimit(ItemRecipeCapability.CAP, 1)
                 .appearanceBlock(GTBlocks.BRONZE_HULL)
                 .pattern(definition -> FactoryBlockPattern.start(
-                                RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
+                        RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
                         .aisle("CCCCCCC", "BWWWBWB", "ABBBBBA")
                         .aisle("CCCCCCC", "BGGGGGB", "BBBBBBB")
                         .aisle("CCCCCCC", "BGGGGGB", "BBBBBBB")
@@ -170,7 +171,7 @@ public class WFMachines {
                 .langValue("Computation Mainframe")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
-                                RelativeDirection.BACK, RelativeDirection.UP, RelativeDirection.RIGHT)
+                        RelativeDirection.BACK, RelativeDirection.UP, RelativeDirection.RIGHT)
                         .aisle("SA", "CC", "CC", "CC", "AA")
                         .aisle("VA", "XV", "XV", "XV", "VA")
                         .setRepeatable(2, 6)
@@ -194,7 +195,7 @@ public class WFMachines {
                 .register();
 
         RESEARCH_UNIT = WF_MACHINES.multiblock("research_unit", ResearchUnitMachine::new,
-                        MetaMachineBlock::new, MetaMachineItem::new, ResearchUnitBlockEntity::new)
+                MetaMachineBlock::new, MetaMachineItem::new, ResearchUnitBlockEntity::new)
                 .langValue("Research Unit")
                 // The unit's animated GLTF core is drawn by our own GltfMachineRenderer (registered in
                 // WFClientEvents). GTM's default BER would clobber it (see RadarMachine), so disable it;
@@ -202,7 +203,7 @@ public class WFMachines {
                 .hasBER(false)
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
-                                RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
+                        RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
                         .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
                         .aisle(" BBBBB ", " DEEED ", " DEEED ", " DEEED ", " BBBBB ", "       ", "       ")
                         .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
@@ -238,7 +239,7 @@ public class WFMachines {
                 .langValue("Large Transformer")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
-                                RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
+                        RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
                         .aisle("XXX", "XSX", "XXX")
                         .aisle("XXX", "XXX", "XXX")
                         .aisle("XXX", "XXX", "XXX")
@@ -266,7 +267,7 @@ public class WFMachines {
                         Component.translatable("wfcore.machine.large_blast_furnace.tooltip4"))
                 .appearanceBlock(GTBlocks.CASING_PRIMITIVE_BRICKS)
                 .pattern(definition -> FactoryBlockPattern.start(
-                                RelativeDirection.RIGHT, RelativeDirection.UP, RelativeDirection.BACK)
+                        RelativeDirection.RIGHT, RelativeDirection.UP, RelativeDirection.BACK)
                         // 3x3x3 primitive-brick central chamber (X, controller Y on the front face).
                         // A Steel Firebox (G) on the left and/or right is an optional side chamber that
                         // adds parallel; L is its optional brick shell. Both default to air, so the
@@ -292,7 +293,7 @@ public class WFMachines {
                 .register();
 
         RADAR = WF_MACHINES.multiblock("radar", RadarMachine::new,
-                        MetaMachineBlock::new, MetaMachineItem::new, RadarBlockEntity::new)
+                MetaMachineBlock::new, MetaMachineItem::new, RadarBlockEntity::new)
                 .langValue("Radar")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 // The dish is drawn by our own GltfMachineRenderer (registered via EntityRenderersEvent).
@@ -342,45 +343,45 @@ public class WFMachines {
                 .allowExtendedFacing(false)
                 .pattern(definition -> {
                     final String[][] AISLES = {
-                            {"HAA         AAH", "CCC         CCC", "AAA         AAA", "               ",
+                            { "HAA         AAH", "CCC         CCC", "AAA         AAA", "               ",
                                     "               ", "               ", "               ", "               ",
-                                    "               ", "               ", "               "},
-                            {"HAAAAAAAAAAAAAH", "CCC         CCC", "AAA         AAA", " C           C ",
+                                    "               ", "               ", "               " },
+                            { "HAAAAAAAAAAAAAH", "CCC         CCC", "AAA         AAA", " C           C ",
                                     " C           C ", " C           C ", " A           A ", "  C         C  ",
-                                    "   C       C   ", "    GFFFFFG    ", "               "},
-                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", " F           F ",
+                                    "   C       C   ", "    GFFFFFG    ", "               " },
+                            { "HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", " F           F ",
                                     "               ", "               ", "               ", "  F         F  ",
-                                    "               ", "               ", "               "},
-                            {"  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
+                                    "               ", "               ", "               " },
+                            { "  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
                                     " F           F ", "               ", "               ", "  F         F  ",
-                                    "               ", "               ", "               "},
-                            {"  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
+                                    "               ", "               ", "               " },
+                            { "  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
                                     "               ", " F           F ", "               ", "               ",
-                                    "   F       F   ", "               ", "               "},
-                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", "               ",
+                                    "   F       F   ", "               ", "               " },
+                            { "HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", "               ",
                                     "               ", "               ", " F           F ", "               ",
-                                    "   F       F   ", "               ", "               "},
-                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCS", "AAA         AAA", " C           C ",
+                                    "   F       F   ", "               ", "               " },
+                            { "HAACACACACACAAH", "CCCDEEEEEEEDCCS", "AAA         AAA", " C           C ",
                                     " C           C ", " C           C ", " A           A ", "  C         C  ",
-                                    "   C       C   ", "    C     C    ", "     G   G     "},
-                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", "               ",
+                                    "   C       C   ", "    C     C    ", "     G   G     " },
+                            { "HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", "               ",
                                     "               ", "               ", " F           F ", "               ",
-                                    "   F       F   ", "               ", "               "},
-                            {"  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
+                                    "   F       F   ", "               ", "               " },
+                            { "  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
                                     "               ", " F           F ", "               ", "               ",
-                                    "   F       F   ", "               ", "               "},
-                            {"  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
+                                    "   F       F   ", "               ", "               " },
+                            { "  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
                                     " F           F ", "               ", "               ", "  F         F  ",
-                                    "               ", "               ", "               "},
-                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", " F           F ",
+                                    "               ", "               ", "               " },
+                            { "HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", " F           F ",
                                     "               ", "               ", "               ", "  F         F  ",
-                                    "               ", "               ", "               "},
-                            {"HAAAAAAAAAAAAAH", "CCC         CCC", "AAA         AAA", " C           C ",
+                                    "               ", "               ", "               " },
+                            { "HAAAAAAAAAAAAAH", "CCC         CCC", "AAA         AAA", " C           C ",
                                     " C           C ", " C           C ", " A           A ", "  C         C  ",
-                                    "   C       C   ", "    GFFFFFG    ", "               "},
-                            {"HAA         AAH", "CCC         CCC", "AAA         AAA", "               ",
+                                    "   C       C   ", "    GFFFFFG    ", "               " },
+                            { "HAA         AAH", "CCC         CCC", "AAA         AAA", "               ",
                                     "               ", "               ", "               ", "               ",
-                                    "               ", "               ", "               "},
+                                    "               ", "               ", "               " },
                     };
                     var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
                             RelativeDirection.RIGHT);
@@ -410,7 +411,7 @@ public class WFMachines {
                 .register();
 
         DRILL_RIG = WF_MACHINES.multiblock("drill_rig", DrillRigMachine::new,
-                        MetaMachineBlock::new, MetaMachineItem::new, DrillRigBlockEntity::new)
+                MetaMachineBlock::new, MetaMachineItem::new, DrillRigBlockEntity::new)
                 .langValue("Drilling Rig")
                 // The animated GLTF rig is drawn by our own GltfMachineRenderer (registered in WFClientEvents).
                 // GTM's default BER would clobber it (see RadarMachine), so disable it; the casing/overlay still
