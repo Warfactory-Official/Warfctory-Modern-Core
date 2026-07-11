@@ -16,6 +16,7 @@ import net.minecraft.core.Direction;
 import com.modularmods.mcgltf.MCglTF;
 import com.modularmods.mcgltf.RenderedGltfModel;
 import com.mojang.blaze3d.platform.NativeImage;
+import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.norwood.wfcore.WFCore;
@@ -150,7 +151,8 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
             }
         }
         worldLightTexture.getPixels().setPixelRGBA(0, 0, color);
-        worldLightTexture.upload();
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, worldLightTexture.getId());
+        worldLightTexture.getPixels().upload(0, 0, 0, false);
         return worldLightTexture.getId();
     }
 
@@ -164,6 +166,12 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         GL30.glBindVertexArray(0);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        // Binding VAO 0 above unbinds whatever vertex array BufferUploader's immediate-draw path still holds
+        // in its lastImmediateBuffer cache. That cache skips re-binding the VAO when the same immediate
+        // buffer is reused, so without this the next endBatch() draw of a matching format runs glDrawElements
+        // with VAO 0 bound — GL_INVALID_OPERATION in a core profile, once per frame while a model is on
+        // screen. Invalidate the cache so BufferUploader re-binds its VAO on the next draw.
+        BufferUploader.invalidate();
         GL13.glActiveTexture(GL13.GL_TEXTURE2);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
