@@ -22,29 +22,39 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Client-side live editor for {@link IAnimatedMachine#getModelTransform()}. Lets a dev nudge the
- * per-facing render offset in-world and re-export it as a ready-to-paste {@code switch} block, instead
- * of recompiling for every millimetre adjustment.
+ * Client-side live editor for {@link IAnimatedMachine#getModelTransform()} and
+ * {@link IAnimatedMachine#getModelScale()}. Lets a dev nudge the per-facing render offset (or scale)
+ * in-world and re-export it as a ready-to-paste {@code switch} block, instead of recompiling for every
+ * millimetre adjustment.
  * <p>
  * Overrides are keyed by machine class + facing (not by block position): every on-screen instance of a
  * given machine sharing a facing renders with the same tuned value, mirroring the fact that the real
- * {@code getModelTransform()} is a hardcoded constant per class+facing, not per instance.
+ * {@code getModelTransform()}/{@code getModelScale()} are hardcoded constants per class+facing, not per
+ * instance.
  */
 @OnlyIn(Dist.CLIENT)
 public final class ModelTransformDebug {
 
     private ModelTransformDebug() {}
 
-    /** Successive Numpad0 presses cycle through these nudge sizes, in blocks. */
+    /** Which field the nudge/export/reset keys currently act on; toggled by {@link WFDebugKeyMappings#MODE}. */
+    public enum EditMode {
+        TRANSFORM,
+        SCALE
+    }
+
+    /** Successive Numpad0 presses cycle through these nudge sizes, in blocks (or scale units). */
     private static final double[] STEPS = { 1.0, 0.25, 0.05 };
 
     private static boolean enabled = false;
     private static int stepIndex = 1;
+    private static EditMode mode = EditMode.TRANSFORM;
 
     private static Class<? extends IAnimatedMachine> targetClass;
     private static Direction targetFacing;
 
-    private static final Map<Class<? extends IAnimatedMachine>, EnumMap<Direction, Vec3>> overrides = new HashMap<>();
+    private static final Map<Class<? extends IAnimatedMachine>, EnumMap<Direction, Vec3>> transformOverrides = new HashMap<>();
+    private static final Map<Class<? extends IAnimatedMachine>, EnumMap<Direction, Vec3>> scaleOverrides = new HashMap<>();
 
     public static boolean isEnabled() {
         return enabled;
@@ -77,10 +87,27 @@ public final class ModelTransformDebug {
         stepIndex = (stepIndex + 1) % STEPS.length;
     }
 
+    public static EditMode mode() {
+        return mode;
+    }
+
+    /** Toggles between tuning {@code getModelTransform()} and {@code getModelScale()}; keeps the same target. */
+    public static void cycleMode() {
+        mode = mode == EditMode.TRANSFORM ? EditMode.SCALE : EditMode.TRANSFORM;
+    }
+
+    private static Map<Class<? extends IAnimatedMachine>, EnumMap<Direction, Vec3>> currentOverrides() {
+        return mode == EditMode.SCALE ? scaleOverrides : transformOverrides;
+    }
+
+    private static Vec3 identityFor(EditMode m) {
+        return m == EditMode.SCALE ? new Vec3(1, 1, 1) : Vec3.ZERO;
+    }
+
     /**
      * Called every client tick with the nearest formed animated machine on screen. Adopts it as the
-     * live-edit target and seeds its facing from the real ({@code source}) transform if not already
-     * captured, so nudging starts from the shipped baseline rather than zero.
+     * live-edit target and seeds both its transform and scale from the real (compiled) values if not
+     * already captured, so nudging starts from the shipped baseline rather than identity.
      */
     public static void trackTarget(IAnimatedMachine animated, Direction facing) {
         if (!enabled || animated == null || facing == null) {
@@ -88,8 +115,10 @@ public final class ModelTransformDebug {
         }
         targetClass = animated.getClass();
         targetFacing = facing;
-        overrides.computeIfAbsent(targetClass, c -> new EnumMap<>(Direction.class))
+        transformOverrides.computeIfAbsent(targetClass, c -> new EnumMap<>(Direction.class))
                 .computeIfAbsent(facing, f -> animated.getModelTransform());
+        scaleOverrides.computeIfAbsent(targetClass, c -> new EnumMap<>(Direction.class))
+                .computeIfAbsent(facing, f -> animated.getModelScale());
     }
 
     public static boolean hasTarget() {
@@ -105,11 +134,12 @@ public final class ModelTransformDebug {
         return targetFacing;
     }
 
+    /** The value for the active {@link #mode()} (transform or scale) at the current target. */
     public static Vec3 targetValue() {
         if (!hasTarget()) {
-            return Vec3.ZERO;
+            return identityFor(mode);
         }
-        return overrides.get(targetClass).getOrDefault(targetFacing, Vec3.ZERO);
+        return currentOverrides().get(targetClass).getOrDefault(targetFacing, identityFor(mode));
     }
 
     public static void nudge(double dx, double dy, double dz) {
@@ -117,15 +147,16 @@ public final class ModelTransformDebug {
             return;
         }
         Vec3 current = targetValue();
-        overrides.get(targetClass).put(targetFacing, current.add(dx, dy, dz));
+        currentOverrides().get(targetClass).put(targetFacing, current.add(dx, dy, dz));
     }
 
-    /** Resets the currently targeted facing back to the machine's real (compiled) transform. */
+    /** Resets the currently targeted facing's active-mode value back to the machine's real (compiled) value. */
     public static void resetTarget(IAnimatedMachine sourceInstance) {
         if (!hasTarget() || sourceInstance == null) {
             return;
         }
-        overrides.get(targetClass).put(targetFacing, sourceInstance.getModelTransform());
+        Vec3 real = mode == EditMode.SCALE ? sourceInstance.getModelScale() : sourceInstance.getModelTransform();
+        currentOverrides().get(targetClass).put(targetFacing, real);
     }
 
     /**
@@ -136,26 +167,44 @@ public final class ModelTransformDebug {
         if (!enabled || facing == null) {
             return animated.getModelTransform();
         }
-        EnumMap<Direction, Vec3> byFacing = overrides.get(animated.getClass());
+        EnumMap<Direction, Vec3> byFacing = transformOverrides.get(animated.getClass());
         if (byFacing == null) {
             return animated.getModelTransform();
         }
         return byFacing.getOrDefault(facing, animated.getModelTransform());
     }
 
-    /** Sends a paste-ready {@code switch} block for the current target's captured facings to chat/log/clipboard. */
+    /**
+     * Read by {@link com.norwood.wfcore.client.render.gltf.GltfMachineRenderer} in place of
+     * {@link IAnimatedMachine#getModelScale()} when a live override exists.
+     */
+    public static Vec3 resolveScale(IAnimatedMachine animated, Direction facing) {
+        if (!enabled || facing == null) {
+            return animated.getModelScale();
+        }
+        EnumMap<Direction, Vec3> byFacing = scaleOverrides.get(animated.getClass());
+        if (byFacing == null) {
+            return animated.getModelScale();
+        }
+        return byFacing.getOrDefault(facing, animated.getModelScale());
+    }
+
+    /**
+     * Sends a paste-ready {@code switch} block for the current target/mode's captured facings to chat/log/clipboard.
+     */
     public static void exportCurrent() {
         if (!hasTarget()) {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
-        EnumMap<Direction, Vec3> byFacing = overrides.get(targetClass);
+        EnumMap<Direction, Vec3> byFacing = currentOverrides().get(targetClass);
+        String fieldLabel = mode == EditMode.SCALE ? "scale" : "transform";
         StringBuilder text = new StringBuilder();
         for (Direction dir : new Direction[] { Direction.WEST, Direction.EAST, Direction.NORTH, Direction.SOUTH }) {
             Vec3 v = byFacing.get(dir);
             if (v == null) {
-                text.append("            // ").append(dir).append(" not captured yet - look at a radar built ")
-                        .append("facing ").append(dir).append('\n');
+                text.append("            // ").append(dir).append(" not captured yet - look at a ")
+                        .append(targetClass.getSimpleName()).append(" built facing ").append(dir).append('\n');
             } else {
                 text.append("            case ").append(dir).append(" -> new Vec3(")
                         .append(fmt(v.x)).append(", ").append(fmt(v.y)).append(", ").append(fmt(v.z))
@@ -163,13 +212,14 @@ public final class ModelTransformDebug {
             }
         }
         String result = text.toString();
-        WFCore.LOGGER.info("[ModelTransformDebug] {} exported:\n{}", targetClass.getSimpleName(), result);
+        WFCore.LOGGER.info("[ModelTransformDebug] {} {} exported:\n{}", targetClass.getSimpleName(), fieldLabel,
+                result);
 
         mc.keyboardHandler.setClipboard(result);
         if (mc.player != null) {
             MutableComponent header = Component.literal("[WFCore] ")
                     .withStyle(ChatFormatting.AQUA)
-                    .append(Component.literal(targetClass.getSimpleName() + " transform copied to clipboard")
+                    .append(Component.literal(targetClass.getSimpleName() + " " + fieldLabel + " copied to clipboard")
                             .withStyle(ChatFormatting.GRAY));
             mc.player.displayClientMessage(header, false);
             for (String line : result.split("\n")) {

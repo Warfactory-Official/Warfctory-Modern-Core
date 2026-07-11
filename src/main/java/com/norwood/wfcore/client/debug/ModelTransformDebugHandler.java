@@ -65,6 +65,9 @@ public class ModelTransformDebugHandler {
         if (WFDebugKeyMappings.CYCLE_STEP.consumeClick()) {
             ModelTransformDebug.cycleStep();
         }
+        if (WFDebugKeyMappings.MODE.consumeClick()) {
+            ModelTransformDebug.cycleMode();
+        }
         if (WFDebugKeyMappings.EXPORT.consumeClick()) {
             ModelTransformDebug.exportCurrent();
         }
@@ -154,9 +157,10 @@ public class ModelTransformDebugHandler {
         Vec3 v = ModelTransformDebug.targetValue();
         Direction facing = ModelTransformDebug.targetFacing();
         String className = ModelTransformDebug.targetClass().getSimpleName();
+        String modeLabel = ModelTransformDebug.mode() == ModelTransformDebug.EditMode.SCALE ? "scale" : "transform";
 
         gg.drawString(Minecraft.getInstance().font,
-                "§b[WFCore Transform Debug]§r " + className + " facing=" + facing, x, y, 0xFFFFFF);
+                "§b[WFCore " + modeLabel + " Debug]§r " + className + " facing=" + facing, x, y, 0xFFFFFF);
         y += lineHeight;
         gg.drawString(Minecraft.getInstance().font,
                 String.format("X: %.3f  Y: %.3f  Z: %.3f   (step %.2f)", v.x, v.y, v.z,
@@ -164,6 +168,7 @@ public class ModelTransformDebugHandler {
                 x, y, 0xFFFF55);
         y += lineHeight;
         gg.drawString(Minecraft.getInstance().font,
-                "§7Numpad 4/6 X  8/2 Y  7/9 Z  |  0 step  |  Enter export  |  . reset", x, y, 0xAAAAAA);
+                "§7Numpad 4/6 X  8/2 Y  7/9 Z  |  0 step  |  1 mode(" + modeLabel + ")  |  Enter export  |  . reset",
+                x, y, 0xAAAAAA);
     }
 }

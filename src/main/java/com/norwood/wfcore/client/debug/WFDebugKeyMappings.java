@@ -12,8 +12,9 @@ import org.lwjgl.glfw.GLFW;
 
 /**
  * Numpad "D-pad" for {@link ModelTransformDebug}: 5 toggles, 4/6/8/2/7/9 nudge X/Y/Z, 0 cycles step
- * size, Enter exports, Decimal resets. Numpad is used specifically because it's vanishingly unlikely to
- * collide with any existing binding, so it needs no rebinding to use out of the box.
+ * size, 1 switches between editing transform and scale, Enter exports, Decimal resets. Numpad is used
+ * specifically because it's vanishingly unlikely to collide with any existing binding, so it needs no
+ * rebinding to use out of the box.
  */
 @Mod.EventBusSubscriber(modid = WFCore.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class WFDebugKeyMappings {
@@ -28,6 +29,7 @@ public class WFDebugKeyMappings {
     public static final KeyMapping Z_NEG = key("z_neg", GLFW.GLFW_KEY_KP_7);
     public static final KeyMapping Z_POS = key("z_pos", GLFW.GLFW_KEY_KP_9);
     public static final KeyMapping CYCLE_STEP = key("cycle_step", GLFW.GLFW_KEY_KP_0);
+    public static final KeyMapping MODE = key("mode", GLFW.GLFW_KEY_KP_1);
     public static final KeyMapping EXPORT = key("export", GLFW.GLFW_KEY_KP_ENTER);
     public static final KeyMapping RESET = key("reset", GLFW.GLFW_KEY_KP_DECIMAL);
 
@@ -45,6 +47,7 @@ public class WFDebugKeyMappings {
         event.register(Z_NEG);
         event.register(Z_POS);
         event.register(CYCLE_STEP);
+        event.register(MODE);
         event.register(EXPORT);
         event.register(RESET);
     }

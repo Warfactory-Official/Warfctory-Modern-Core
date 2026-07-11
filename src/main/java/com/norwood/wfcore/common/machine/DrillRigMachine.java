@@ -3,12 +3,15 @@ package com.norwood.wfcore.common.machine;
 import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
 import com.gregtechceu.gtceu.api.machine.multiblock.WorkableMultiblockMachine;
 import com.gregtechceu.gtceu.api.machine.trait.RecipeLogic;
+import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 
 import com.lowdragmc.lowdraglib.syncdata.field.ManagedFieldHolder;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
 import com.norwood.wfcore.client.render.gltf.AnimTransition;
 import com.norwood.wfcore.client.render.gltf.IAnimatedMachine;
@@ -18,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
@@ -215,5 +219,70 @@ public class DrillRigMachine extends WorkableMultiblockMachine implements IAnima
     @Override
     public boolean shouldRenderModel() {
         return isFormed();
+    }
+
+    /**
+     * The drill head ('F') and the gearbox casing directly above it ('C') poke out below the GLTF model
+     * (which doesn't reach all the way down to the floor), so hide those two real structure blocks while
+     * formed. Locates the controller ('S') and the drill head in {@link DrillRigStructure#AISLES} and maps
+     * both grid offsets to world space, mirroring {@code RadarMachine#getHiddenBlocks()}.
+     */
+    @Override
+    public Collection<BlockPos> getHiddenBlocks() {
+        String[][] aisles = DrillRigStructure.AISLES;
+
+        int cChar = -1, cString = -1, cAisle = -1;
+        int fChar = -1, fString = -1, fAisle = -1;
+        for (int a = 0; a < aisles.length; a++) {
+            for (int s = 0; s < aisles[a].length; s++) {
+                int sIdx = aisles[a][s].indexOf('S');
+                if (sIdx >= 0) {
+                    cAisle = a;
+                    cString = s;
+                    cChar = sIdx;
+                }
+                int fIdx = aisles[a][s].indexOf('F');
+                if (fIdx >= 0) {
+                    fAisle = a;
+                    fString = s;
+                    fChar = fIdx;
+                }
+            }
+        }
+        if (cChar < 0 || fChar < 0) {
+            return List.of();
+        }
+
+        Direction front = getFrontFacing();
+        Direction up = getUpwardsFacing();
+        boolean flipped = isFlipped();
+        Direction charDir = RelativeDirection.FRONT.getRelative(front, up, flipped);
+        Direction stringDir = RelativeDirection.UP.getRelative(front, up, flipped);
+        Direction aisleDir = RelativeDirection.RIGHT.getRelative(front, up, flipped);
+
+        BlockPos controller = getPos();
+        BlockPos drillHead = controller.relative(charDir, fChar - cChar).relative(stringDir, fString - cString)
+                .relative(aisleDir, fAisle - cAisle);
+        BlockPos gearboxAbove = controller.relative(charDir, fChar - cChar)
+                .relative(stringDir, fString + 1 - cString).relative(aisleDir, fAisle - cAisle);
+        return List.of(drillHead, gearboxAbove);
+    }
+
+    @Override
+    public Vec3 getModelTransform() {
+        // Placeholder offsets - tune in-world with ModelTransformDebug (numpad live editor) and paste the
+        // exported switch block here, mirroring how RadarMachine's transform was tuned.
+        return switch (getFrontFacing()) {
+            case WEST -> new Vec3(0.5, -4.5, 1.5);
+            case EAST -> new Vec3(0.5, -4.5, -0.5);
+            case NORTH -> new Vec3(-0.5, -4.5, 0.5);
+            case SOUTH -> new Vec3(-0.5, -5, -1.5);
+            default -> Vec3.ZERO;
+        };
+    }
+
+    @Override
+    public Vec3 getModelScale() {
+        return new Vec3(2, 2, 2);
     }
 }

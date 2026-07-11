@@ -41,9 +41,12 @@ public final class RenderMaskManager {
     }
 
     public static void addDisableModel(BlockPos controllerPos, Collection<BlockPos> poses) {
-        if (poses == null || poses.isEmpty()) {
+        if (poses == null) {
             return;
         }
+        // Tracked even when poses is empty: controllers whose model doesn't hide any structure blocks (e.g.
+        // the drill rig) must still register here so they show up in getMaskedControllers(), which the
+        // model-transform debugger and isControllerMasked() rely on to know a machine is currently rendering.
         multiDisabled.put(controllerPos, poses);
         rebuildSnapshot();
         updateRenderChunk(poses);
@@ -77,6 +80,9 @@ public final class RenderMaskManager {
     }
 
     private static void updateRenderChunk(Collection<BlockPos> poses) {
+        if (poses.isEmpty()) {
+            return;
+        }
         Minecraft mc = Minecraft.getInstance();
         if (mc.levelRenderer == null) {
             return;
