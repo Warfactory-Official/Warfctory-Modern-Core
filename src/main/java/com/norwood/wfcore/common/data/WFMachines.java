@@ -140,7 +140,7 @@ public class WFMachines {
                         .where('A', air())
                         .where('K', controller(blocks(definition.getBlock())))
                         .build())
-                .workableCasingModel(WFCore.id("block/casings/steam/bronze_machine_casing"),
+                .workableCasingModel(GTCEu.id("block/casings/steam/bronze/side"),
                         WFCore.id("block/multiblock/new_multiblock"))
                 .register();
 

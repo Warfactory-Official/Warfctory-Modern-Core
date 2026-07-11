@@ -14,6 +14,7 @@ import com.lowdragmc.lowdraglib.gui.factory.UIFactory;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.data.event.GatherDataEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
@@ -53,6 +54,7 @@ public class WFCore {
         modEventBus.addListener(this::onRegister);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::loadComplete);
+        modEventBus.addListener(this::onGatherData);
         modEventBus.addListener(com.norwood.wfcore.common.capability.WFCapabilities::register);
 
         modEventBus.addListener(this::addMaterialRegistries);
@@ -129,6 +131,47 @@ public class WFCore {
     /** Runs after every mod's blocks are registered and startup scripts (KubeJS included) have executed. */
     private void loadComplete(final FMLLoadCompleteEvent event) {
         event.enqueueWork(com.norwood.wfcore.common.block.WFBlockResistances::apply);
+    }
+
+    /**
+     * Force a clean JVM shutdown once data generation finishes. This event fires ONLY in the `runData`
+     * run, so this listener never executes in the client/server. A dependency loaded into the data run
+     * (a config file-watcher / an un-shut-down executor) leaves a non-daemon thread alive, so after
+     * {@code DataGenerator#run()} returns the JVM can never reach a natural exit and {@code ./gradlew
+     * runData} hangs forever even though every provider succeeded.
+     *
+     * <p>
+     * GatherDataEvent is posted on the same thread that then runs the generator and returns, so joining
+     * that thread from a daemon watchdog blocks until all output has been written; we then call
+     * {@link System#exit} to terminate past the leaked thread. The exit code mirrors datagen success: an
+     * uncaught exception on the generator thread (a failing provider) flips it to a non-zero code so the
+     * build still fails loudly instead of being masked green.
+     */
+    private void onGatherData(final GatherDataEvent event) {
+        final Thread datagenThread = Thread.currentThread();
+        final java.util.concurrent.atomic.AtomicBoolean failed = new java.util.concurrent.atomic.AtomicBoolean();
+        final Thread.UncaughtExceptionHandler prior = datagenThread.getUncaughtExceptionHandler();
+        datagenThread.setUncaughtExceptionHandler((t, e) -> {
+            failed.set(true);
+            if (prior != null) {
+                prior.uncaughtException(t, e);
+            }
+        });
+
+        Thread watchdog = new Thread(() -> {
+            try {
+                datagenThread.join();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return;
+            }
+            int code = failed.get() ? 1 : 0;
+            LOGGER.info("wfcore: datagen finished (exit {}); forcing JVM shutdown to bypass a leaked "
+                    + "non-daemon thread from a dependency.", code);
+            System.exit(code);
+        }, "wfcore-datagen-exit");
+        watchdog.setDaemon(true);
+        watchdog.start();
     }
 
     /**
