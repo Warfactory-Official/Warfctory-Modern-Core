@@ -13,7 +13,6 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 
-import com.norwood.wfcore.client.render.gltf.AnimTransition;
 import com.norwood.wfcore.client.render.gltf.IAnimatedMachine;
 import com.norwood.wfcore.common.block.DepositBlock;
 import com.norwood.wfcore.common.data.WFBlocks;
@@ -205,15 +204,20 @@ public class DrillRigMachine extends WorkableMultiblockMachine implements IAnima
 
     //////////////////// animated model (mcgltf) ////////////////////
 
+    /**
+     * The model has a single clip ({@code WHOLESPIN_loop}, key {@code "wholespin"}) rather than separate
+     * idle/running poses, so there's only ever one state to target - the on/off distinction instead gates
+     * the animation clock itself (see {@link #isAnimationRunning()}), like {@code RadarMachine} does for
+     * power loss.
+     */
     @Override
     public String getAnimState() {
-        return isActive() ? "running" : "idle";
+        return "wholespin";
     }
 
     @Override
-    public AnimTransition getAnimTransition(String from, String to) {
-        // spin up the moment drilling starts; play the current loop out before settling back to idle
-        return "running".equals(to) ? AnimTransition.SNAP : AnimTransition.FINISH_LOOP;
+    public boolean isAnimationRunning() {
+        return isActive();
     }
 
     @Override
@@ -276,7 +280,7 @@ public class DrillRigMachine extends WorkableMultiblockMachine implements IAnima
             case WEST -> new Vec3(0.5, -4.5, 1.5);
             case EAST -> new Vec3(0.5, -4.5, -0.5);
             case NORTH -> new Vec3(-0.5, -4.5, 0.5);
-            case SOUTH -> new Vec3(-0.5, -5, -1.5);
+            case SOUTH -> new Vec3(1.5, -4.5, -0.5);
             default -> Vec3.ZERO;
         };
     }

@@ -38,6 +38,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.items.IItemHandlerModifiable;
 
 import brachy.modularui.factory.BlockEntityUIFactory;
@@ -45,6 +46,7 @@ import com.norwood.wfcore.api.research.Research;
 import com.norwood.wfcore.api.research.ResearchDataItem;
 import com.norwood.wfcore.api.research.ResearchRegistry;
 import com.norwood.wfcore.api.research.ResearchState;
+import com.norwood.wfcore.client.render.gltf.IAnimatedMachine;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 import com.norwood.wfcore.integration.warforge.WarforgeNotifications;
 import org.jetbrains.annotations.NotNull;
@@ -71,7 +73,7 @@ import java.util.Map;
  */
 public class ResearchUnitMachine extends MultiblockControllerMachine
                                  implements IOpticalComputationReceiver, IControllable, IInteractedMachine,
-                                 IMachineLife {
+                                 IMachineLife, IAnimatedMachine {
 
     public static final ManagedFieldHolder MANAGED_FIELD_HOLDER = new ManagedFieldHolder(ResearchUnitMachine.class,
             MultiblockControllerMachine.MANAGED_FIELD_HOLDER);
@@ -101,6 +103,9 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     private boolean slaveMode = false;
     @DescSynced
     private int slaveCount;
+    /** Client-synced: whether the model's animation clock should advance this tick (actively researching). */
+    @DescSynced
+    private boolean animAdvancing = false;
     /** Client snapshot of {@link #state} + queue (parsed lazily by the research-tree GUI). */
     @DescSynced
     private final ResearchSyncData researchSync = new ResearchSyncData();
@@ -176,6 +181,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         this.inputInventories.clear();
         this.computationProvider = null;
         this.jobs.clear();
+        this.animAdvancing = false;
         if (tickSub != null) {
             tickSub.unsubscribe();
             tickSub = null;
@@ -254,16 +260,19 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         }
         // SLAVE units only lend parallel slots to an adjacent CONTROL; they never process themselves.
         if (slaveMode || !isWorkingEnabled || jobs.isEmpty()) {
+            animAdvancing = false;
             return;
         }
         // Formed but under-powered: an energy hatch below LV won't drive the research logic.
         if (voltageTier < MIN_TIER) {
+            animAdvancing = false;
             return;
         }
 
         // only the first `capacity` queued researches run concurrently; the rest wait their turn
         int activeCount = Math.min(jobs.size(), getJobCapacity());
         boolean changed = false;
+        boolean anyProgressed = false;
         for (int i = activeCount - 1; i >= 0; i--) {
             Job job = jobs.get(i);
             Research research = ResearchRegistry.get(job.researchId);
@@ -272,13 +281,17 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
                 changed = true;
                 continue;
             }
-            if (processJob(job, research)) changed = true;
+            if (processJob(job, research)) {
+                changed = true;
+                anyProgressed = true;
+            }
             if (state.isComplete(job.researchId)) {
                 completeResearch(research);
                 jobs.remove(i);
                 changed = true;
             }
         }
+        animAdvancing = anyProgressed;
         if (changed || tickCounter % 10 == 0) pushResearchSync();
     }
 
@@ -554,6 +567,45 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
             BlockEntityUIFactory.INSTANCE.open(player, pos);
         }
         return InteractionResult.SUCCESS;
+    }
+
+    //////////////////// animated model (mcgltf) ////////////////////
+
+    /**
+     * The model has a single clip ({@code lasering_loop}, key {@code "lasering"}) rather than separate
+     * idle/running poses, so there's only ever one state to target - the on/off distinction instead gates
+     * the animation clock itself (see {@link #isAnimationRunning()}), like {@code RadarMachine} does for
+     * power loss.
+     */
+    @Override
+    public String getAnimState() {
+        return "lasering";
+    }
+
+    @Override
+    public boolean isAnimationRunning() {
+        return animAdvancing;
+    }
+
+    @Override
+    public boolean shouldRenderModel() {
+        return isFormed();
+    }
+
+    @Override
+    public Vec3 getModelTransform() {
+        return switch (getFrontFacing()) {
+            case WEST -> new Vec3(3.5, -1, -3.5);
+            case EAST -> new Vec3(-2.5, -1, 4.5);
+            case NORTH -> new Vec3(4.5, -1, 3.5);
+            case SOUTH -> new Vec3(-3.5, -1, -2.5);
+            default -> Vec3.ZERO;
+        };
+    }
+
+    @Override
+    public Vec3 getModelScale() {
+        return new Vec3(1, 1, 1);
     }
 
     //////////////////// persistence ////////////////////

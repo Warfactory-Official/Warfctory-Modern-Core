@@ -19,6 +19,7 @@ import com.norwood.wfcore.common.data.WFBlocks;
 import com.norwood.wfcore.common.data.WFMachines;
 import com.norwood.wfcore.common.machine.DrillRigBlockEntity;
 import com.norwood.wfcore.common.machine.RadarBlockEntity;
+import com.norwood.wfcore.common.machine.ResearchUnitBlockEntity;
 import com.norwood.wfcore.common.particle.WFParticles;
 
 @Mod.EventBusSubscriber(modid = WFCore.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
@@ -30,12 +31,16 @@ public class WFClientEvents {
     /** Shared drilling-rig model; states {@code idle}/{@code running} driven by the drill rig machine. */
     public static final MachineGltfModel DRILL_RIG_MODEL = new MachineGltfModel(WFCore.id("model/drill_rig.gltf"));
 
+    /** Shared research-unit model; every research unit BER reuses the same loaded GLTF scene. */
+    public static final MachineGltfModel RESEARCH_MODEL = new MachineGltfModel(WFCore.id("model/research_render.gltf"));
+
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         // Register the model receivers so McGLTF loads them on (re)load and hands back the GPU scenes.
         event.enqueueWork(() -> {
             MCglTF.getInstance().addGltfModelReceiver(RADAR_MODEL);
             MCglTF.getInstance().addGltfModelReceiver(DRILL_RIG_MODEL);
+            MCglTF.getInstance().addGltfModelReceiver(RESEARCH_MODEL);
         });
     }
 
@@ -48,6 +53,9 @@ public class WFClientEvents {
         event.registerBlockEntityRenderer(
                 (BlockEntityType<DrillRigBlockEntity>) WFMachines.DRILL_RIG.getBlockEntityType(),
                 ctx -> new GltfMachineRenderer<>(DRILL_RIG_MODEL));
+        event.registerBlockEntityRenderer(
+                (BlockEntityType<ResearchUnitBlockEntity>) WFMachines.RESEARCH_UNIT.getBlockEntityType(),
+                ctx -> new GltfMachineRenderer<>(RESEARCH_MODEL));
         event.registerBlockEntityRenderer(WFBlocks.DEPOSIT_BE.get(), DepositBlockEntityRenderer::new);
     }
 

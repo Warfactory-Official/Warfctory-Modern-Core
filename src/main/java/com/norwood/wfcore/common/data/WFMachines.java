@@ -166,6 +166,10 @@ public class WFMachines {
         RESEARCH_UNIT = WF_MACHINES.multiblock("research_unit", ResearchUnitMachine::new,
                 MetaMachineBlock::new, MetaMachineItem::new, ResearchUnitBlockEntity::new)
                 .langValue("Research Unit")
+                // The unit's animated GLTF core is drawn by our own GltfMachineRenderer (registered in
+                // WFClientEvents). GTM's default BER would clobber it (see RadarMachine), so disable it;
+                // the casing/front overlay still render from the chunk-mesh baked model.
+                .hasBER(false)
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
                         RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
