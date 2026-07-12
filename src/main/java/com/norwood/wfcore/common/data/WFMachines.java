@@ -449,7 +449,11 @@ public class WFMachines {
                     }
                     return pattern
                             .where('S', controller(blocks(definition.getBlock())))
-                            .where('A', blocks(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM.get())) // gtceu:titanium_turbine_casing x152
+                            .where('A', blocks(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM.get())
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.DATA_ACCESS))) // gtceu:titanium_turbine_casing x152
                             .where('B', blocks(GTBlocks.REINFORCED_STONE.get())) // gtceu:reinforced_stone x26
                             .where('C', blocks(GTBlocks.LIGHT_CONCRETE.get())) // gtceu:light_concrete x65
                             .where('D', blocks(GTBlocks.METAL_SHEETS.get(DyeColor.BLACK).get())) // gtceu:black_metal_sheet x71
@@ -497,7 +501,11 @@ public class WFMachines {
                     }
                     return pattern
                             .where('S', controller(blocks(definition.getBlock())))
-                            .where('A', blocks(GTBlocks.STEEL_HULL.get())) // gtceu:steel_machine_casing x74
+                            .where('A', blocks(GTBlocks.STEEL_HULL.get())
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.DATA_ACCESS))) // gtceu:steel_machine_casing x74
                             .where('B', blocks(GTBlocks.REINFORCED_STONE.get())) // gtceu:reinforced_stone x26
                             .where('C', blocks(GTBlocks.LIGHT_CONCRETE.get())) // gtceu:light_concrete x65
                             .where('D', blocks(GTBlocks.CASING_STEEL_SOLID.get())) // gtceu:solid_machine_casing x111
@@ -549,7 +557,11 @@ public class WFMachines {
                     return pattern
                             .where('S', controller(blocks(definition.getBlock())))
                             .where('A', blocks(GTBlocks.REINFORCED_STONE.get())) // gtceu:reinforced_stone x72
-                            .where('B', blocks(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM.get())) // gtceu:titanium_turbine_casing x170
+                            .where('B', blocks(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM.get())
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.DATA_ACCESS))) // gtceu:titanium_turbine_casing x170
                             .where('C', blocks(GTBlocks.LIGHT_CONCRETE.get())) // gtceu:light_concrete x205
                             .where('D', blocks(GTBlocks.METAL_SHEETS.get(DyeColor.BLACK).get())) // gtceu:black_metal_sheet x35
                             .where('E', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x36
@@ -601,7 +613,11 @@ public class WFMachines {
                     }
                     return pattern
                             .where('S', controller(blocks(definition.getBlock())))
-                            .where('A', blocks(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM.get())) // gtceu:titanium_turbine_casing x430
+                            .where('A', blocks(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM.get())
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.DATA_ACCESS))) // gtceu:titanium_turbine_casing x430
                             .where('B', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x71
                             .where('C', blocks(GTBlocks.METAL_SHEETS.get(DyeColor.BLACK).get())) // gtceu:black_metal_sheet x230
                             .where('D', blocks(GTBlocks.CASING_STAINLESS_STEEL_GEARBOX.get())) // gtceu:stainless_steel_gearbox x18
