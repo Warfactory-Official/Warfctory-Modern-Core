@@ -19,6 +19,7 @@
   ],
   "client": [
     "NamePlateMixin",
+    "WarforgeNamePlateMixin",
     "DebugRemover",
     "GuiDebugRemover",
     "ForgeDebugTextRemover",
