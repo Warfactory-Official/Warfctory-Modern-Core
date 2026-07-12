@@ -2,6 +2,7 @@
   "values": [
     "wfcore:aluminium_sheet_casing",
     "wfcore:galvanized_steel_casing",
+    "wfcore:machine_casing_turbine_titanium",
     "wfcore:condensed_cables",
     "wfcore:concrete_base",
     "wfcore:drill_head",

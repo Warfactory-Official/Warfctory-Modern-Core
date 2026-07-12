@@ -16,6 +16,7 @@ import com.gregtechceu.gtceu.api.pattern.FactoryBlockPattern;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.api.registry.registrate.MachineBuilder;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
+import com.gregtechceu.gtceu.common.data.GCYMBlocks;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.data.GTRecipeModifiers;
@@ -24,6 +25,7 @@ import com.gregtechceu.gtceu.common.data.models.GTMachineModels;
 import com.gregtechceu.gtceu.common.machine.multiblock.steam.SteamParallelMultiblockMachine;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.block.Block;
 
 import com.norwood.wfcore.WFCore;
@@ -55,6 +57,10 @@ public class WFMachines {
     public static MultiblockMachineDefinition RESEARCH_UNIT;
     public static MultiblockMachineDefinition RADAR;
     public static MultiblockMachineDefinition LIGHT_GROUND_VEHICLE_FACTORY;
+    public static MultiblockMachineDefinition TANK_ASSEMBLY;
+    public static MultiblockMachineDefinition LIGHT_PLANE_ASSEMBLER;
+    public static MultiblockMachineDefinition HEAVY_PLANE_ASSEMBLER;
+    public static MultiblockMachineDefinition HEAVY_VEHICLE_DEPOT;
     public static MultiblockMachineDefinition DRILL_RIG;
     public static MultiblockMachineDefinition STEAM_WIREMILL;
 
@@ -407,6 +413,207 @@ public class WFMachines {
 
                 })
                 .workableCasingModel(GTCEu.id("block/casings/steam/steel/side"),
+                        GTCEu.id("block/machines/assembler"))
+                .register();
+
+        TANK_ASSEMBLY = WF_MACHINES
+                .multiblock("tank_assembly", LightGroundVehicleFactoryMachine::new,
+                        MetaMachineBlock::new, MetaMachineItem::new, VehicleFactoryBlockEntity::new)
+                .langValue("Tank Assembly Line")
+                .recipeType(VehicleFactoryRecipes.VEHICLE_ASSEMBLER)
+                .appearanceBlock(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM)
+                .allowFlip(false)
+                .allowExtendedFacing(false)
+                .pattern(definition -> {
+                    final String[][] AISLES = {
+                    { "AAA       AAA", "DDD       DDD", "             ", "             ", "             ", "             ", "    H   H    ", "             ", "             " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", " A         A ", " A         A ", " A         A ", " A         A ", " AFGFGFGFGFA ", " A  I   I  A ", " AFGFGFGFGFA " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             " },
+                    { " AABCCCCCBAA ", "             ", "             ", " E         E ", "             ", "             ", "             ", "             ", "             " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", " A         A ", " A         A ", " A         A ", " A         A ", " AFGFGFGFGFA ", " A  I   I  A ", " AFGFGFGFGFA " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             " },
+                    { " AABCCCCCBAA ", "             ", "             ", " E         E ", "             ", "             ", "             ", "             ", "             " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", " A         A ", " A         A ", " A         A ", " A         A ", " AFGFGFGFGFA ", " A  I   I  A ", " AFGFGFGFGFA " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             " },
+                    { " AABCCCCCBAA ", "             ", "             ", " E         E ", "             ", "             ", "             ", "             ", "             " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             " },
+                    { "AAABCCCCCBAAA", "DDD       DDS", " A         A ", " A         A ", " A         A ", " A         A ", " AFGFGFGFGFA ", " A  I   I  A ", " AFGFGFGFGFA " },
+                    { "AAA       AAA", "DDD       DDD", "             ", "             ", "             ", "             ", "    H   H    ", "             ", "             " },
+                    };
+                    var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
+                            RelativeDirection.RIGHT);
+                    for (String[] aisle : AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM.get())) // gtceu:titanium_turbine_casing x152
+                            .where('B', blocks(GTBlocks.REINFORCED_STONE.get())) // gtceu:reinforced_stone x26
+                            .where('C', blocks(GTBlocks.LIGHT_CONCRETE.get())) // gtceu:light_concrete x65
+                            .where('D', blocks(GTBlocks.METAL_SHEETS.get(DyeColor.BLACK).get())) // gtceu:black_metal_sheet x71
+                            .where('E', blocks(GTBlocks.LAMPS.get(DyeColor.YELLOW).get())) // gtceu:yellow_lamp[bloom=true,powered=false,lit=true,inverted=false] x6
+                            .where('F', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x40
+                            .where('G', frames(GTMaterials.Polytetrafluoroethylene)) // gtceu:polytetrafluoroethylene_frame x32
+                            .where('H', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x16
+                            .where('I', blocks(GTBlocks.CASING_STAINLESS_STEEL_GEARBOX.get())) // gtceu:stainless_steel_gearbox x8
+                            .where(' ', any()).build();
+                })
+                .workableCasingModel(WFCore.id("block/casings/machine_casing_turbine_titanium"),
+                        GTCEu.id("block/machines/assembler"))
+                .register();
+
+        LIGHT_PLANE_ASSEMBLER = WF_MACHINES
+                .multiblock("light_plane_assembler", LightGroundVehicleFactoryMachine::new,
+                        MetaMachineBlock::new, MetaMachineItem::new, VehicleFactoryBlockEntity::new)
+                .langValue("Light Plane Assembler")
+                .recipeType(VehicleFactoryRecipes.VEHICLE_ASSEMBLER)
+                .appearanceBlock(GTBlocks.STEEL_HULL)
+                .allowFlip(false)
+                .allowExtendedFacing(false)
+                .pattern(definition -> {
+                    final String[][] AISLES = {
+                    { "AAA       AAA", "DDD       DDD", "             ", "             ", "             ", "             ", "             ", "             " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", " D         D ", " D         D ", " D         D ", " D         D ", " D         D ", " ADDDDDDDDDA " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", "             ", "             ", "  E       E  ", "             ", "  E       E  " },
+                    { "  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "   E     E   ", "   EEEEEEE   " },
+                    { "  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "             ", "    F F F    " },
+                    { "  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "             ", "     F F     " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", "             ", "             ", "             ", "             ", "    F F F    " },
+                    { "AAABCCCCCBAAA", "DDD       DDS", " A         D ", " D         D ", " D         D ", " DE       ED ", " D E     E D ", " AEEEEEEEEEA " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", "             ", "             ", "             ", "             ", "    F F F    " },
+                    { "  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "             ", "     F F     " },
+                    { "  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "             ", "    F F F    " },
+                    { "  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "   E     E   ", "   EEEEEEE   " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", "             ", "             ", "  E       E  ", "             ", "  E       E  " },
+                    { "AAABCCCCCBAAA", "DDD       DDD", " A         D ", " D         D ", " D         D ", " D         D ", " D         D ", " ADDDDDDDDDA " },
+                    { "AAA       AAA", "DDD       DDD", "             ", "             ", "             ", "             ", "             ", "             " },
+                    };
+                    var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
+                            RelativeDirection.RIGHT);
+                    for (String[] aisle : AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(GTBlocks.STEEL_HULL.get())) // gtceu:steel_machine_casing x74
+                            .where('B', blocks(GTBlocks.REINFORCED_STONE.get())) // gtceu:reinforced_stone x26
+                            .where('C', blocks(GTBlocks.LIGHT_CONCRETE.get())) // gtceu:light_concrete x65
+                            .where('D', blocks(GTBlocks.CASING_STEEL_SOLID.get())) // gtceu:solid_machine_casing x111
+                            .where('E', frames(GTMaterials.Steel)) // gtceu:steel_frame x39
+                            .where('F', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x16
+                            .where(' ', any()).build();
+                })
+                .workableCasingModel(GTCEu.id("block/casings/steam/steel/side"),
+                        GTCEu.id("block/machines/assembler"))
+                .register();
+
+        HEAVY_PLANE_ASSEMBLER = WF_MACHINES
+                .multiblock("heavy_plane_assembler", LightGroundVehicleFactoryMachine::new,
+                        MetaMachineBlock::new, MetaMachineItem::new, VehicleFactoryBlockEntity::new)
+                .langValue("Heavy Plane Assembler")
+                .recipeType(VehicleFactoryRecipes.VEHICLE_ASSEMBLER)
+                .appearanceBlock(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM)
+                .allowFlip(false)
+                .allowExtendedFacing(false)
+                .pattern(definition -> {
+                    final String[][] AISLES = {
+                    { "    AAAAAAAAA    ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 " },
+                    { " BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 " },
+                    { " BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "  B           B  ", "  B           B  ", "  B           B  ", "  B           B  ", "  B           B  ", "  BBBBBBBBBBBBB  ", "  B           B  " },
+                    { " BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "                 ", "  G           G  ", "  G           G  ", "                 ", "  B           B  ", "  HH         HH  ", "                 " },
+                    { "    ACCCCCCCA    ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "                 ", "  B           B  ", "   HH       HH   ", "                 " },
+                    { "AAAAACCCCCCCAAAAA", "                 ", "                 ", "                 ", "                 ", "  G           G  ", "  G           G  ", "  B           B  ", "   H H     H H   ", "                 " },
+                    { "ACCCCCCCCCCCCCCCA", " E E         E E ", " EEE         EEE ", "                 ", "                 ", "                 ", "  B           B  ", "  B           B  ", "    H H   H H    ", "                 " },
+                    { "ACCCCCCCCCCCCCCCA", "                 ", " EFE         EFE ", "                 ", "                 ", "                 ", "  G           G  ", "  B           B  ", "    H  H H  H    ", "                 " },
+                    { "ACCCCCCCCCCCCCCCA", "                 ", " FFF         FFF ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "     H  H  H     ", "                 " },
+                    { "ACCCCCCCCCCCCCCCA", "                 ", " EFE         EFE ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "  B  H  H  H  B  ", "  B           B  " },
+                    { "ACCCCCCCCCCCCCCCA", "                 ", " FFF         FFF ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", " GGGGGGGGGGGGGGG ", "  B           B  " },
+                    { "ACCCCCCCCCCCCCCCA", "                 ", " EFE         EFE ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "  B  H  H  H  B  ", "  B           B  " },
+                    { "ACCCCCCCCCCCCCCCA", "                 ", " FFF         FFF ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "     H  H  H     ", "                 " },
+                    { "ACCCCCCCCCCCCCCCA", "                 ", " EFE         EFE ", "                 ", "                 ", "                 ", "  G           G  ", "  B           B  ", "    H  H H  H    ", "                 " },
+                    { "ACCCCCCCCCCCCCCCA", " E E         E E ", " EEE         EEE ", "                 ", "                 ", "                 ", "  B           B  ", "  B           B  ", "    H H   H H    ", "                 " },
+                    { "AAAAACCCCCCCAAAAA", "                 ", "                 ", "                 ", "                 ", "  G           G  ", "  G           G  ", "  B           B  ", "   H H     H H   ", "                 " },
+                    { "    ACCCCCCCA    ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "                 ", "  B           B  ", "   HH       HH   ", "                 " },
+                    { " BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "                 ", "  G           G  ", "  G           G  ", "                 ", "  B           B  ", "  HH         HH  ", "                 " },
+                    { " BBBACCCCCCCABBB ", " DDD         DDS ", " BBB         BBB ", "  B           B  ", "  B           B  ", "  B           B  ", "  B           B  ", "  B           B  ", "  BBBBBBBBBBBBB  ", "  B           B  " },
+                    { " BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 " },
+                    { "    AAAAAAAAA    ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 " },
+                    };
+                    var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
+                            RelativeDirection.RIGHT);
+                    for (String[] aisle : AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(GTBlocks.REINFORCED_STONE.get())) // gtceu:reinforced_stone x72
+                            .where('B', blocks(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM.get())) // gtceu:titanium_turbine_casing x170
+                            .where('C', blocks(GTBlocks.LIGHT_CONCRETE.get())) // gtceu:light_concrete x205
+                            .where('D', blocks(GTBlocks.METAL_SHEETS.get(DyeColor.BLACK).get())) // gtceu:black_metal_sheet x35
+                            .where('E', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x36
+                            .where('F', blocks(GCYMBlocks.CASING_ATOMIC.get())) // gtceu:atomic_casing x26
+                            .where('G', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x35
+                            .where('H', frames(GTMaterials.Polytetrafluoroethylene)) // gtceu:polytetrafluoroethylene_frame x52
+                            .where(' ', any()).build();
+                })
+                .workableCasingModel(WFCore.id("block/casings/machine_casing_turbine_titanium"),
+                        GTCEu.id("block/machines/assembler"))
+                .register();
+
+        HEAVY_VEHICLE_DEPOT = WF_MACHINES
+                .multiblock("heavy_vehicle_depot", LightGroundVehicleFactoryMachine::new,
+                        MetaMachineBlock::new, MetaMachineItem::new, VehicleFactoryBlockEntity::new)
+                .langValue("Heavy Vehicle Depot")
+                .recipeType(VehicleFactoryRecipes.VEHICLE_ASSEMBLER)
+                .appearanceBlock(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM)
+                .allowFlip(false)
+                .allowExtendedFacing(false)
+                .pattern(definition -> {
+                    final String[][] AISLES = {
+                    { "AAA           AAA", "CCC           CCC", "AAA           AAA", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 " },
+                    { "AAABBBBBBBBBBBAAA", "CDC           CDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      " },
+                    { "BAAAAAAAAAAAAAAAB", "BDCEFFFFFFFFFECDB", "BAA           AAB", "HG             GH", "AA             AA", " I             I ", "  I           I  ", "  I           I  ", "   A   B B   A   ", "    II  A  II    ", "      IIAII      " },
+                    { "AAACCCCCCCCCCCAAA", "CDCEFFFFFFFFFECDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      " },
+                    { "AAACCCCCCCCCCCAAA", "CCCEFFFFFFFFFECCC", "AAA           AAA", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
+                    { " AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
+                    { " AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A   B B   A   ", "    JJ  A  JJ    ", "      JJAJJ      " },
+                    { " AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
+                    { "AAACCCCCCCCCCCAAA", "CCCEFFFFFFFFFECCC", "AAA           AAA", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
+                    { "AAACCCCCCCCCCCAAA", "CDCEFFFFFFFFFEADC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      " },
+                    { "BAACCCCCCCCCCCAAA", "BDCEFFFFFFFFFECDS", "BAA           AAA", "HG             GH", "AA             AA", " I             I ", "  I           I  ", "  I           I  ", "   A   B B   A   ", "    II  A  II    ", "      IIAII      " },
+                    { "AAACCCCCCCCCCCAAA", "CDCEFFFFFFFFFECDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      " },
+                    { "AAACCCCCCCCCCCAAA", "CCCEFFFFFFFFFECCC", "AAA           AAA", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
+                    { " AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
+                    { " AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A   B B   A   ", "    JJ  A  JJ    ", "      JJAJJ      " },
+                    { " AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
+                    { "AAACCCCCCCCCCCAAA", "CCCEFFFFFFFFFECCC", "AAA           AAA", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
+                    { "AAACCCCCCCCCCCAAA", "CDCEFFFFFFFFFECDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      " },
+                    { "BAAAAAAAAAAAAAAAB", "BDCEFFFFFFFFFECDB", "BAA           AAB", "HG             GH", "AA             IA", " I             I ", "  I           I  ", "  I           I  ", "   A         A   ", "    II     II    ", "      IIAII      " },
+                    { "AAABBBBBBBBBBBAAA", "CDC           CDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A   B B   A   ", "    AA  A  AA    ", "      AAAAA      " },
+                    { "AAA           AAA", "CCC           CCC", "AAA           AAA", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 " },
+                    };
+                    var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
+                            RelativeDirection.RIGHT);
+                    for (String[] aisle : AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM.get())) // gtceu:titanium_turbine_casing x430
+                            .where('B', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x71
+                            .where('C', blocks(GTBlocks.METAL_SHEETS.get(DyeColor.BLACK).get())) // gtceu:black_metal_sheet x230
+                            .where('D', blocks(GTBlocks.CASING_STAINLESS_STEEL_GEARBOX.get())) // gtceu:stainless_steel_gearbox x18
+                            .where('E', blocks(GTBlocks.REINFORCED_STONE.get())) // gtceu:reinforced_stone x34
+                            .where('F', blocks(GTBlocks.LIGHT_CONCRETE.get())) // gtceu:light_concrete x153
+                            .where('G', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get())) // wfcore:aluminium_sheet_casing x30
+                            .where('H', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x26
+                            .where('I', frames(GTMaterials.Polytetrafluoroethylene)) // gtceu:polytetrafluoroethylene_frame x43
+                            .where('J', blocks(GTBlocks.CASING_LAMINATED_GLASS.get())) // gtceu:laminated_glass x140
+                            .where(' ', any()).build();
+                })
+                .workableCasingModel(WFCore.id("block/casings/machine_casing_turbine_titanium"),
                         GTCEu.id("block/machines/assembler"))
                 .register();
 

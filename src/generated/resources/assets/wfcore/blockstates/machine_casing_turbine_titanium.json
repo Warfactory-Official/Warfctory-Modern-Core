@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "wfcore:block/machine_casing_turbine_titanium"
+    }
+  }
+}

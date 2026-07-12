@@ -1,0 +1,5 @@
+{
+    "ldlib": {
+        "connection": "wfcore:block/casings/machine_casing_turbine_titanium_ctm"
+    }
+}

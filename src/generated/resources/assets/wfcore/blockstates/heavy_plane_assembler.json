@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "wfcore:block/machine/heavy_plane_assembler",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "wfcore:block/machine/heavy_plane_assembler"
+    },
+    "facing=south": {
+      "model": "wfcore:block/machine/heavy_plane_assembler",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "wfcore:block/machine/heavy_plane_assembler",
+      "y": 270
+    }
+  }
+}

@@ -38,6 +38,8 @@ public class WFBlocks {
     public static BlockEntry<Block> ALUMINIUM_SHEET_CASING;
     public static BlockEntry<BoltableCasingBlock> BOLTABLE_CASING;
     public static BlockEntry<Block> GALVANIZED_STEEL_CASING;
+    /** Custom titanium turbine casing (CTM); stands in for {@code gtceu:titanium_turbine_casing} in WF factories. */
+    public static BlockEntry<Block> MACHINE_CASING_TURBINE_TITANIUM;
     public static BlockEntry<Block> CONDENSED_CABLES;
     public static BlockEntry<Block> CONCRETE_BASE;
     public static BlockEntry<Block> DRILL_HEAD;
@@ -68,6 +70,8 @@ public class WFBlocks {
                 WFCore.id("block/casings/aluminium_sheet_casing"));
         GALVANIZED_STEEL_CASING = createCasingBlock("galvanized_steel_casing",
                 WFCore.id("block/casings/galvanized_steel_casing"));
+        MACHINE_CASING_TURBINE_TITANIUM = createCasingBlock("machine_casing_turbine_titanium",
+                WFCore.id("block/casings/machine_casing_turbine_titanium"));
         CONDENSED_CABLES = createCasingBlock("condensed_cables",
                 WFCore.id("block/casings/condensed_cables"));
         CONCRETE_BASE = createCasingBlock("concrete_base",
