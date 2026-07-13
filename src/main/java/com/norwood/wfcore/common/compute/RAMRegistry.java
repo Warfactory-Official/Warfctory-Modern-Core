@@ -25,6 +25,14 @@ public final class RAMRegistry {
         REGISTRY.put(item, new RAMEntry(throughput));
     }
 
+    public static void unregister(Item item) {
+        if (item != null) REGISTRY.remove(item);
+    }
+
+    public static boolean isRegistered(Item item) {
+        return item != null && REGISTRY.containsKey(item);
+    }
+
     @Nullable
     public static RAMEntry getEntry(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;

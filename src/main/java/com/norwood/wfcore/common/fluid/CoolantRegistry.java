@@ -32,6 +32,10 @@ public final class CoolantRegistry {
         COOLANTS.put(cold, new CoolantSettings(hot, capacity));
     }
 
+    public static void unregister(Fluid cold) {
+        if (cold != null) COOLANTS.remove(cold);
+    }
+
     @Nullable
     public static CoolantSettings get(Fluid fluid) {
         if (fluid == null) return null;

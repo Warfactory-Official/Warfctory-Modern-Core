@@ -117,6 +117,9 @@ public class WFCore {
             com.norwood.wfcore.common.fluid.CoolantRegistry.register();
             com.norwood.wfcore.common.compute.CPURegistry.register();
             com.norwood.wfcore.common.compute.RAMRegistry.register();
+            // Apply KubeJS compute overrides last so packs can add/override/remove any built-in above,
+            // plus retune the global WFComputeConfig tunables. (Startup scripts ran before this point.)
+            com.norwood.wfcore.common.compute.WFComputeScripts.apply();
             LOGGER.info("Compute registries: {} CPU item(s), {} RAM item(s)",
                     com.norwood.wfcore.common.compute.CPURegistry.size(),
                     com.norwood.wfcore.common.compute.RAMRegistry.size());

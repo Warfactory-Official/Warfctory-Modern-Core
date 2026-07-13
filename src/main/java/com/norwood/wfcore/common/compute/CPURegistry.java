@@ -26,6 +26,14 @@ public final class CPURegistry {
         REGISTRY.put(item, entry);
     }
 
+    public static void unregister(Item item) {
+        if (item != null) REGISTRY.remove(item);
+    }
+
+    public static boolean isRegistered(Item item) {
+        return item != null && REGISTRY.containsKey(item);
+    }
+
     @Nullable
     public static CPUEntry getEntry(ItemStack stack) {
         if (stack == null || stack.isEmpty()) return null;
@@ -51,16 +59,14 @@ public final class CPURegistry {
                            long minPower      // Idle/baseline power draw (EU/t)
     ) {
 
-        private static final double EU_TO_HEAT_RATIO = 0.04;
-
         public double getCurrentEfficency(long power) {
             if (power < minPower) return 0;
             long span = maxPower - minPower;
             // load = fraction of the power band in use (0 at idle, 1 at max); the dropoff makes a CPU run
             // less efficiently the harder it is pushed. Guard the degenerate span (maxPower == minPower).
             double load = span <= 0 ? 1.0 : (double) (power - minPower) / span;
-            double dropoff = 0.2 * Math.pow(load, 2);
-            return Math.max(0.05, efficiency - dropoff);
+            double dropoff = WFComputeConfig.efficiencyDropoff() * Math.pow(load, 2);
+            return Math.max(WFComputeConfig.minEfficiency(), efficiency - dropoff);
         }
 
         public long getCWU(long power) {
@@ -73,7 +79,7 @@ public final class CPURegistry {
 
         public double getHeat(long power) {
             long wasteEU = power - getCWU(power);
-            return wasteEU * EU_TO_HEAT_RATIO;
+            return wasteEU * WFComputeConfig.heatRatio();
         }
     }
 }

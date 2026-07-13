@@ -9,26 +9,22 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 
+import com.norwood.wfcore.common.compute.WFComputeConfig;
 import com.norwood.wfcore.common.cover.CoolingFanCover;
 import com.norwood.wfcore.common.fluid.CoolantRegistry;
 
 /**
  * A mainframe cooling component. A passive cooler bleeds heat to ambient; a liquid cooler drains the
  * mainframe's shared coolant for far stronger active cooling.
+ *
+ * <p>
+ * The cooling coefficients ({@link WFComputeConfig#passiveCoolingBase()},
+ * {@link WFComputeConfig#activeCoolingScale()}) and per-tick coolant draw
+ * ({@link WFComputeConfig#liquidCoolantPerTick()}) are pack-tunable via the {@code WFCompute.config()} KubeJS
+ * binding. Passive cooling coefficient is {@code base·(tier+1)}: a bare fan is tier 0, a Cooling Fan Cover
+ * raises the effective tier to LV..EV (1..4), so a covered fan cools (tier+1)× a bare one.
  */
 public class CoolingPartMachine extends MultiblockPartMachine implements ICooler {
-
-    /**
-     * Passive cooling coefficient per effective fan tier. A bare fan is tier 0 (coefficient = base·1); a
-     * Cooling Fan Cover raises the effective tier to LV..EV (1..4), so a covered fan cools (tier+1)× a bare
-     * one. Higher coefficient ⇒ more heat bled per °C the mainframe runs above ambient.
-     */
-    public static final double PASSIVE_BASE_COEFF = 0.05;
-    /**
-     * Scales a liquid cooler's raw draw (mB · coolant heat capacity) into a mainframe cooling rate, so a
-     * single cooler is a few CPUs' worth of cooling rather than dozens.
-     */
-    public static final double ACTIVE_COOL_SCALE = 0.1;
 
     private final boolean isLiquid;
 
@@ -48,7 +44,7 @@ public class CoolingPartMachine extends MultiblockPartMachine implements ICooler
         // Effective fan tier: 0 for a bare hatch, or LV..EV (1..4) from a Cooling Fan Cover on the exposed
         // face. A covered fan therefore cools (tier + 1)x a bare one. Cooling scales with how far above
         // ambient the mainframe runs (Newton's law of cooling), so a hot mainframe sheds heat faster.
-        double coolingCoefficient = PASSIVE_BASE_COEFF * (getFanTier() + 1);
+        double coolingCoefficient = WFComputeConfig.passiveCoolingBase() * (getFanTier() + 1);
         return (coolingCoefficient * (currentTemp - ambient)) / thermalMass;
     }
 
@@ -71,14 +67,14 @@ public class CoolingPartMachine extends MultiblockPartMachine implements ICooler
             CoolantRegistry.CoolantSettings settings = CoolantRegistry.get(stack.getFluid());
             if (settings == null) continue;
             int available = Math.min(getFluidUsagePerTick(), stack.getAmount());
-            return (available * settings.heatCapacity() * ACTIVE_COOL_SCALE) / thermalMass;
+            return (available * settings.heatCapacity() * WFComputeConfig.activeCoolingScale()) / thermalMass;
         }
         return 0;
     }
 
     @Override
     public int getFluidUsagePerTick() {
-        return isLiquid ? 100 : 0;
+        return isLiquid ? WFComputeConfig.liquidCoolantPerTick() : 0;
     }
 
     @Override
@@ -92,9 +88,10 @@ public class CoolingPartMachine extends MultiblockPartMachine implements ICooler
             CoolantRegistry.CoolantSettings settings = CoolantRegistry.get(stack.getFluid());
             if (settings == null) continue;
 
-            int amountToDrain = Math.min((int) Math.ceil(100 * percentage), stack.getAmount());
+            int amountToDrain = Math.min((int) Math.ceil(getFluidUsagePerTick() * percentage), stack.getAmount());
             if (amountToDrain <= 0) continue;
 
+            double scale = WFComputeConfig.activeCoolingScale();
             FluidStack drainTarget = new FluidStack(stack.getFluid(), amountToDrain);
 
             if (settings.hotVariant() != null && out != null) {
@@ -104,13 +101,13 @@ public class CoolingPartMachine extends MultiblockPartMachine implements ICooler
                     if (!drained.isEmpty() && drained.getAmount() > 0) {
                         hotStack.setAmount(drained.getAmount());
                         out.fill(hotStack, IFluidHandler.FluidAction.EXECUTE);
-                        return (drained.getAmount() * settings.heatCapacity() * ACTIVE_COOL_SCALE) / thermalMass;
+                        return (drained.getAmount() * settings.heatCapacity() * scale) / thermalMass;
                     }
                 }
             } else {
                 FluidStack drained = in.drain(drainTarget, IFluidHandler.FluidAction.EXECUTE);
                 if (!drained.isEmpty() && drained.getAmount() > 0) {
-                    return (drained.getAmount() * settings.heatCapacity() * ACTIVE_COOL_SCALE) / thermalMass;
+                    return (drained.getAmount() * settings.heatCapacity() * scale) / thermalMass;
                 }
             }
         }

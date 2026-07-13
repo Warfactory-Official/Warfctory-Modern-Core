@@ -31,6 +31,7 @@ import net.minecraft.world.level.Level;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 
 import com.norwood.wfcore.common.compute.CPURegistry;
+import com.norwood.wfcore.common.compute.WFComputeConfig;
 import com.norwood.wfcore.common.machine.compute.ICooler;
 import com.norwood.wfcore.common.machine.compute.ICpuSlot;
 import com.norwood.wfcore.common.machine.compute.IRamSlot;
@@ -51,8 +52,6 @@ public class MainframeMachine extends MultiblockControllerMachine
 
     public static final ManagedFieldHolder MANAGED_FIELD_HOLDER = new ManagedFieldHolder(MainframeMachine.class,
             MultiblockControllerMachine.MANAGED_FIELD_HOLDER);
-
-    private static final double MAX_TEMP = 105.0;
 
     final GPCHandler gpcHandler = new GPCHandler(this);
     private IEnergyContainer energyContainer = new EnergyContainerList(new ArrayList<>());
@@ -172,7 +171,7 @@ public class MainframeMachine extends MultiblockControllerMachine
 
         if (!isWorkingEnabled) {
             setActive(false);
-            currentTemp = Math.max(AMBIENT, currentTemp - 0.25);
+            currentTemp = Math.max(AMBIENT, currentTemp - WFComputeConfig.idleCooldownRate());
             gpcHandler.clearAllocation();
             return;
         }
@@ -181,18 +180,19 @@ public class MainframeMachine extends MultiblockControllerMachine
         consumeEnergy();
 
         if (isActive) {
-            double temperatureChange = gpcHandler.calculateTemperatureChange(currentTemp >= 70.0);
+            double temperatureChange = gpcHandler
+                    .calculateTemperatureChange(currentTemp >= WFComputeConfig.forceActiveCoolTemp());
             if (currentTemp + temperatureChange <= AMBIENT) {
                 currentTemp = AMBIENT;
             } else {
                 currentTemp += temperatureChange;
             }
-            if (currentTemp >= MAX_TEMP) {
+            if (currentTemp >= WFComputeConfig.maxTemperature()) {
                 explode();
                 return;
             }
         } else {
-            currentTemp = Math.max(AMBIENT, currentTemp - 0.25);
+            currentTemp = Math.max(AMBIENT, currentTemp - WFComputeConfig.idleCooldownRate());
             gpcHandler.clearAllocation();
         }
     }
@@ -216,16 +216,16 @@ public class MainframeMachine extends MultiblockControllerMachine
         setActive(false);
         if (getLevel() != null) {
             getLevel().explode(null, getPos().getX() + 0.5, getPos().getY() + 0.5, getPos().getZ() + 0.5,
-                    10f, Level.ExplosionInteraction.BLOCK);
+                    (float) WFComputeConfig.explosionStrength(), Level.ExplosionInteraction.BLOCK);
         }
     }
 
     private double computeAmbient() {
-        if (getLevel() == null || getPos() == null) return 22.0;
-        if (getLevel().dimension() == Level.NETHER) return 70.0;
-        if (getLevel().dimension() == Level.END) return 5.0;
+        if (getLevel() == null || getPos() == null) return WFComputeConfig.ambientDefault();
+        if (getLevel().dimension() == Level.NETHER) return WFComputeConfig.ambientNether();
+        if (getLevel().dimension() == Level.END) return WFComputeConfig.ambientEnd();
         float temp = getLevel().getBiome(getPos()).value().getBaseTemperature();
-        return (temp * 30.0) - 5.0;
+        return (temp * WFComputeConfig.ambientBiomeScale()) + WFComputeConfig.ambientBiomeOffset();
     }
 
     //////////////////// IOpticalComputationProvider ////////////////////
@@ -355,8 +355,10 @@ public class MainframeMachine extends MultiblockControllerMachine
         }
 
         private double calculateSag() {
-            if (mainframe.currentTemp <= 90.0) return 0.0;
-            double penalty = Math.pow((mainframe.currentTemp - 90.0) / 10.0, 2) * 0.5;
+            double sagStart = WFComputeConfig.sagStartTemp();
+            if (mainframe.currentTemp <= sagStart) return 0.0;
+            double penalty = Math.pow((mainframe.currentTemp - sagStart) / WFComputeConfig.sagTempSpan(), 2)
+                    * WFComputeConfig.sagPenaltyScale();
             return Math.min(1.0, penalty);
         }
 
@@ -487,9 +489,9 @@ public class MainframeMachine extends MultiblockControllerMachine
             this.cachedUpkeepEUt = upkeepEUt;
             this.cachedMaxCoolingDemand = coolingDemand;
 
-            double baseFrameMass = 500.0;
             int totalPhysicalHatches = mainframe.cpuSlots.size() + mainframe.coolers.size() + mainframe.ramSlots.size();
-            this.totalThermalMass = baseFrameMass + totalPhysicalHatches * 50.0;
+            this.totalThermalMass = WFComputeConfig.baseFrameMass()
+                    + totalPhysicalHatches * WFComputeConfig.hatchThermalMass();
         }
     }
 }
