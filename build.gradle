@@ -162,7 +162,7 @@ dependencies {
     modImplementation("com.lowdragmc.ldlib:ldlib-forge-${minecraft_version}:${ldlib_version}") { transitive = false }
     modImplementation("com.tterrag.registrate:Registrate:${registrate_version}")
     modImplementation("dev.toma.configuration:configuration-forge-${minecraft_version}:${configuration_version}")
-    modImplementation("curse.maven:modularui-624243:8118122")
+    modImplementation("curse.maven:modularui-624243:8339410")
 
     modCompileOnly("curse.maven:kubejs-238086:5853326") { transitive = false }
     modCompileOnly("curse.maven:rhino-416294:6186971") { transitive = false }

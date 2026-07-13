@@ -915,7 +915,7 @@ public final class ResearchTreeGui {
         return (ctx, x, y, w, h, theme) -> {
             ItemStack s = supplier.get();
             if (s != null && !s.isEmpty()) {
-                drawable.setItem(s);
+                drawable.item(s);
                 drawable.draw(ctx, x, y, w, h, theme);
             }
         };
