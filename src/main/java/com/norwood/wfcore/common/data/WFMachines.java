@@ -16,18 +16,9 @@ import com.gregtechceu.gtceu.api.pattern.FactoryBlockPattern;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.api.registry.registrate.MachineBuilder;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
-import com.gregtechceu.gtceu.common.data.GCYMBlocks;
-import com.gregtechceu.gtceu.common.data.GTBlocks;
-import com.gregtechceu.gtceu.common.data.GTMaterials;
-import com.gregtechceu.gtceu.common.data.GTRecipeModifiers;
-import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
+import com.gregtechceu.gtceu.common.data.*;
 import com.gregtechceu.gtceu.common.data.models.GTMachineModels;
 import com.gregtechceu.gtceu.common.machine.multiblock.steam.SteamParallelMultiblockMachine;
-
-import net.minecraft.network.chat.Component;
-import net.minecraft.world.item.DyeColor;
-import net.minecraft.world.level.block.Block;
-
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
 import com.norwood.wfcore.common.machine.*;
@@ -36,6 +27,9 @@ import com.norwood.wfcore.common.machine.compute.CoolingPartMachine;
 import com.norwood.wfcore.common.machine.compute.RAMSlotPartMachine;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 import com.norwood.wfcore.integration.warforge.WarforgeMachines;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.DyeColor;
+import net.minecraft.world.level.block.Block;
 
 import static com.gregtechceu.gtceu.api.pattern.Predicates.*;
 import static com.gregtechceu.gtceu.common.data.models.GTMachineModels.createWorkableCasingMachineModel;
@@ -69,9 +63,9 @@ public class WFMachines {
 
     public static void init() {
         AC_INPUT_HATCH = WF_MACHINES.machine("ac_input_hatch",
-                MachineDefinition::new,
-                holder -> new ACHatchPartMachine(holder, GTValues.EV, false),
-                MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
+                        MachineDefinition::new,
+                        holder -> new ACHatchPartMachine(holder, GTValues.EV, false),
+                        MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
                 .langValue("AC Input Hatch")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.AC_INPUT)
@@ -80,9 +74,9 @@ public class WFMachines {
                 .register();
 
         AC_OUTPUT_HATCH = WF_MACHINES.machine("ac_output_hatch",
-                MachineDefinition::new,
-                holder -> new ACHatchPartMachine(holder, GTValues.EV, true),
-                MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
+                        MachineDefinition::new,
+                        holder -> new ACHatchPartMachine(holder, GTValues.EV, true),
+                        MetaMachineBlock::new, MetaMachineItem::new, ACHatchBlockEntity::new)
                 .langValue("AC Output Hatch")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.AC_OUTPUT)
@@ -133,7 +127,7 @@ public class WFMachines {
                 .addOutputLimit(ItemRecipeCapability.CAP, 1)
                 .appearanceBlock(GTBlocks.BRONZE_HULL)
                 .pattern(definition -> FactoryBlockPattern.start(
-                        RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
+                                RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
                         .aisle("CCCCCCC", "BWWWBWB", "ABBBBBA")
                         .aisle("CCCCCCC", "BGGGGGB", "BBBBBBB")
                         .aisle("CCCCCCC", "BGGGGGB", "BBBBBBB")
@@ -180,7 +174,7 @@ public class WFMachines {
                 .langValue("Computation Mainframe")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
-                        RelativeDirection.BACK, RelativeDirection.UP, RelativeDirection.RIGHT)
+                                RelativeDirection.BACK, RelativeDirection.UP, RelativeDirection.RIGHT)
                         .aisle("SA", "CC", "CC", "CC", "AA")
                         .aisle("VA", "XV", "XV", "XV", "VA")
                         .setRepeatable(2, 6)
@@ -204,7 +198,7 @@ public class WFMachines {
                 .register();
 
         RESEARCH_UNIT = WF_MACHINES.multiblock("research_unit", ResearchUnitMachine::new,
-                MetaMachineBlock::new, MetaMachineItem::new, ResearchUnitBlockEntity::new)
+                        MetaMachineBlock::new, MetaMachineItem::new, ResearchUnitBlockEntity::new)
                 .langValue("Research Unit")
                 // The unit's animated GLTF core is drawn by our own GltfMachineRenderer (registered in
                 // WFClientEvents). GTM's default BER would clobber it (see RadarMachine), so disable it;
@@ -212,7 +206,7 @@ public class WFMachines {
                 .hasBER(false)
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
-                        RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
+                                RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
                         .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
                         .aisle(" BBBBB ", " DEEED ", " DEEED ", " DEEED ", " BBBBB ", "       ", "       ")
                         .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
@@ -248,7 +242,7 @@ public class WFMachines {
                 .langValue("Large Transformer")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
-                        RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
+                                RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
                         .aisle("XXX", "XSX", "XXX")
                         .aisle("XXX", "XXX", "XXX")
                         .aisle("XXX", "XXX", "XXX")
@@ -276,22 +270,23 @@ public class WFMachines {
                         Component.translatable("wfcore.machine.large_blast_furnace.tooltip4"))
                 .appearanceBlock(GTBlocks.CASING_PRIMITIVE_BRICKS)
                 .pattern(definition -> FactoryBlockPattern.start(
-                        RelativeDirection.RIGHT, RelativeDirection.UP, RelativeDirection.BACK)
-                        // 3x3x3 primitive-brick central chamber (X, controller Y on the front face).
-                        // A Steel Firebox (G) on the left and/or right is an optional side chamber that
-                        // adds parallel; L is its optional brick shell. Both default to air, so the
-                        // furnace forms and runs with 0, 1 or 2 chambers.
-                        .aisle("  XXX  ", "  XYX  ", "  XXX  ")
-                        .aisle("  XXX  ", "LGX#XGL", "  XXX  ")
-                        .aisle("  XXX  ", "  XXX  ", "  XXX  ")
-                        .where('Y', controller(blocks(definition.getBlock())))
-                        .where('X', blocks(GTBlocks.CASING_PRIMITIVE_BRICKS.get())
+                                RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
+                        .aisle("  B  ", "  B  ", "  B  ", "  B  ", "  B  ", " BBB ", "     ", "     ", "     ")
+                        .aisle(" CCC ", " B#B ", " B#B ", " B#B ", " B#B ", " B#B ", "     ", "     ", "     ")
+                        .aisle("  B  ", " B#B ", " B#B ", " B#B ", "  B  ", " BBB ", "     ", "     ", "     ")
+                        .aisle(" BBB ", "B###B", "B###B", "B###B", " BBB ", "  B  ", "  B  ", "  B  ", " BBB ")
+                        .aisle(" BBB ", "B###B", "B###S", "B###B", " B#B ", " B#B ", " B#B ", " B#B ", " B#B ")
+                        .aisle(" BBB ", "B###B", "B###B", "B###B", " BBB ", "  B  ", "  B  ", "  B  ", " BBB ")
+                        .aisle("  B  ", " B#B ", " B#B ", " B#B ", "  B  ", " BBB ", "     ", "     ", "     ")
+                        .aisle(" CCC ", " B#B ", " B#B ", " B#B ", " B#B ", " B#B ", "     ", "     ", "     ")
+                        .aisle("     ", "  B  ", "  B  ", "  B  ", "  B  ", " BBB ", "     ", "     ", "     ")
+                        .where('S', controller(blocks(definition.getBlock())))
+                        .where('B', blocks(GTBlocks.CASING_PRIMITIVE_BRICKS.get())
                                 .or(abilities(PartAbility.IMPORT_ITEMS))
                                 .or(abilities(PartAbility.EXPORT_ITEMS))
                                 .or(abilities(PartAbility.EXPORT_FLUIDS)))
                         .where('#', air())
-                        .where('G', blocks(GTBlocks.FIREBOX_STEEL.get()).or(air()))
-                        .where('L', blocks(GTBlocks.CASING_PRIMITIVE_BRICKS.get()).or(air()))
+                        .where('C', blocks(GTBlocks.FIREBOX_BRONZE.get()))
                         .where(' ', any())
                         .build())
                 .model(createWorkableCasingMachineModel(
@@ -302,7 +297,7 @@ public class WFMachines {
                 .register();
 
         RADAR = WF_MACHINES.multiblock("radar", RadarMachine::new,
-                MetaMachineBlock::new, MetaMachineItem::new, RadarBlockEntity::new)
+                        MetaMachineBlock::new, MetaMachineItem::new, RadarBlockEntity::new)
                 .langValue("Radar")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 // The dish is drawn by our own GltfMachineRenderer (registered via EntityRenderersEvent).
@@ -352,45 +347,45 @@ public class WFMachines {
                 .allowExtendedFacing(false)
                 .pattern(definition -> {
                     final String[][] AISLES = {
-                            { "HAA         AAH", "CCC         CCC", "AAA         AAA", "               ",
+                            {"HAA         AAH", "CCC         CCC", "AAA         AAA", "               ",
                                     "               ", "               ", "               ", "               ",
-                                    "               ", "               ", "               " },
-                            { "HAAAAAAAAAAAAAH", "CCC         CCC", "AAA         AAA", " C           C ",
+                                    "               ", "               ", "               "},
+                            {"HAAAAAAAAAAAAAH", "CCC         CCC", "AAA         AAA", " C           C ",
                                     " C           C ", " C           C ", " A           A ", "  C         C  ",
-                                    "   C       C   ", "    GFFFFFG    ", "               " },
-                            { "HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", " F           F ",
+                                    "   C       C   ", "    GFFFFFG    ", "               "},
+                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", " F           F ",
                                     "               ", "               ", "               ", "  F         F  ",
-                                    "               ", "               ", "               " },
-                            { "  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
+                                    "               ", "               ", "               "},
+                            {"  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
                                     " F           F ", "               ", "               ", "  F         F  ",
-                                    "               ", "               ", "               " },
-                            { "  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
+                                    "               ", "               ", "               "},
+                            {"  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
                                     "               ", " F           F ", "               ", "               ",
-                                    "   F       F   ", "               ", "               " },
-                            { "HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", "               ",
+                                    "   F       F   ", "               ", "               "},
+                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", "               ",
                                     "               ", "               ", " F           F ", "               ",
-                                    "   F       F   ", "               ", "               " },
-                            { "HAACACACACACAAH", "CCCDEEEEEEEDCCS", "AAA         AAA", " C           C ",
+                                    "   F       F   ", "               ", "               "},
+                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCS", "AAA         AAA", " C           C ",
                                     " C           C ", " C           C ", " A           A ", "  C         C  ",
-                                    "   C       C   ", "    C     C    ", "     G   G     " },
-                            { "HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", "               ",
+                                    "   C       C   ", "    C     C    ", "     G   G     "},
+                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", "               ",
                                     "               ", "               ", " F           F ", "               ",
-                                    "   F       F   ", "               ", "               " },
-                            { "  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
+                                    "   F       F   ", "               ", "               "},
+                            {"  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
                                     "               ", " F           F ", "               ", "               ",
-                                    "   F       F   ", "               ", "               " },
-                            { "  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
+                                    "   F       F   ", "               ", "               "},
+                            {"  BCACACACACB  ", "  CDEEEEEEEDC  ", "               ", "               ",
                                     " F           F ", "               ", "               ", "  F         F  ",
-                                    "               ", "               ", "               " },
-                            { "HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", " F           F ",
+                                    "               ", "               ", "               "},
+                            {"HAACACACACACAAH", "CCCDEEEEEEEDCCC", "AAA         AAA", " F           F ",
                                     "               ", "               ", "               ", "  F         F  ",
-                                    "               ", "               ", "               " },
-                            { "HAAAAAAAAAAAAAH", "CCC         CCC", "AAA         AAA", " C           C ",
+                                    "               ", "               ", "               "},
+                            {"HAAAAAAAAAAAAAH", "CCC         CCC", "AAA         AAA", " C           C ",
                                     " C           C ", " C           C ", " A           A ", "  C         C  ",
-                                    "   C       C   ", "    GFFFFFG    ", "               " },
-                            { "HAA         AAH", "CCC         CCC", "AAA         AAA", "               ",
+                                    "   C       C   ", "    GFFFFFG    ", "               "},
+                            {"HAA         AAH", "CCC         CCC", "AAA         AAA", "               ",
                                     "               ", "               ", "               ", "               ",
-                                    "               ", "               ", "               " },
+                                    "               ", "               ", "               "},
                     };
                     var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
                             RelativeDirection.RIGHT);
@@ -429,21 +424,21 @@ public class WFMachines {
                 .allowExtendedFacing(false)
                 .pattern(definition -> {
                     final String[][] AISLES = {
-                    { "AAA       AAA", "DDD       DDD", "             ", "             ", "             ", "             ", "    H   H    ", "             ", "             " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", " A         A ", " A         A ", " A         A ", " A         A ", " AFGFGFGFGFA ", " A  I   I  A ", " AFGFGFGFGFA " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             " },
-                    { " AABCCCCCBAA ", "             ", "             ", " E         E ", "             ", "             ", "             ", "             ", "             " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", " A         A ", " A         A ", " A         A ", " A         A ", " AFGFGFGFGFA ", " A  I   I  A ", " AFGFGFGFGFA " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             " },
-                    { " AABCCCCCBAA ", "             ", "             ", " E         E ", "             ", "             ", "             ", "             ", "             " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", " A         A ", " A         A ", " A         A ", " A         A ", " AFGFGFGFGFA ", " A  I   I  A ", " AFGFGFGFGFA " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             " },
-                    { " AABCCCCCBAA ", "             ", "             ", " E         E ", "             ", "             ", "             ", "             ", "             " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             " },
-                    { "AAABCCCCCBAAA", "DDD       DDS", " A         A ", " A         A ", " A         A ", " A         A ", " AFGFGFGFGFA ", " A  I   I  A ", " AFGFGFGFGFA " },
-                    { "AAA       AAA", "DDD       DDD", "             ", "             ", "             ", "             ", "    H   H    ", "             ", "             " },
+                            {"AAA       AAA", "DDD       DDD", "             ", "             ", "             ", "             ", "    H   H    ", "             ", "             "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", " A         A ", " A         A ", " A         A ", " A         A ", " AFGFGFGFGFA ", " A  I   I  A ", " AFGFGFGFGFA "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             "},
+                            {" AABCCCCCBAA ", "             ", "             ", " E         E ", "             ", "             ", "             ", "             ", "             "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", " A         A ", " A         A ", " A         A ", " A         A ", " AFGFGFGFGFA ", " A  I   I  A ", " AFGFGFGFGFA "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             "},
+                            {" AABCCCCCBAA ", "             ", "             ", " E         E ", "             ", "             ", "             ", "             ", "             "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", " A         A ", " A         A ", " A         A ", " A         A ", " AFGFGFGFGFA ", " A  I   I  A ", " AFGFGFGFGFA "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             "},
+                            {" AABCCCCCBAA ", "             ", "             ", " E         E ", "             ", "             ", "             ", "             ", "             "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", "             ", " A         A ", "             ", "             ", "    H   H    ", "             ", "             "},
+                            {"AAABCCCCCBAAA", "DDD       DDS", " A         A ", " A         A ", " A         A ", " A         A ", " AFGFGFGFGFA ", " A  I   I  A ", " AFGFGFGFGFA "},
+                            {"AAA       AAA", "DDD       DDD", "             ", "             ", "             ", "             ", "    H   H    ", "             ", "             "},
                     };
                     var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
                             RelativeDirection.RIGHT);
@@ -481,21 +476,21 @@ public class WFMachines {
                 .allowExtendedFacing(false)
                 .pattern(definition -> {
                     final String[][] AISLES = {
-                    { "AAA       AAA", "DDD       DDD", "             ", "             ", "             ", "             ", "             ", "             " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", " D         D ", " D         D ", " D         D ", " D         D ", " D         D ", " ADDDDDDDDDA " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", "             ", "             ", "  E       E  ", "             ", "  E       E  " },
-                    { "  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "   E     E   ", "   EEEEEEE   " },
-                    { "  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "             ", "    F F F    " },
-                    { "  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "             ", "     F F     " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", "             ", "             ", "             ", "             ", "    F F F    " },
-                    { "AAABCCCCCBAAA", "DDD       DDS", " A         D ", " D         D ", " D         D ", " DE       ED ", " D E     E D ", " AEEEEEEEEEA " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", "             ", "             ", "             ", "             ", "    F F F    " },
-                    { "  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "             ", "     F F     " },
-                    { "  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "             ", "    F F F    " },
-                    { "  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "   E     E   ", "   EEEEEEE   " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", "             ", "             ", "             ", "  E       E  ", "             ", "  E       E  " },
-                    { "AAABCCCCCBAAA", "DDD       DDD", " A         D ", " D         D ", " D         D ", " D         D ", " D         D ", " ADDDDDDDDDA " },
-                    { "AAA       AAA", "DDD       DDD", "             ", "             ", "             ", "             ", "             ", "             " },
+                            {"AAA       AAA", "DDD       DDD", "             ", "             ", "             ", "             ", "             ", "             "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", " D         D ", " D         D ", " D         D ", " D         D ", " D         D ", " ADDDDDDDDDA "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", "             ", "             ", "             ", "  E       E  ", "             ", "  E       E  "},
+                            {"  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "   E     E   ", "   EEEEEEE   "},
+                            {"  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "             ", "    F F F    "},
+                            {"  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "             ", "     F F     "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", "             ", "             ", "             ", "             ", "             ", "    F F F    "},
+                            {"AAABCCCCCBAAA", "DDD       DDS", " A         D ", " D         D ", " D         D ", " DE       ED ", " D E     E D ", " AEEEEEEEEEA "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", "             ", "             ", "             ", "             ", "             ", "    F F F    "},
+                            {"  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "             ", "     F F     "},
+                            {"  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "             ", "    F F F    "},
+                            {"  ABCCCCCBA  ", "  D       D  ", "             ", "             ", "             ", "             ", "   E     E   ", "   EEEEEEE   "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", "             ", "             ", "             ", "  E       E  ", "             ", "  E       E  "},
+                            {"AAABCCCCCBAAA", "DDD       DDD", " A         D ", " D         D ", " D         D ", " D         D ", " D         D ", " ADDDDDDDDDA "},
+                            {"AAA       AAA", "DDD       DDD", "             ", "             ", "             ", "             ", "             ", "             "},
                     };
                     var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
                             RelativeDirection.RIGHT);
@@ -530,27 +525,27 @@ public class WFMachines {
                 .allowExtendedFacing(false)
                 .pattern(definition -> {
                     final String[][] AISLES = {
-                    { "    AAAAAAAAA    ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 " },
-                    { " BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 " },
-                    { " BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "  B           B  ", "  B           B  ", "  B           B  ", "  B           B  ", "  B           B  ", "  BBBBBBBBBBBBB  ", "  B           B  " },
-                    { " BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "                 ", "  G           G  ", "  G           G  ", "                 ", "  B           B  ", "  HH         HH  ", "                 " },
-                    { "    ACCCCCCCA    ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "                 ", "  B           B  ", "   HH       HH   ", "                 " },
-                    { "AAAAACCCCCCCAAAAA", "                 ", "                 ", "                 ", "                 ", "  G           G  ", "  G           G  ", "  B           B  ", "   H H     H H   ", "                 " },
-                    { "ACCCCCCCCCCCCCCCA", " E E         E E ", " EEE         EEE ", "                 ", "                 ", "                 ", "  B           B  ", "  B           B  ", "    H H   H H    ", "                 " },
-                    { "ACCCCCCCCCCCCCCCA", "                 ", " EFE         EFE ", "                 ", "                 ", "                 ", "  G           G  ", "  B           B  ", "    H  H H  H    ", "                 " },
-                    { "ACCCCCCCCCCCCCCCA", "                 ", " FFF         FFF ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "     H  H  H     ", "                 " },
-                    { "ACCCCCCCCCCCCCCCA", "                 ", " EFE         EFE ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "  B  H  H  H  B  ", "  B           B  " },
-                    { "ACCCCCCCCCCCCCCCA", "                 ", " FFF         FFF ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", " GGGGGGGGGGGGGGG ", "  B           B  " },
-                    { "ACCCCCCCCCCCCCCCA", "                 ", " EFE         EFE ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "  B  H  H  H  B  ", "  B           B  " },
-                    { "ACCCCCCCCCCCCCCCA", "                 ", " FFF         FFF ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "     H  H  H     ", "                 " },
-                    { "ACCCCCCCCCCCCCCCA", "                 ", " EFE         EFE ", "                 ", "                 ", "                 ", "  G           G  ", "  B           B  ", "    H  H H  H    ", "                 " },
-                    { "ACCCCCCCCCCCCCCCA", " E E         E E ", " EEE         EEE ", "                 ", "                 ", "                 ", "  B           B  ", "  B           B  ", "    H H   H H    ", "                 " },
-                    { "AAAAACCCCCCCAAAAA", "                 ", "                 ", "                 ", "                 ", "  G           G  ", "  G           G  ", "  B           B  ", "   H H     H H   ", "                 " },
-                    { "    ACCCCCCCA    ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "                 ", "  B           B  ", "   HH       HH   ", "                 " },
-                    { " BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "                 ", "  G           G  ", "  G           G  ", "                 ", "  B           B  ", "  HH         HH  ", "                 " },
-                    { " BBBACCCCCCCABBB ", " DDD         DDS ", " BBB         BBB ", "  B           B  ", "  B           B  ", "  B           B  ", "  B           B  ", "  B           B  ", "  BBBBBBBBBBBBB  ", "  B           B  " },
-                    { " BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 " },
-                    { "    AAAAAAAAA    ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 " },
+                            {"    AAAAAAAAA    ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 "},
+                            {" BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 "},
+                            {" BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "  B           B  ", "  B           B  ", "  B           B  ", "  B           B  ", "  B           B  ", "  BBBBBBBBBBBBB  ", "  B           B  "},
+                            {" BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "                 ", "  G           G  ", "  G           G  ", "                 ", "  B           B  ", "  HH         HH  ", "                 "},
+                            {"    ACCCCCCCA    ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "                 ", "  B           B  ", "   HH       HH   ", "                 "},
+                            {"AAAAACCCCCCCAAAAA", "                 ", "                 ", "                 ", "                 ", "  G           G  ", "  G           G  ", "  B           B  ", "   H H     H H   ", "                 "},
+                            {"ACCCCCCCCCCCCCCCA", " E E         E E ", " EEE         EEE ", "                 ", "                 ", "                 ", "  B           B  ", "  B           B  ", "    H H   H H    ", "                 "},
+                            {"ACCCCCCCCCCCCCCCA", "                 ", " EFE         EFE ", "                 ", "                 ", "                 ", "  G           G  ", "  B           B  ", "    H  H H  H    ", "                 "},
+                            {"ACCCCCCCCCCCCCCCA", "                 ", " FFF         FFF ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "     H  H  H     ", "                 "},
+                            {"ACCCCCCCCCCCCCCCA", "                 ", " EFE         EFE ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "  B  H  H  H  B  ", "  B           B  "},
+                            {"ACCCCCCCCCCCCCCCA", "                 ", " FFF         FFF ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", " GGGGGGGGGGGGGGG ", "  B           B  "},
+                            {"ACCCCCCCCCCCCCCCA", "                 ", " EFE         EFE ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "  B  H  H  H  B  ", "  B           B  "},
+                            {"ACCCCCCCCCCCCCCCA", "                 ", " FFF         FFF ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "     H  H  H     ", "                 "},
+                            {"ACCCCCCCCCCCCCCCA", "                 ", " EFE         EFE ", "                 ", "                 ", "                 ", "  G           G  ", "  B           B  ", "    H  H H  H    ", "                 "},
+                            {"ACCCCCCCCCCCCCCCA", " E E         E E ", " EEE         EEE ", "                 ", "                 ", "                 ", "  B           B  ", "  B           B  ", "    H H   H H    ", "                 "},
+                            {"AAAAACCCCCCCAAAAA", "                 ", "                 ", "                 ", "                 ", "  G           G  ", "  G           G  ", "  B           B  ", "   H H     H H   ", "                 "},
+                            {"    ACCCCCCCA    ", "                 ", "                 ", "                 ", "                 ", "  B           B  ", "                 ", "  B           B  ", "   HH       HH   ", "                 "},
+                            {" BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "                 ", "  G           G  ", "  G           G  ", "                 ", "  B           B  ", "  HH         HH  ", "                 "},
+                            {" BBBACCCCCCCABBB ", " DDD         DDS ", " BBB         BBB ", "  B           B  ", "  B           B  ", "  B           B  ", "  B           B  ", "  B           B  ", "  BBBBBBBBBBBBB  ", "  B           B  "},
+                            {" BBBACCCCCCCABBB ", " DDD         DDD ", " BBB         BBB ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 "},
+                            {"    AAAAAAAAA    ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 "},
                     };
                     var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
                             RelativeDirection.RIGHT);
@@ -587,27 +582,27 @@ public class WFMachines {
                 .allowExtendedFacing(false)
                 .pattern(definition -> {
                     final String[][] AISLES = {
-                    { "AAA           AAA", "CCC           CCC", "AAA           AAA", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 " },
-                    { "AAABBBBBBBBBBBAAA", "CDC           CDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      " },
-                    { "BAAAAAAAAAAAAAAAB", "BDCEFFFFFFFFFECDB", "BAA           AAB", "HG             GH", "AA             AA", " I             I ", "  I           I  ", "  I           I  ", "   A   B B   A   ", "    II  A  II    ", "      IIAII      " },
-                    { "AAACCCCCCCCCCCAAA", "CDCEFFFFFFFFFECDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      " },
-                    { "AAACCCCCCCCCCCAAA", "CCCEFFFFFFFFFECCC", "AAA           AAA", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
-                    { " AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
-                    { " AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A   B B   A   ", "    JJ  A  JJ    ", "      JJAJJ      " },
-                    { " AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
-                    { "AAACCCCCCCCCCCAAA", "CCCEFFFFFFFFFECCC", "AAA           AAA", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
-                    { "AAACCCCCCCCCCCAAA", "CDCEFFFFFFFFFEADC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      " },
-                    { "BAACCCCCCCCCCCAAA", "BDCEFFFFFFFFFECDS", "BAA           AAA", "HG             GH", "AA             AA", " I             I ", "  I           I  ", "  I           I  ", "   A   B B   A   ", "    II  A  II    ", "      IIAII      " },
-                    { "AAACCCCCCCCCCCAAA", "CDCEFFFFFFFFFECDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      " },
-                    { "AAACCCCCCCCCCCAAA", "CCCEFFFFFFFFFECCC", "AAA           AAA", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
-                    { " AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
-                    { " AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A   B B   A   ", "    JJ  A  JJ    ", "      JJAJJ      " },
-                    { " AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
-                    { "AAACCCCCCCCCCCAAA", "CCCEFFFFFFFFFECCC", "AAA           AAA", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      " },
-                    { "AAACCCCCCCCCCCAAA", "CDCEFFFFFFFFFECDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      " },
-                    { "BAAAAAAAAAAAAAAAB", "BDCEFFFFFFFFFECDB", "BAA           AAB", "HG             GH", "AA             IA", " I             I ", "  I           I  ", "  I           I  ", "   A         A   ", "    II     II    ", "      IIAII      " },
-                    { "AAABBBBBBBBBBBAAA", "CDC           CDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A   B B   A   ", "    AA  A  AA    ", "      AAAAA      " },
-                    { "AAA           AAA", "CCC           CCC", "AAA           AAA", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 " },
+                            {"AAA           AAA", "CCC           CCC", "AAA           AAA", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 "},
+                            {"AAABBBBBBBBBBBAAA", "CDC           CDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      "},
+                            {"BAAAAAAAAAAAAAAAB", "BDCEFFFFFFFFFECDB", "BAA           AAB", "HG             GH", "AA             AA", " I             I ", "  I           I  ", "  I           I  ", "   A   B B   A   ", "    II  A  II    ", "      IIAII      "},
+                            {"AAACCCCCCCCCCCAAA", "CDCEFFFFFFFFFECDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      "},
+                            {"AAACCCCCCCCCCCAAA", "CCCEFFFFFFFFFECCC", "AAA           AAA", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      "},
+                            {" AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      "},
+                            {" AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A   B B   A   ", "    JJ  A  JJ    ", "      JJAJJ      "},
+                            {" AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      "},
+                            {"AAACCCCCCCCCCCAAA", "CCCEFFFFFFFFFECCC", "AAA           AAA", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      "},
+                            {"AAACCCCCCCCCCCAAA", "CDCEFFFFFFFFFEADC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      "},
+                            {"BAACCCCCCCCCCCAAA", "BDCEFFFFFFFFFECDS", "BAA           AAA", "HG             GH", "AA             AA", " I             I ", "  I           I  ", "  I           I  ", "   A   B B   A   ", "    II  A  II    ", "      IIAII      "},
+                            {"AAACCCCCCCCCCCAAA", "CDCEFFFFFFFFFECDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      "},
+                            {"AAACCCCCCCCCCCAAA", "CCCEFFFFFFFFFECCC", "AAA           AAA", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      "},
+                            {" AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      "},
+                            {" AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A   B B   A   ", "    JJ  A  JJ    ", "      JJAJJ      "},
+                            {" AACCCCCCCCCCCAA ", "  BEFFFFFFFFFEB  ", " BA           AB ", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      "},
+                            {"AAACCCCCCCCCCCAAA", "CCCEFFFFFFFFFECCC", "AAA           AAA", " H             H ", " A             A ", " J             J ", "  J           J  ", "  J           J  ", "   A         A   ", "    JJ     JJ    ", "      JJAJJ      "},
+                            {"AAACCCCCCCCCCCAAA", "CDCEFFFFFFFFFECDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A         A   ", "    AA     AA    ", "      AAAAA      "},
+                            {"BAAAAAAAAAAAAAAAB", "BDCEFFFFFFFFFECDB", "BAA           AAB", "HG             GH", "AA             IA", " I             I ", "  I           I  ", "  I           I  ", "   A         A   ", "    II     II    ", "      IIAII      "},
+                            {"AAABBBBBBBBBBBAAA", "CDC           CDC", "AAA           AAA", "GG             GG", "AA             AA", " A             A ", "  A           A  ", "  A           A  ", "   A   B B   A   ", "    AA  A  AA    ", "      AAAAA      "},
+                            {"AAA           AAA", "CCC           CCC", "AAA           AAA", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 ", "                 "},
                     };
                     var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
                             RelativeDirection.RIGHT);
@@ -637,7 +632,7 @@ public class WFMachines {
                 .register();
 
         DRILL_RIG = WF_MACHINES.multiblock("drill_rig", DrillRigMachine::new,
-                MetaMachineBlock::new, MetaMachineItem::new, DrillRigBlockEntity::new)
+                        MetaMachineBlock::new, MetaMachineItem::new, DrillRigBlockEntity::new)
                 .langValue("Drilling Rig")
                 // The animated GLTF rig is drawn by our own GltfMachineRenderer (registered in WFClientEvents).
                 // GTM's default BER would clobber it (see RadarMachine), so disable it; the casing/overlay still
