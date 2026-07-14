@@ -2,6 +2,8 @@
   "values": [
     "wfcore:mining_charge",
     "wfcore:deep_mining_charge",
+    "wfcore:foundry_basin",
+    "wfcore:foundry_mold_caster",
     "wfcore:ballistic_glass",
     "wfcore:standard_concrete",
     "wfcore:reinforced_concrete"

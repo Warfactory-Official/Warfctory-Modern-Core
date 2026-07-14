@@ -127,6 +127,8 @@ public class WFRecipeTypes {
                 ChemicalHelper.get(TagPrefix.pipeNormalFluid, WFMaterials.FireClay, 4),
                 "CCC", 'C', Items.CLAY_BALL);
 
+        addFoundryRecipes(provider);
+
         // Starter missile recipes (liquid-fuel airframes take Diesel, solid-fuel take RocketFuel);
         // packs override/extend via KubeJS on wfcore:missile_factory.
         addMissileRecipe(provider, "missile_cruise", 800, GTMaterials.Diesel, 500,
@@ -159,6 +161,19 @@ public class WFRecipeTypes {
 
         addPrimitiveAlloyerRecipes(provider);
         addStrandcasterRecipes(provider);
+    }
+
+    /**
+     * The foundry casting blocks. The molds themselves are GregTech's own {@code SHAPE_MOLD_*} items (see
+     * {@link FoundryMolds}), so they keep their stock GT recipes — nothing to add here.
+     */
+    private static void addFoundryRecipes(Consumer<FinishedRecipe> provider) {
+        VanillaRecipeHelper.addShapedRecipe(provider, WFCore.id("foundry_basin"),
+                WFBlocks.FOUNDRY_BASIN.asStack(),
+                "B B", "B B", "BBB", 'B', new ItemStack(Items.BRICKS));
+        VanillaRecipeHelper.addShapedRecipe(provider, WFCore.id("foundry_mold_caster"),
+                WFBlocks.FOUNDRY_MOLD_CASTER.asStack(),
+                "B B", "BBB", 'B', new ItemStack(Items.BRICKS));
     }
 
     /**

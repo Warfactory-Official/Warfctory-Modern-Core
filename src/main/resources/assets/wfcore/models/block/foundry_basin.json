@@ -1,0 +1,7 @@
+{
+  "loader": "forge:obj",
+  "model": "wfcore:models/block/foundry_basin.obj",
+  "flip_v": true,
+  "parent": "minecraft:block/block",
+  "render_type": "minecraft:cutout"
+}

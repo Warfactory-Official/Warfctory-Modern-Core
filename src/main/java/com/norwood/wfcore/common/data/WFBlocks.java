@@ -17,8 +17,10 @@ import net.minecraftforge.client.model.generators.ConfiguredModel;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
 import com.norwood.wfcore.common.block.DepositBlock;
+import com.norwood.wfcore.common.block.FoundryCastingBlock;
 import com.norwood.wfcore.common.block.MiningChargeBlock;
 import com.norwood.wfcore.common.machine.DepositBlockEntity;
+import com.norwood.wfcore.common.machine.FoundryCastingBlockEntity;
 import com.norwood.wfcore.common.machine.MiningChargeBlockEntity;
 import com.norwood.wfcore.common.pipenet.ac.ACPipeBlock;
 import com.norwood.wfcore.common.pipenet.ac.ACPipeBlockEntity;
@@ -48,6 +50,9 @@ public class WFBlocks {
     public static BlockEntry<MiningChargeBlock> MINING_CHARGE;
     public static BlockEntry<MiningChargeBlock> DEEP_MINING_CHARGE;
     public static BlockEntityEntry<MiningChargeBlockEntity> MINING_CHARGE_BE;
+    public static BlockEntry<FoundryCastingBlock> FOUNDRY_BASIN;
+    public static BlockEntry<FoundryCastingBlock> FOUNDRY_MOLD_CASTER;
+    public static BlockEntityEntry<FoundryCastingBlockEntity> FOUNDRY_CASTING_BE;
 
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public static final BlockEntry<ACPipeBlock>[] AC_PIPES = new BlockEntry[ACPipeType.VALUES.length];
@@ -125,6 +130,40 @@ public class WFBlocks {
         // Shared block entity for both charge tiers; stores the placer's UUID.
         MINING_CHARGE_BE = WF_MACHINES.blockEntity("mining_charge", MiningChargeBlockEntity::new)
                 .validBlocks(MINING_CHARGE, DEEP_MINING_CHARGE)
+                .register();
+
+        // HBM-ported foundry casting: slot a mold in, pipe molten metal (GT material fluids) in, take the
+        // casting out. Basin = large size-1 molds (OBJ model), mold caster = small size-0 molds (elements
+        // model); blockstate/model JSON is hand-authored under resources/assets/wfcore, so datagen is nooped.
+        FOUNDRY_BASIN = WF_MACHINES
+                .block("foundry_basin", p -> new FoundryCastingBlock(p, FoundryMolds.SIZE_BASIN,
+                        Block.box(0, 0, 0, 16, 14, 16)))
+                .initialProperties(() -> Blocks.BRICKS)
+                .properties(p -> p.strength(2.5F).sound(SoundType.STONE).noOcclusion()
+                        .isValidSpawn((state, level, pos, ent) -> false))
+                .lang("Foundry Casting Basin")
+                .blockstate(NonNullBiConsumer.noop())
+                .tag(BlockTags.MINEABLE_WITH_PICKAXE)
+                .item(BlockItem::new)
+                .model(NonNullBiConsumer.noop())
+                .build()
+                .register();
+        FOUNDRY_MOLD_CASTER = WF_MACHINES
+                .block("foundry_mold_caster", p -> new FoundryCastingBlock(p, FoundryMolds.SIZE_CASTER,
+                        Block.box(0, 0, 0, 16, 6, 16)))
+                .initialProperties(() -> Blocks.BRICKS)
+                .properties(p -> p.strength(2.5F).sound(SoundType.STONE).noOcclusion()
+                        .isValidSpawn((state, level, pos, ent) -> false))
+                .lang("Foundry Mold Caster")
+                .blockstate(NonNullBiConsumer.noop())
+                .tag(BlockTags.MINEABLE_WITH_PICKAXE)
+                .item(BlockItem::new)
+                .model(NonNullBiConsumer.noop())
+                .build()
+                .register();
+        // One BE type serves both blocks; each reads its mold size from the owning FoundryCastingBlock.
+        FOUNDRY_CASTING_BE = WF_MACHINES.blockEntity("foundry_casting", FoundryCastingBlockEntity::new)
+                .validBlocks(FOUNDRY_BASIN, FOUNDRY_MOLD_CASTER)
                 .register();
 
         for (int i = 0; i < ACPipeType.VALUES.length; i++) {

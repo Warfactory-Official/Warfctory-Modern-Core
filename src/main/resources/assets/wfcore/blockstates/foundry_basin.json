@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "wfcore:block/foundry_basin" }
+  }
+}

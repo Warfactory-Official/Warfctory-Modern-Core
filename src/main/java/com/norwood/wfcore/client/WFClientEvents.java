@@ -13,6 +13,7 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.particle.BlockDebrisParticle;
 import com.norwood.wfcore.client.particle.SmokePlumeParticle;
 import com.norwood.wfcore.client.render.DepositBlockEntityRenderer;
+import com.norwood.wfcore.client.render.FoundryCastingRenderer;
 import com.norwood.wfcore.client.render.MissileLauncherRenderer;
 import com.norwood.wfcore.client.render.gltf.GltfMachineRenderer;
 import com.norwood.wfcore.client.render.gltf.MachineGltfModel;
@@ -70,6 +71,7 @@ public class WFClientEvents {
                 (BlockEntityType<InterceptorBlockEntity>) WFMachines.INTERCEPTOR.getBlockEntityType(),
                 ctx -> new GltfMachineRenderer<>(IRON_DOME_MODEL));
         event.registerBlockEntityRenderer(WFBlocks.DEPOSIT_BE.get(), DepositBlockEntityRenderer::new);
+        event.registerBlockEntityRenderer(WFBlocks.FOUNDRY_CASTING_BE.get(), FoundryCastingRenderer::new);
     }
 
     @SubscribeEvent
