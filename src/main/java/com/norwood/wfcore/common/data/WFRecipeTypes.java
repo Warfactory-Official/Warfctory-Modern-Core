@@ -1,8 +1,10 @@
 package com.norwood.wfcore.common.data;
 
 import com.gregtechceu.gtceu.api.GTValues;
+import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
+import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 import com.gregtechceu.gtceu.api.gui.GuiTextures;
 import com.gregtechceu.gtceu.api.recipe.GTRecipeSerializer;
 import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
@@ -121,6 +123,10 @@ public class WFRecipeTypes {
                 .addCondition(new DepositRecipeCondition(WFCore.id("iron_deposit").toString()))
                 .save(provider);
 
+        VanillaRecipeHelper.addShapedRecipe(provider, WFCore.id("fire_clay_fluid_pipe"),
+                ChemicalHelper.get(TagPrefix.pipeNormalFluid, WFMaterials.FireClay, 4),
+                "CCC", 'C', Items.CLAY_BALL);
+
         // Starter missile recipes (liquid-fuel airframes take Diesel, solid-fuel take RocketFuel);
         // packs override/extend via KubeJS on wfcore:missile_factory.
         addMissileRecipe(provider, "missile_cruise", 800, GTMaterials.Diesel, 500,
@@ -150,6 +156,9 @@ public class WFRecipeTypes {
                         .inputItems(TagPrefix.plate, GTMaterials.Aluminium, 6)
                         .inputItems(TagPrefix.dust, GTMaterials.Gunpowder, 8)
                         .inputItems(new ItemStack(Items.TNT, 2)));
+
+        addPrimitiveAlloyerRecipes(provider);
+        addStrandcasterRecipes(provider);
     }
 
     /**
@@ -172,9 +181,6 @@ public class WFRecipeTypes {
                 .EUt(GTValues.VA[GTValues.HV])
                 .duration(duration)
                 .save(provider);
-
-        addPrimitiveAlloyerRecipes(provider);
-        addStrandcasterRecipes(provider);
     }
 
     /**

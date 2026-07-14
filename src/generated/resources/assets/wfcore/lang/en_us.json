@@ -26,6 +26,7 @@
   "block.wfcore.heavy_vehicle_depot": "Heavy Vehicle Depot",
   "block.wfcore.hesco_bastion": "Hesco Bastion",
   "block.wfcore.hex_ac_pipe": "Hex Ac Pipe",
+  "block.wfcore.interceptor": "Interceptor Battery",
   "block.wfcore.large_blast_furnace": "Large Blast Furnace",
   "block.wfcore.large_transformer": "Large Transformer",
   "block.wfcore.light_ground_vehicle_factory": "MV Light Ground Vehicle Factory",
@@ -59,5 +60,6 @@
   "item.wfcore.packaged_vehicle": "Packaged Vehicle",
   "item.wfcore.siege_defense_tester": "Siege Difficulty Probe",
   "itemGroup.wfcore.wfcore": "Warfactory Modern Core",
+  "material.wfcore.fire_clay": "Fire Clay",
   "material.wfcore.galvanized_steel": "Galvanized Steel"
 }

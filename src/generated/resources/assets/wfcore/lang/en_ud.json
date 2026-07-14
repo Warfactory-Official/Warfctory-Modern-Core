@@ -26,6 +26,7 @@
   "block.wfcore.heavy_vehicle_depot": "ʇodǝᗡ ǝןɔıɥǝΛ ʎʌɐǝH",
   "block.wfcore.hesco_bastion": "uoıʇsɐᗺ oɔsǝH",
   "block.wfcore.hex_ac_pipe": "ǝdıԀ ɔⱯ xǝH",
+  "block.wfcore.interceptor": "ʎɹǝʇʇɐᗺ ɹoʇdǝɔɹǝʇuI",
   "block.wfcore.large_blast_furnace": "ǝɔɐuɹnℲ ʇsɐןᗺ ǝbɹɐꞀ",
   "block.wfcore.large_transformer": "ɹǝɯɹoɟsuɐɹ⟘ ǝbɹɐꞀ",
   "block.wfcore.light_ground_vehicle_factory": "ʎɹoʇɔɐℲ ǝןɔıɥǝΛ punoɹ⅁ ʇɥbıꞀ ΛW",
@@ -59,5 +60,6 @@
   "item.wfcore.packaged_vehicle": "ǝןɔıɥǝΛ pǝbɐʞɔɐԀ",
   "item.wfcore.siege_defense_tester": "ǝqoɹԀ ʎʇןnɔıɟɟıᗡ ǝbǝıS",
   "itemGroup.wfcore.wfcore": "ǝɹoƆ uɹǝpoW ʎɹoʇɔɐɟɹɐM",
+  "material.wfcore.fire_clay": "ʎɐןƆ ǝɹıℲ",
   "material.wfcore.galvanized_steel": "ןǝǝʇS pǝzıuɐʌןɐ⅁"
 }

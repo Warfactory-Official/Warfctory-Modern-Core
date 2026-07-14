@@ -15,7 +15,8 @@
     "EnchantmentHelperMixin",
     "ServerLifecycleHooksMixin",
     "VehiclesDataMessageCompressionMixin",
-    "GunsDataMessageCompressionMixin"
+    "GunsDataMessageCompressionMixin",
+    "FireClayFluidPipeMixin"
   ],
   "client": [
     "NamePlateMixin",

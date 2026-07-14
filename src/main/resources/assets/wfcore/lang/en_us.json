@@ -321,6 +321,7 @@
   "wfcore.gui.launcher.no_warforge": "Install WarForge for the target map",
   "itemGroup.wfcore.wfcore": "Warfactory Modern Core",
   "material.wfcore.galvanized_steel": "Galvanized Steel",
+  "material.wfcore.fire_clay": "Fire Clay",
   "wfcore.machine.primitive_alloyer.tooltip1": "A primitive melting furnace: burns fuel to melt and alloy metals. Consumes no power.",
   "wfcore.machine.primitive_alloyer.tooltip2": "Fuel: Lava (10 mb/t from a fluid input hatch) or any burnable solid fuel (coal, charcoal, coke...) from the input bus — not wood or planks.",
   "wfcore.machine.primitive_alloyer.tooltip3": "Runs out of fuel? The recipe pauses until fuel is supplied again.",

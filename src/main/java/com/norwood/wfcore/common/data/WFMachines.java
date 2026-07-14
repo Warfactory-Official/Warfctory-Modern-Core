@@ -76,9 +76,9 @@ public class WFMachines {
     // solid side walls are present in every stage, so an unbuilt flue leaves a wall, not a hole.
     private static final String[][] PBF_SHAPE_STAGE1 = {
             { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
-            { "   PPP   ", "  P   P  ", "  P   P  ", "  P   P  ", "   PPP   ", "  P P P  ", "    P    ", "    P    ", "   PPP   " },
-            { "  PPPPP  ", "  P   P  ", "  P   P  ", "  P   P  ", "  PP PP  ", "  PP PP  ", "   P P   ", "   P P   ", "   P P   " },
-            { "   PPP   ", "  P   P  ", "  P   P  ", "  P   P  ", "   PPP   ", "  P P P  ", "    P    ", "    P    ", "   PPP   " },
+            { "   PPP   ", "  P   P  ", "  P   P  ", "  P   P  ", "   PPP   ", "    P    ", "    P    ", "    P    ", "   PPP   " },
+            { "  PPPPP  ", "  P   P  ", "  P   P  ", "  P   P  ", "  PP PP  ", "   P P   ", "   P P   ", "   P P   ", "   P P   " },
+            { "   PPP   ", "  P   P  ", "  P   P  ", "  P   P  ", "   PPP   ", "    P    ", "    P    ", "    P    ", "   PPP   " },
             { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
     };
     private static final String[][] PBF_SHAPE_STAGE2 = {
@@ -319,18 +319,15 @@ public class WFMachines {
                 .appearanceBlock(GTBlocks.CASING_PRIMITIVE_BRICKS)
                 .pattern(definition -> FactoryBlockPattern.start(
                                 RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
-                        // Aisles run along RIGHT. r=2-6 (the chamber, its solid side walls and the
-                        // tall center chimney) are mandatory 'B'/'#'/'S'. r=0-1 (left flue) and r=7-8
-                        // (right flue) are optional side chimneys built from 'D' (bricks-or-air) +
-                        // 'C' (firebox-or-air); the mandatory r=2/r=6 walls keep the chamber sealed
-                        // with a solid 3x3 face when a flue is absent.
+
+
                         .aisle("  D  ", "  D  ", "  D  ", "  D  ", "  D  ", " DDD ", "     ", "     ", "     ")
                         .aisle(" CCC ", " D#D ", " D#D ", " D#D ", " D#D ", " D#D ", "     ", "     ", "     ")
-                        .aisle("  B  ", " BBB ", " BBB ", " BBB ", "  B  ", " BBB ", "     ", "     ", "     ")
+                        .aisle("  B  ", " BBB ", " BBB ", " BBB ", "  B  ", " DDD ", "     ", "     ", "     ")
                         .aisle(" BBB ", "B###B", "B###B", "B###B", " BBB ", "  B  ", "  B  ", "  B  ", " BBB ")
                         .aisle(" BBB ", "B###B", "B###S", "B###B", " B#B ", " B#B ", " B#B ", " B#B ", " B#B ")
                         .aisle(" BBB ", "B###B", "B###B", "B###B", " BBB ", "  B  ", "  B  ", "  B  ", " BBB ")
-                        .aisle("  B  ", " BBB ", " BBB ", " BBB ", "  B  ", " BBB ", "     ", "     ", "     ")
+                        .aisle("  B  ", " BBB ", " BBB ", " BBB ", "  B  ", " DDD ", "     ", "     ", "     ")
                         .aisle(" CCC ", " D#D ", " D#D ", " D#D ", " D#D ", " D#D ", "     ", "     ", "     ")
                         .aisle("     ", "  D  ", "  D  ", "  D  ", "  D  ", " DDD ", "     ", "     ", "     ")
                         .where('S', controller(blocks(definition.getBlock())))
@@ -355,8 +352,6 @@ public class WFMachines {
                 .hasBER(true)
                 .register();
 
-        // Primitive Alloyer: fuel-burning (lava per-tick or solid fuel) melt-and-alloy multiblock. Renders a
-        // pool of the molten output alloy inside its bronze-brick chamber while working (see machine class).
         PRIMITIVE_ALLOYER = WF_MACHINES.multiblock("primitive_alloyer", PrimitiveAlloyerMachine::new)
                 .langValue("Primitive Alloyer")
                 .rotationState(RotationState.NON_Y_AXIS)
@@ -365,15 +360,12 @@ public class WFMachines {
                         Component.translatable("wfcore.machine.primitive_alloyer.tooltip2"),
                         Component.translatable("wfcore.machine.primitive_alloyer.tooltip3"))
                 .appearanceBlock(GTBlocks.CASING_BRONZE_BRICKS)
-                // Structure from primitive_alloyer.litematic (litematic2gtmb.py, controller marked with
-                // oak_planks, facing south). The bronze-brick shell ('C') hosts the input bus, the Lava input
-                // hatch and the molten-alloy output hatch; the hollow interior renders the molten pool.
                 .pattern(definition -> {
                     final String[][] AISLES = {
                             { " AAA ", " CBC ", " CBC ", " CBC ", " CCC " },
-                            { "ABBBA", "C   C", "C   C", "C   C", "C   C" },
-                            { "ABBBA", "B   S", "B   B", "B   B", "C   C" },
-                            { "ABBBA", "C   C", "C   C", "C   C", "C   C" },
+                            { "ABBBA", "C###C", "C###C", "C###C", "C###C" },
+                            { "ABBBA", "B###S", "B###B", "B###B", "C###C" },
+                            { "ABBBA", "C###C", "C###C", "C###C", "C###C" },
                             { " AAA ", " CBC ", " CBC ", " CBC ", " CCC " },
                     };
                     var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
@@ -384,6 +376,7 @@ public class WFMachines {
                     return pattern
                             .where('S', controller(blocks(definition.getBlock())))
                             .where('A', blocks(GTBlocks.FIREBOX_BRONZE.get())) // gtceu:bronze_firebox_casing x12
+                            .where('#', air()) // gtceu:bronze_firebox_casing x12
                             .where('B', blocks(GTBlocks.CASING_PRIMITIVE_BRICKS.get())) // gtceu:firebricks x20
                             .where('C', blocks(GTBlocks.CASING_BRONZE_BRICKS.get()) // gtceu:steam_machine_casing x36
                                     .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1))
@@ -399,8 +392,6 @@ public class WFMachines {
                 .hasBER(true)
                 .register();
 
-        // Strandcaster: casts molten alloys back into ingots. No fuel/power; optional water coolant halves
-        // the duration (handled in StrandcasterMachine#modifyRecipe). Renders the molten input alloy pool.
         STRANDCASTER = WF_MACHINES.multiblock("strandcaster", StrandcasterMachine::new)
                 .langValue("Strandcaster")
                 .rotationState(RotationState.NON_Y_AXIS)
@@ -410,9 +401,6 @@ public class WFMachines {
                         Component.translatable("wfcore.machine.strandcaster.tooltip2"),
                         Component.translatable("wfcore.machine.strandcaster.tooltip3"))
                 .appearanceBlock(GTBlocks.CASING_BRONZE_BRICKS)
-                // Structure from strandcaster.litematic (litematic2gtmb.py, controller marked with oak_planks,
-                // facing south). A long bronze casting line: the bronze-brick shell ('B') hosts the two input
-                // hatches (molten alloy + water coolant) and the ingot output bus.
                 .pattern(definition -> {
                     final String[][] AISLES = {
                             { "AAA", "BBB", "CBC", " B " },
@@ -451,13 +439,7 @@ public class WFMachines {
                         MetaMachineBlock::new, MetaMachineItem::new, RadarBlockEntity::new)
                 .langValue("Radar")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
-                // The dish is drawn by our own GltfMachineRenderer (registered via EntityRenderersEvent).
-                // GTM registers BlockEntityWithBERModelRenderer for the same BE type when hasBER is on
-                // (default true) and clobbers ours, so the model + render mask silently never run. Disable
-                // it: the casing/front overlay still render from the chunk-mesh baked model.
                 .hasBER(false)
-                // The dish is left-right symmetric but the controller 'A' sits off-centre, so a flipped
-                // pattern match would mirror everything across the controller and wreck the mask/model.
                 .allowFlip(false)
                 .pattern(definition -> {
                     var pattern = FactoryBlockPattern.start(
@@ -901,13 +883,9 @@ public class WFMachines {
                 MetaMachineBlock::new, MetaMachineItem::new, InterceptorBlockEntity::new)
                 .langValue("Interceptor Battery")
                 .tooltips(Component.translatable("wfcore.machine.interceptor.tooltip"))
-                // Autonomous point-defense: no recipes and no BER, just a status GUI hosted by the BE. Disable
-                // GTM's default BER (nothing to render beyond the baked casing) as with the launcher/radar.
                 .hasBER(false)
                 .rotationState(RotationState.NON_Y_AXIS)
                 .appearanceBlock(GTBlocks.STEEL_HULL)
-                // The controller 'S' sits off-centre on the base ring; a flipped match would mirror the
-                // structure across it (same reasoning as the launcher/radar).
                 .allowFlip(false)
                 .pattern(definition -> {
                     var pattern = FactoryBlockPattern.start(
@@ -931,9 +909,6 @@ public class WFMachines {
                         GTCEu.id("block/machines/assembler"))
                 .register();
 
-        // WarForge integration: only when WarForge is present. The chunk-reinforcer machines reference
-        // com.flansmod.warforge.* and live in WarforgeMachines so verifying this class never loads them
-        // (verification ignores the runtime gate). WarforgeMachines is loaded only by this call.
         if (WarforgeIntegration.isLoaded()) {
             WarforgeMachines.init();
         }
