@@ -84,7 +84,11 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         controller.advance(animated, model.animations, now);
         AnimationLoop loop = model.animations.get(controller.getCurrent());
         if (loop != null) {
-            loop.update(controller.getTime());
+            // A machine may drive the pose directly (deploy/retract) by a [0,1] fraction of the duration;
+            // otherwise fall back to the free-running clock the controller advanced above.
+            float override = animated.getAnimationOverride();
+            float time = override >= 0f ? Math.min(override, 1f) * loop.getDuration() : controller.getTime();
+            loop.update(time);
         }
 
         poseStack.pushPose();

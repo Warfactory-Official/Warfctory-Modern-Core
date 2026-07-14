@@ -63,6 +63,12 @@ repositories {
         url = "https://api.modrinth.com/maven"
         content { includeGroup "maven.modrinth" }
     }
+    maven {
+        // flywheel (runtime dep of the local wfballistics jar, which only jarJars it)
+        name = "createmod maven"
+        url = "https://maven.createmod.net/"
+        content { includeGroup "dev.engine-room.flywheel" }
+    }
 }
 
 version = mod_version
@@ -193,6 +199,13 @@ dependencies {
     modRuntimeOnly("curse.maven:geckolib-388172:8285794")
 
     modImplementation("curse.maven:${warforge_version}") { transitive = false }
+
+    // WF-Ballistics: local jar in libs/ (flatDir resolves by filename, group is ignored - mcgltf pattern).
+    // Rebuild from the sibling WF-Ballistics clone and recopy when it changes.
+    modImplementation("com.wf:wfballistics:${wfballistics_version}")
+    // wfballistics only jarJars flywheel; nested-jar extraction from a flatDir jar isn't reliable in dev,
+    // so resolve it explicitly for the dev runtime. Drop this if runClient ever reports a duplicate.
+    modRuntimeOnly("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}")
 }
 
 tasks.named('shadowJar', ShadowJar).configure {

@@ -63,6 +63,9 @@ public class WFMachines {
     public static MultiblockMachineDefinition HEAVY_VEHICLE_DEPOT;
     public static MultiblockMachineDefinition DRILL_RIG;
     public static MultiblockMachineDefinition STEAM_WIREMILL;
+    public static MultiblockMachineDefinition MISSILE_FACTORY;
+    public static MultiblockMachineDefinition MISSILE_LAUNCHER;
+    public static MultiblockMachineDefinition INTERCEPTOR;
 
     public static void init() {
         AC_INPUT_HATCH = WF_MACHINES.machine("ac_input_hatch",
@@ -672,6 +675,114 @@ public class WFMachines {
                 })
                 .workableCasingModel(GTCEu.id("block/casings/solid/machine_casing_solid_steel"),
                         GTCEu.id("block/machines/miner"))
+                .register();
+
+        MISSILE_FACTORY = WF_MACHINES.multiblock("missile_factory", MissileFactoryMachine::new)
+                .langValue("Missile Factory")
+                .tooltips(Component.translatable("wfcore.machine.missile_factory.tooltip"))
+                .rotationState(RotationState.NON_Y_AXIS)
+                .recipeType(WFRecipeTypes.MISSILE_FACTORY)
+                .recipeModifier(GTRecipeModifiers.OC_NON_PERFECT)
+                .appearanceBlock(GCYMBlocks.CASING_INDUSTRIAL_STEAM)
+                .pattern(definition -> {
+                    var pattern = FactoryBlockPattern.start(
+                            RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT);
+                    for (String[] aisle : MissileBuildingStructure.AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    // No EXPORT_ITEMS ability: finished missiles complete into the controller's internal
+                    // core store (MissileFactoryMachine.missileStore) and can only leave via a linked
+                    // Missile Launch Silo — a player can never hold one.
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(GTBlocks.CASING_STEEL_SOLID.get()) // gtceu:solid_machine_casing x115
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
+                                            .setMaxGlobalLimited(2, 1))
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMaxGlobalLimited(2, 1)))
+                            .where('B', blocks(GCYMBlocks.CASING_INDUSTRIAL_STEAM.get())) // x145
+                            .where('C', blocks(GCYMBlocks.CASING_ATOMIC.get())) // gtceu:atomic_casing x104
+                            .where('D', blocks(GTBlocks.CASING_HSSE_STURDY.get())) // gtceu:sturdy_machine_casing x327
+                            .where('E', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x133
+                            .where('F', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x36
+                            .where('G', blocks(GTBlocks.METAL_SHEETS.get(DyeColor.LIGHT_GRAY).get())) // x124
+                            .where(' ', any())
+                            .build();
+                })
+                .workableCasingModel(GTCEu.id("block/casings/gcym/industrial_steam_casing"),
+                        GTCEu.id("block/machines/assembler"))
+                .register();
+
+        MISSILE_LAUNCHER = WF_MACHINES.multiblock("missile_launcher", MissileLauncherMachine::new,
+                MetaMachineBlock::new, MetaMachineItem::new, MissileLauncherBlockEntity::new)
+                .langValue("Missile Launch Silo")
+                .tooltips(Component.translatable("wfcore.machine.missile_launcher.tooltip"))
+                // The loaded-missile model is drawn by our own MissileLauncherRenderer (registered in
+                // WFClientEvents); disable GTM's default BER so it doesn't clobber our renderer for this BE
+                // type. The casing still renders from the chunk-mesh baked model. (See the radar.)
+                .hasBER(false)
+                .rotationState(RotationState.NON_Y_AXIS)
+                .appearanceBlock(GCYMBlocks.CASING_INDUSTRIAL_STEAM)
+                // The controller 'S' sits off-centre on the silo's ground ring; a flipped match would
+                // mirror the structure across it (same reasoning as the radar).
+                .allowFlip(false)
+                .pattern(definition -> {
+                    var pattern = FactoryBlockPattern.start(
+                            RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT);
+                    for (String[] aisle : MissileLauncherStructure.AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(GTBlocks.CASING_STEEL_SOLID.get()) // gtceu:solid_machine_casing x47
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
+                                            .setMaxGlobalLimited(2, 1)))
+                            .where('B', blocks(GCYMBlocks.CASING_INDUSTRIAL_STEAM.get())) // x36
+                            .where('C', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x125
+                            .where('D', blocks(GCYMBlocks.CASING_ATOMIC.get())) // gtceu:atomic_casing x122
+                            .where('E', blocks(GTBlocks.CASING_HSSE_STURDY.get())) // gtceu:sturdy_machine_casing x159
+                            .where('F', blocks(GTBlocks.FIREBOX_STEEL.get())) // gtceu:steel_firebox_casing x64
+                            .where('G', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x28
+                            .where(' ', any())
+                            .build();
+                })
+                // Same casing + assembler front as the Missile Factory, so the silo reads as its sibling.
+                .workableCasingModel(GTCEu.id("block/casings/gcym/industrial_steam_casing"),
+                        GTCEu.id("block/machines/assembler"))
+                .register();
+
+        INTERCEPTOR = WF_MACHINES.multiblock("interceptor", InterceptorMachine::new,
+                MetaMachineBlock::new, MetaMachineItem::new, InterceptorBlockEntity::new)
+                .langValue("Interceptor Battery")
+                .tooltips(Component.translatable("wfcore.machine.interceptor.tooltip"))
+                // Autonomous point-defense: no recipes and no BER, just a status GUI hosted by the BE. Disable
+                // GTM's default BER (nothing to render beyond the baked casing) as with the launcher/radar.
+                .hasBER(false)
+                .rotationState(RotationState.NON_Y_AXIS)
+                .appearanceBlock(GTBlocks.STEEL_HULL)
+                // The controller 'S' sits off-centre on the base ring; a flipped match would mirror the
+                // structure across it (same reasoning as the launcher/radar).
+                .allowFlip(false)
+                .pattern(definition -> {
+                    var pattern = FactoryBlockPattern.start(
+                            RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT);
+                    for (String[] aisle : InterceptorStructure.AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(GTBlocks.CASING_STEEL_SOLID.get()) // gtceu:solid_machine_casing x22
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
+                                            .setMaxGlobalLimited(2, 1)))
+                            .where('B', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x4
+                            .where('C', blocks(GCYMBlocks.CASING_ATOMIC.get())) // gtceu:atomic_casing x30
+                            .where('D', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x4
+                            .where(' ', any())
+                            .build();
+                })
+                // Same casing + assembler front as the Light Plane Assembler.
+                .workableCasingModel(GTCEu.id("block/casings/steam/steel/side"),
+                        GTCEu.id("block/machines/assembler"))
                 .register();
 
         // WarForge integration: only when WarForge is present. The chunk-reinforcer machines reference

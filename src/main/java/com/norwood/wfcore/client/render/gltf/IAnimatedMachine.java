@@ -49,6 +49,16 @@ public interface IAnimatedMachine {
         return true;
     }
 
+    /**
+     * Drives the current animation directly to this fraction {@code [0, 1]} of its duration, bypassing the
+     * free-running clock (and {@link #isAnimationRunning()}). Use for a machine-controlled pose that isn't a
+     * loop — e.g. a deploy/retract where the machine ramps the fraction up, holds, then ramps it back down.
+     * Return a negative value (the default) to use the normal clock-driven playback instead.
+     */
+    default float getAnimationOverride() {
+        return -1f;
+    }
+
     /** Structure blocks the model visually replaces; hidden from chunk rendering while formed. */
     default Collection<BlockPos> getHiddenBlocks() {
         return List.of();

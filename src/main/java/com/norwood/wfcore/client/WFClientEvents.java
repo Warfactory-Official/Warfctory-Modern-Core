@@ -13,11 +13,14 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.particle.BlockDebrisParticle;
 import com.norwood.wfcore.client.particle.SmokePlumeParticle;
 import com.norwood.wfcore.client.render.DepositBlockEntityRenderer;
+import com.norwood.wfcore.client.render.MissileLauncherRenderer;
 import com.norwood.wfcore.client.render.gltf.GltfMachineRenderer;
 import com.norwood.wfcore.client.render.gltf.MachineGltfModel;
 import com.norwood.wfcore.common.data.WFBlocks;
 import com.norwood.wfcore.common.data.WFMachines;
 import com.norwood.wfcore.common.machine.DrillRigBlockEntity;
+import com.norwood.wfcore.common.machine.InterceptorBlockEntity;
+import com.norwood.wfcore.common.machine.MissileLauncherBlockEntity;
 import com.norwood.wfcore.common.machine.RadarBlockEntity;
 import com.norwood.wfcore.common.machine.ResearchUnitBlockEntity;
 import com.norwood.wfcore.common.particle.WFParticles;
@@ -34,6 +37,9 @@ public class WFClientEvents {
     /** Shared research-unit model; every research unit BER reuses the same loaded GLTF scene. */
     public static final MachineGltfModel RESEARCH_MODEL = new MachineGltfModel(WFCore.id("model/research_render.gltf"));
 
+    /** Shared iron-dome model for the interceptor battery; rides above the controller's casing. */
+    public static final MachineGltfModel IRON_DOME_MODEL = new MachineGltfModel(WFCore.id("model/iron_dome.gltf"));
+
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         // Register the model receivers so McGLTF loads them on (re)load and hands back the GPU scenes.
@@ -41,6 +47,7 @@ public class WFClientEvents {
             MCglTF.getInstance().addGltfModelReceiver(RADAR_MODEL);
             MCglTF.getInstance().addGltfModelReceiver(DRILL_RIG_MODEL);
             MCglTF.getInstance().addGltfModelReceiver(RESEARCH_MODEL);
+            MCglTF.getInstance().addGltfModelReceiver(IRON_DOME_MODEL);
         });
     }
 
@@ -56,6 +63,12 @@ public class WFClientEvents {
         event.registerBlockEntityRenderer(
                 (BlockEntityType<ResearchUnitBlockEntity>) WFMachines.RESEARCH_UNIT.getBlockEntityType(),
                 ctx -> new GltfMachineRenderer<>(RESEARCH_MODEL));
+        event.registerBlockEntityRenderer(
+                (BlockEntityType<MissileLauncherBlockEntity>) WFMachines.MISSILE_LAUNCHER.getBlockEntityType(),
+                MissileLauncherRenderer::new);
+        event.registerBlockEntityRenderer(
+                (BlockEntityType<InterceptorBlockEntity>) WFMachines.INTERCEPTOR.getBlockEntityType(),
+                ctx -> new GltfMachineRenderer<>(IRON_DOME_MODEL));
         event.registerBlockEntityRenderer(WFBlocks.DEPOSIT_BE.get(), DepositBlockEntityRenderer::new);
     }
 

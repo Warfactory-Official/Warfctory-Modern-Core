@@ -2,19 +2,21 @@ package com.norwood.wfcore.common.machine;
 
 /**
  * <p>
- * Converted from {@code missile_launcher_multi.litematic} via {@code processing/litematic2gtmb.py}.
+ * Converted from {@code missile_launcher_multi.litematic} via {@code litematic2gtmb.py}
+ * (controller marker: oak planks, facing south; round-trip verified by the script).
  * <p>
  * Symbol legend (predicate mapping in {@code WFMachines}):
  * <ul>
  * <li>S = controller</li>
- * <li>A = Solid Machine Casing (steel)</li>
+ * <li>A = Solid Machine Casing (steel) - hosts the energy hatches</li>
  * <li>B = Industrial Steam Casing (GCYM)</li>
  * <li>C = Galvanized Steel frame</li>
  * <li>D = Atomic Casing (GCYM)</li>
- * <li>E = HSSE Sturdy Casing</li>
+ * <li>E = HSSE Sturdy Machine Casing</li>
  * <li>F = Steel Firebox Casing (unlit)</li>
  * <li>G = Black Steel frame</li>
  * </ul>
+ * AISLES: 9 chars (FRONT) x 20 strings (UP) x 9 aisles (RIGHT); first string = bottom layer.
  */
 public final class MissileLauncherStructure {
 

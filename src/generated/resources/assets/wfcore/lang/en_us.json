@@ -33,6 +33,8 @@
   "block.wfcore.machine_casing_turbine_titanium": "Machine Casing Turbine Titanium",
   "block.wfcore.mainframe": "Computation Mainframe",
   "block.wfcore.mining_charge": "Mining Charge",
+  "block.wfcore.missile_factory": "Missile Factory",
+  "block.wfcore.missile_launcher": "Missile Launch Silo",
   "block.wfcore.octal_ac_pipe": "Octal Ac Pipe",
   "block.wfcore.printer": "Data Printer",
   "block.wfcore.quadruple_ac_pipe": "Quadruple Ac Pipe",

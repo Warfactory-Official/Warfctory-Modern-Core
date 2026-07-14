@@ -56,3 +56,10 @@ Example Description
         versionRange = "*"
         ordering = "AFTER"
         side = "BOTH"
+    # Required: missile entities/items for the missile factory + launch silo multiblocks.
+    [[dependencies.${mod_id}]]
+        modId = "wfballistics"
+        mandatory = true
+        versionRange = "[1.0,)"
+        ordering = "AFTER"
+        side = "BOTH"
