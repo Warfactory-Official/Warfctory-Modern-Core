@@ -137,8 +137,9 @@ public class WFBlocks {
 
         SANDBAGS = createArmorBlock("sandbags", Blocks.SAND, SoundType.SAND, 0.5F, 9.0F,
                 ResourceLocation.fromNamespaceAndPath("minecraft", "block/sand"), BlockTags.MINEABLE_WITH_SHOVEL);
-        HESCO_BASTION = createArmorBlock("hesco_bastion", Blocks.GRAVEL, SoundType.GRAVEL, 1.0F, 17.0F,
-                ResourceLocation.fromNamespaceAndPath("minecraft", "block/gravel"), BlockTags.MINEABLE_WITH_SHOVEL);
+        HESCO_BASTION = createSidedArmorBlock("hesco_bastion", Blocks.GRAVEL, SoundType.GRAVEL, 1.0F, 17.0F,
+                WFCore.id("block/hesco_barrier_side"), WFCore.id("block/hesco_barrier_bottom"),
+                WFCore.id("block/hesco_barrier_top"), BlockTags.MINEABLE_WITH_SHOVEL);
         BALLISTIC_GLASS = createArmorBlock("ballistic_glass", Blocks.GLASS, SoundType.GLASS, 3.0F, 7.0F,
                 ResourceLocation.fromNamespaceAndPath("minecraft", "block/glass"), BlockTags.MINEABLE_WITH_PICKAXE);
         STANDARD_CONCRETE = createArmorBlock("standard_concrete", Blocks.LIGHT_GRAY_CONCRETE, SoundType.STONE, 2.0F,
@@ -203,6 +204,23 @@ public class WFBlocks {
                         .isValidSpawn((state, level, pos, ent) -> false))
                 .addLayer(() -> RenderType::solid)
                 .exBlockstate(GTModels.cubeAllModel(texture))
+                .tag(tool)
+                .item(BlockItem::new)
+                .build()
+                .register();
+    }
+
+    private static BlockEntry<Block> createSidedArmorBlock(String name, Block base, SoundType sound, float hardness,
+                                                           float resistance, ResourceLocation side,
+                                                           ResourceLocation bottom, ResourceLocation top,
+                                                           TagKey<Block> tool) {
+        return WF_MACHINES.block(name, Block::new)
+                .initialProperties(() -> base)
+                .properties(p -> p.strength(hardness, resistance).sound(sound)
+                        .isValidSpawn((state, level, pos, ent) -> false))
+                .addLayer(() -> RenderType::solid)
+                .exBlockstate((ctx, prov) -> prov.simpleBlock(ctx.getEntry(),
+                        prov.models().cubeBottomTop(ctx.getName(), side, bottom, top)))
                 .tag(tool)
                 .item(BlockItem::new)
                 .build()

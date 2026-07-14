@@ -277,10 +277,10 @@ public class DrillRigMachine extends WorkableMultiblockMachine implements IAnima
         // Placeholder offsets - tune in-world with ModelTransformDebug (numpad live editor) and paste the
         // exported switch block here, mirroring how RadarMachine's transform was tuned.
         return switch (getFrontFacing()) {
-            case WEST -> new Vec3(0.5, -4.5, 1.5);
-            case EAST -> new Vec3(0.5, -4.5, -0.5);
-            case NORTH -> new Vec3(-0.5, -4.5, 0.5);
-            case SOUTH -> new Vec3(1.5, -4.5, -0.5);
+            case WEST -> new Vec3(0.5, -4.25, 1.5);
+            case EAST -> new Vec3(0.5, -4.25, -0.5);
+            case NORTH -> new Vec3(-0.5, -4.25, 0.5);
+            case SOUTH -> new Vec3(1.5, -4.25, 0.5);
             default -> Vec3.ZERO;
         };
     }
