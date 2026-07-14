@@ -36,6 +36,8 @@ public class WFRecipeTypes {
     public static GTRecipeType LARGE_BLAST_FURNACE;
     public static GTRecipeType DRILLING;
     public static GTRecipeType MISSILE_FACTORY;
+    public static GTRecipeType PRIMITIVE_ALLOYER;
+    public static GTRecipeType STRANDCASTER;
 
     public static void init() {
         var id = WFCore.id("large_blast_furnace");
@@ -70,6 +72,27 @@ public class WFRecipeTypes {
                 .setProgressBar(GuiTextures.PROGRESS_BAR_ARROW, ProgressTexture.FillDirection.LEFT_TO_RIGHT)
                 .setMaxTooltips(1)
                 .setSound(GTSoundEntries.ASSEMBLER);
+
+        var alloyerId = WFCore.id("primitive_alloyer");
+        PRIMITIVE_ALLOYER = new GTRecipeType(alloyerId, "multiblock");
+        GTRegistries.register(BuiltInRegistries.RECIPE_TYPE, alloyerId, PRIMITIVE_ALLOYER);
+        GTRegistries.register(BuiltInRegistries.RECIPE_SERIALIZER, alloyerId, new GTRecipeSerializer());
+        GTRegistries.RECIPE_TYPES.register(alloyerId, PRIMITIVE_ALLOYER);
+        PRIMITIVE_ALLOYER.setMaxIOSize(2, 0, 0, 1)
+                .setProgressBar(GuiTextures.PROGRESS_BAR_ARROW, ProgressTexture.FillDirection.LEFT_TO_RIGHT)
+                .setMaxTooltips(1)
+                .setSound(GTSoundEntries.FURNACE);
+
+        var casterId = WFCore.id("strandcaster");
+        STRANDCASTER = new GTRecipeType(casterId, "multiblock");
+        GTRegistries.register(BuiltInRegistries.RECIPE_TYPE, casterId, STRANDCASTER);
+        GTRegistries.register(BuiltInRegistries.RECIPE_SERIALIZER, casterId, new GTRecipeSerializer());
+        GTRegistries.RECIPE_TYPES.register(casterId, STRANDCASTER);
+        // Two fluid inputs are allowed so the runtime-added water coolant (see StrandcasterMachine) fits.
+        STRANDCASTER.setMaxIOSize(0, 1, 2, 0)
+                .setProgressBar(GuiTextures.PROGRESS_BAR_ARROW, ProgressTexture.FillDirection.LEFT_TO_RIGHT)
+                .setMaxTooltips(1)
+                .setSound(GTSoundEntries.COOLING);
     }
 
     /**
@@ -148,6 +171,57 @@ public class WFRecipeTypes {
                 .outputItems(item)
                 .EUt(GTValues.VA[GTValues.HV])
                 .duration(duration)
+                .save(provider);
+
+        addPrimitiveAlloyerRecipes(provider);
+        addStrandcasterRecipes(provider);
+    }
+
+    /**
+     * Primitive Alloyer melt-and-alloy recipes. Fuel (lava or solid) is the machine's business, so it never
+     * appears here. Steel is deliberately absent — that is the Large Blast Furnace's job.
+     */
+    private static void addPrimitiveAlloyerRecipes(Consumer<FinishedRecipe> provider) {
+        PRIMITIVE_ALLOYER.recipeBuilder(WFCore.id("brass"))
+                .inputItems(TagPrefix.ingot, GTMaterials.Copper, 3)
+                .inputItems(TagPrefix.ingot, GTMaterials.Zinc, 1)
+                .outputFluids(GTMaterials.Brass.getFluid(576))
+                .duration(80)
+                .save(provider);
+
+        PRIMITIVE_ALLOYER.recipeBuilder(WFCore.id("bronze"))
+                .inputItems(TagPrefix.ingot, GTMaterials.Tin, 3)
+                .inputItems(TagPrefix.ingot, GTMaterials.Copper, 1)
+                .outputFluids(GTMaterials.Bronze.getFluid(576))
+                .duration(80)
+                .save(provider);
+
+        PRIMITIVE_ALLOYER.recipeBuilder(WFCore.id("red_alloy"))
+                .inputItems(TagPrefix.ingot, GTMaterials.Copper, 1)
+                .inputItems(TagPrefix.dust, GTMaterials.Redstone, 4)
+                .outputFluids(GTMaterials.RedAlloy.getFluid(144))
+                .duration(20)
+                .save(provider);
+    }
+
+    /**
+     * Strandcaster casting recipes: 144 mb molten alloy in, 1 ingot out, 120-tick base duration. Supplying
+     * water to a coolant hatch halves this to 60 ticks at runtime (see {@code StrandcasterMachine}). Steel is
+     * kept here so the caster can solidify the Large Blast Furnace's liquid steel into ingots.
+     */
+    private static void addStrandcasterRecipes(Consumer<FinishedRecipe> provider) {
+        cast(provider, "steel_ingot", GTMaterials.Steel);
+        cast(provider, "brass_ingot", GTMaterials.Brass);
+        cast(provider, "bronze_ingot", GTMaterials.Bronze);
+        cast(provider, "red_alloy_ingot", GTMaterials.RedAlloy);
+    }
+
+    private static void cast(Consumer<FinishedRecipe> provider, String id,
+                             com.gregtechceu.gtceu.api.data.chemical.material.Material alloy) {
+        STRANDCASTER.recipeBuilder(WFCore.id(id))
+                .inputFluids(alloy.getFluid(144))
+                .outputItems(TagPrefix.ingot, alloy)
+                .duration(120)
                 .save(provider);
     }
 

@@ -2,6 +2,7 @@ package com.norwood.wfcore.common.data;
 
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
+import com.gregtechceu.gtceu.api.block.IMachineBlock;
 import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
 import com.gregtechceu.gtceu.api.capability.recipe.ItemRecipeCapability;
 import com.gregtechceu.gtceu.api.data.RotationState;
@@ -13,6 +14,7 @@ import com.gregtechceu.gtceu.api.machine.MachineDefinition;
 import com.gregtechceu.gtceu.api.machine.MultiblockMachineDefinition;
 import com.gregtechceu.gtceu.api.machine.multiblock.PartAbility;
 import com.gregtechceu.gtceu.api.pattern.FactoryBlockPattern;
+import com.gregtechceu.gtceu.api.pattern.MultiblockShapeInfo;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.api.registry.registrate.MachineBuilder;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
@@ -27,9 +29,13 @@ import com.norwood.wfcore.common.machine.compute.CoolingPartMachine;
 import com.norwood.wfcore.common.machine.compute.RAMSlotPartMachine;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 import com.norwood.wfcore.integration.warforge.WarforgeMachines;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+
+import java.util.List;
 
 import static com.gregtechceu.gtceu.api.pattern.Predicates.*;
 import static com.gregtechceu.gtceu.common.data.models.GTMachineModels.createWorkableCasingMachineModel;
@@ -47,6 +53,8 @@ public class WFMachines {
     public static MachineDefinition CREATIVE_COMPUTATION_SINK;
     public static MultiblockMachineDefinition LARGE_TRANSFORMER;
     public static MultiblockMachineDefinition LARGE_BLAST_FURNACE;
+    public static MultiblockMachineDefinition PRIMITIVE_ALLOYER;
+    public static MultiblockMachineDefinition STRANDCASTER;
     public static MultiblockMachineDefinition MAINFRAME;
     public static MultiblockMachineDefinition RESEARCH_UNIT;
     public static MultiblockMachineDefinition RADAR;
@@ -60,6 +68,46 @@ public class WFMachines {
     public static MultiblockMachineDefinition MISSILE_FACTORY;
     public static MultiblockMachineDefinition MISSILE_LAUNCHER;
     public static MultiblockMachineDefinition INTERCEPTOR;
+
+    // JEI preview stages for the Large Blast Furnace, generated to match its pattern.
+    // Each aisle is a FRONT-depth slice; strings go bottom->top; the char column maps to the RIGHT
+    // axis reversed; the controller ('S') faces SOUTH. 'P' = primitive brick, 'F' = bronze firebox,
+    // ' ' = air. Stage 1 = core only, stage 2 = core + left flue, stage 3 = core + both. The chamber's
+    // solid side walls are present in every stage, so an unbuilt flue leaves a wall, not a hole.
+    private static final String[][] PBF_SHAPE_STAGE1 = {
+            { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+            { "   PPP   ", "  P   P  ", "  P   P  ", "  P   P  ", "   PPP   ", "  P P P  ", "    P    ", "    P    ", "   PPP   " },
+            { "  PPPPP  ", "  P   P  ", "  P   P  ", "  P   P  ", "  PP PP  ", "  PP PP  ", "   P P   ", "   P P   ", "   P P   " },
+            { "   PPP   ", "  P   P  ", "  P   P  ", "  P   P  ", "   PPP   ", "  P P P  ", "    P    ", "    P    ", "   PPP   " },
+            { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+    };
+    private static final String[][] PBF_SHAPE_STAGE2 = {
+            { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+            { "   PPP F ", "  P   PP ", "  P   PP ", "  P   PP ", "   PPP P ", "  P P PPP", "    P    ", "    P    ", "   PPP   " },
+            { "  PPPPPFP", "  P   P P", "  P   P P", "  P   P P", "  PP PP P", "  PP PP P", "   P P   ", "   P P   ", "   P P   " },
+            { "   PPP F ", "  P   PP ", "  P   PP ", "  P   PP ", "   PPP P ", "  P P PPP", "    P    ", "    P    ", "   PPP   " },
+            { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+    };
+    private static final String[][] PBF_SHAPE_STAGE3 = {
+            { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+            { " F PPP F ", " PP   PP ", " PP   PP ", " PP   PP ", " P PPP P ", "PPP P PPP", "    P    ", "    P    ", "   PPP   " },
+            { "PFPPPPPFP", "P P   P P", "P P   P P", "P P   P P", "P PP PP P", "P PP PP P", "   P P   ", "   P P   ", "   P P   " },
+            { " F PPP F ", " PP   PP ", " PP   PP ", " PP   PP ", " P PPP P ", "PPP P PPP", "    P    ", "    P    ", "   PPP   " },
+            { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+    };
+
+    private static MultiblockShapeInfo largeBlastFurnaceShape(MultiblockMachineDefinition definition, String[][] aisles) {
+        var builder = MultiblockShapeInfo.builder();
+        for (String[] aisle : aisles) {
+            builder.aisle(aisle);
+        }
+        return builder
+                .where('S', (IMachineBlock) definition.getBlock(), Direction.SOUTH)
+                .where('P', GTBlocks.CASING_PRIMITIVE_BRICKS.get())
+                .where('F', GTBlocks.FIREBOX_BRONZE.get())
+                .where(' ', Blocks.AIR.defaultBlockState())
+                .build();
+    }
 
     public static void init() {
         AC_INPUT_HATCH = WF_MACHINES.machine("ac_input_hatch",
@@ -271,28 +319,131 @@ public class WFMachines {
                 .appearanceBlock(GTBlocks.CASING_PRIMITIVE_BRICKS)
                 .pattern(definition -> FactoryBlockPattern.start(
                                 RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
-                        .aisle("  B  ", "  B  ", "  B  ", "  B  ", "  B  ", " BBB ", "     ", "     ", "     ")
-                        .aisle(" CCC ", " B#B ", " B#B ", " B#B ", " B#B ", " B#B ", "     ", "     ", "     ")
-                        .aisle("  B  ", " B#B ", " B#B ", " B#B ", "  B  ", " BBB ", "     ", "     ", "     ")
+                        // Aisles run along RIGHT. r=2-6 (the chamber, its solid side walls and the
+                        // tall center chimney) are mandatory 'B'/'#'/'S'. r=0-1 (left flue) and r=7-8
+                        // (right flue) are optional side chimneys built from 'D' (bricks-or-air) +
+                        // 'C' (firebox-or-air); the mandatory r=2/r=6 walls keep the chamber sealed
+                        // with a solid 3x3 face when a flue is absent.
+                        .aisle("  D  ", "  D  ", "  D  ", "  D  ", "  D  ", " DDD ", "     ", "     ", "     ")
+                        .aisle(" CCC ", " D#D ", " D#D ", " D#D ", " D#D ", " D#D ", "     ", "     ", "     ")
+                        .aisle("  B  ", " BBB ", " BBB ", " BBB ", "  B  ", " BBB ", "     ", "     ", "     ")
                         .aisle(" BBB ", "B###B", "B###B", "B###B", " BBB ", "  B  ", "  B  ", "  B  ", " BBB ")
                         .aisle(" BBB ", "B###B", "B###S", "B###B", " B#B ", " B#B ", " B#B ", " B#B ", " B#B ")
                         .aisle(" BBB ", "B###B", "B###B", "B###B", " BBB ", "  B  ", "  B  ", "  B  ", " BBB ")
-                        .aisle("  B  ", " B#B ", " B#B ", " B#B ", "  B  ", " BBB ", "     ", "     ", "     ")
-                        .aisle(" CCC ", " B#B ", " B#B ", " B#B ", " B#B ", " B#B ", "     ", "     ", "     ")
-                        .aisle("     ", "  B  ", "  B  ", "  B  ", "  B  ", " BBB ", "     ", "     ", "     ")
+                        .aisle("  B  ", " BBB ", " BBB ", " BBB ", "  B  ", " BBB ", "     ", "     ", "     ")
+                        .aisle(" CCC ", " D#D ", " D#D ", " D#D ", " D#D ", " D#D ", "     ", "     ", "     ")
+                        .aisle("     ", "  D  ", "  D  ", "  D  ", "  D  ", " DDD ", "     ", "     ", "     ")
                         .where('S', controller(blocks(definition.getBlock())))
                         .where('B', blocks(GTBlocks.CASING_PRIMITIVE_BRICKS.get())
                                 .or(abilities(PartAbility.IMPORT_ITEMS))
                                 .or(abilities(PartAbility.EXPORT_ITEMS))
                                 .or(abilities(PartAbility.EXPORT_FLUIDS)))
+                        .where('D', blocks(GTBlocks.CASING_PRIMITIVE_BRICKS.get()).or(air()))
                         .where('#', air())
-                        .where('C', blocks(GTBlocks.FIREBOX_BRONZE.get()))
+                        .where('C', blocks(GTBlocks.FIREBOX_BRONZE.get()).or(air()))
                         .where(' ', any())
                         .build())
+                // JEI previews the three stages: core only, core + one side chimney, core + both.
+                .shapeInfos(definition -> List.of(
+                        largeBlastFurnaceShape(definition, PBF_SHAPE_STAGE1),
+                        largeBlastFurnaceShape(definition, PBF_SHAPE_STAGE2),
+                        largeBlastFurnaceShape(definition, PBF_SHAPE_STAGE3)))
                 .model(createWorkableCasingMachineModel(
                         GTCEu.id("block/casings/solid/machine_primitive_bricks"),
                         GTCEu.id("block/multiblock/primitive_blast_furnace"))
                         .andThen(b -> b.addDynamicRenderer(DynamicRenderHelper::createPBFLavaRender)))
+                .hasBER(true)
+                .register();
+
+        // Primitive Alloyer: fuel-burning (lava per-tick or solid fuel) melt-and-alloy multiblock. Renders a
+        // pool of the molten output alloy inside its bronze-brick chamber while working (see machine class).
+        PRIMITIVE_ALLOYER = WF_MACHINES.multiblock("primitive_alloyer", PrimitiveAlloyerMachine::new)
+                .langValue("Primitive Alloyer")
+                .rotationState(RotationState.NON_Y_AXIS)
+                .recipeType(WFRecipeTypes.PRIMITIVE_ALLOYER)
+                .tooltips(Component.translatable("wfcore.machine.primitive_alloyer.tooltip1"),
+                        Component.translatable("wfcore.machine.primitive_alloyer.tooltip2"),
+                        Component.translatable("wfcore.machine.primitive_alloyer.tooltip3"))
+                .appearanceBlock(GTBlocks.CASING_BRONZE_BRICKS)
+                // Structure from primitive_alloyer.litematic (litematic2gtmb.py, controller marked with
+                // oak_planks, facing south). The bronze-brick shell ('C') hosts the input bus, the Lava input
+                // hatch and the molten-alloy output hatch; the hollow interior renders the molten pool.
+                .pattern(definition -> {
+                    final String[][] AISLES = {
+                            { " AAA ", " CBC ", " CBC ", " CBC ", " CCC " },
+                            { "ABBBA", "C   C", "C   C", "C   C", "C   C" },
+                            { "ABBBA", "B   S", "B   B", "B   B", "C   C" },
+                            { "ABBBA", "C   C", "C   C", "C   C", "C   C" },
+                            { " AAA ", " CBC ", " CBC ", " CBC ", " CCC " },
+                    };
+                    var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
+                            RelativeDirection.RIGHT);
+                    for (String[] aisle : AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(GTBlocks.FIREBOX_BRONZE.get())) // gtceu:bronze_firebox_casing x12
+                            .where('B', blocks(GTBlocks.CASING_PRIMITIVE_BRICKS.get())) // gtceu:firebricks x20
+                            .where('C', blocks(GTBlocks.CASING_BRONZE_BRICKS.get()) // gtceu:steam_machine_casing x36
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMinGlobalLimited(1))
+                                    .or(abilities(PartAbility.EXPORT_FLUIDS).setMinGlobalLimited(1)))
+                            .where(' ', any())
+                            .build();
+                })
+                .model(createWorkableCasingMachineModel(
+                        GTCEu.id("block/casings/solid/machine_casing_bronze_plated_bricks"),
+                        GTCEu.id("block/multiblock/primitive_blast_furnace"))
+                        .andThen(b -> b.addDynamicRenderer(DynamicRenderHelper::makeRecipeFluidAreaRender)))
+                .hasBER(true)
+                .register();
+
+        // Strandcaster: casts molten alloys back into ingots. No fuel/power; optional water coolant halves
+        // the duration (handled in StrandcasterMachine#modifyRecipe). Renders the molten input alloy pool.
+        STRANDCASTER = WF_MACHINES.multiblock("strandcaster", StrandcasterMachine::new)
+                .langValue("Strandcaster")
+                .rotationState(RotationState.NON_Y_AXIS)
+                .recipeType(WFRecipeTypes.STRANDCASTER)
+                .recipeModifier(StrandcasterMachine::modifyRecipe)
+                .tooltips(Component.translatable("wfcore.machine.strandcaster.tooltip1"),
+                        Component.translatable("wfcore.machine.strandcaster.tooltip2"),
+                        Component.translatable("wfcore.machine.strandcaster.tooltip3"))
+                .appearanceBlock(GTBlocks.CASING_BRONZE_BRICKS)
+                // Structure from strandcaster.litematic (litematic2gtmb.py, controller marked with oak_planks,
+                // facing south). A long bronze casting line: the bronze-brick shell ('B') hosts the two input
+                // hatches (molten alloy + water coolant) and the ingot output bus.
+                .pattern(definition -> {
+                    final String[][] AISLES = {
+                            { "AAA", "BBB", "CBC", " B " },
+                            { "AAA", "B B", "C C", " B " },
+                            { "AAA", "B B", "C C", " B " },
+                            { "AAA", "B B", "C C", " B " },
+                            { "AAA", "B B", "C C", " B " },
+                            { "AAA", "B B", "C C", " B " },
+                            { "AAA", "BBB", "BBB", "BBB" },
+                            { "AAA", "B S", "B B", "BBB" },
+                            { "AAA", "BBB", "BBB", "BBB" },
+                    };
+                    var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
+                            RelativeDirection.RIGHT);
+                    for (String[] aisle : AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(GTBlocks.BRONZE_HULL.get())) // gtceu:bronze_machine_casing x27
+                            .where('B', blocks(GTBlocks.CASING_BRONZE_BRICKS.get()) // gtceu:steam_machine_casing x44
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMinGlobalLimited(2))
+                                    .or(abilities(PartAbility.EXPORT_ITEMS).setMinGlobalLimited(1)))
+                            .where('C', frames(GTMaterials.Bronze)) // gtceu:bronze_frame x12
+                            .where(' ', any())
+                            .build();
+                })
+                .model(createWorkableCasingMachineModel(
+                        GTCEu.id("block/casings/solid/machine_casing_bronze_plated_bricks"),
+                        GTCEu.id("block/machines/fluid_solidifier"))
+                        .andThen(b -> b.addDynamicRenderer(DynamicRenderHelper::makeRecipeFluidAreaRender)))
                 .hasBER(true)
                 .register();
 

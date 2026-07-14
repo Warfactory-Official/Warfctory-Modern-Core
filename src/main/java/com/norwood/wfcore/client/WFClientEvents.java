@@ -76,5 +76,7 @@ public class WFClientEvents {
     public static void onRegisterParticleProviders(RegisterParticleProvidersEvent event) {
         event.registerSpecial(WFParticles.BLOCK_DEBRIS.get(), new BlockDebrisParticle.Provider());
         event.registerSpriteSet(WFParticles.SMOKE_PLUME.get(), SmokePlumeParticle.Provider::new);
+        event.registerSpriteSet(WFParticles.STRANDCASTER_STEAM.get(),
+                com.norwood.wfcore.client.particle.SteamPlumeParticle.Provider::new);
     }
 }

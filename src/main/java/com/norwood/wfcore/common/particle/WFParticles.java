@@ -28,5 +28,9 @@ public final class WFParticles {
     public static final RegistryObject<SimpleParticleType> SMOKE_PLUME = PARTICLE_TYPES.register("smoke_plume",
             () -> new SimpleParticleType(false) {});
 
+    /** White, campfire-style rising smoke used as "steam" off the Strandcaster's casting bed while it works. */
+    public static final RegistryObject<SimpleParticleType> STRANDCASTER_STEAM = PARTICLE_TYPES.register(
+            "strandcaster_steam", () -> new SimpleParticleType(false) {});
+
     private WFParticles() {}
 }

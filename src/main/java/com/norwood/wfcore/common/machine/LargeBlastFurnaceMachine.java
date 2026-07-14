@@ -33,16 +33,20 @@ import net.minecraftforge.api.distmarker.OnlyIn;
 
 import org.jetbrains.annotations.NotNull;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 /**
  * Port of the 1.12.2 WFCore large (warfactory) blast furnace: a primitive, non-electric multiblock
  * that runs the {@code wfcore:large_blast_furnace} recipe type. All IO flows through item buses and
  * fluid hatches placed in the brick casing (no internal GUI), mirroring the original "you need 2
- * buses" design. While working it burns entities standing in front of it, melts snow and renders a
- * lava plane on top of that block.
+ * buses" design. While working it burns entities standing in front of it, melts snow, floods its
+ * interior hearth with a lava plane and vents smoke out of its chimneys. The central chamber + tall
+ * center chimney are mandatory; up to two optional side chimneys (Bronze Firebox base) each add
+ * parallelism ("stages" 2 and 3) and their own smoke plume.
  */
 public class LargeBlastFurnaceMachine extends WorkableMultiblockMachine implements IFluidRenderMulti {
 
@@ -51,8 +55,12 @@ public class LargeBlastFurnaceMachine extends WorkableMultiblockMachine implemen
 
     private TickableSubscription hurtSubscription;
 
-    /** Number of formed side chambers (0-2); drives parallelism via {@link #modifyRecipe}. */
     private int sideChambers;
+
+    @DescSynced
+    private boolean leftChimney;
+    @DescSynced
+    private boolean rightChimney;
 
     @DescSynced
     @RequireRerender
@@ -88,23 +96,74 @@ public class LargeBlastFurnaceMachine extends WorkableMultiblockMachine implemen
     public void onStructureFormed() {
         super.onStructureFormed();
         IFluidRenderMulti.super.onStructureFormed();
-        this.sideChambers = countSideChambers();
+        detectSideChimneys();
     }
 
-    /** Each Steel Firebox flanking the core is one side chamber (0-2). Rotation/flip agnostic. */
-    private int countSideChambers() {
+    /**
+     * Work out which optional side chimneys are built by finding their Bronze Firebox bases in the
+     * structure cache and classifying each by its position along the RIGHT axis (left = negative,
+     * right = positive) relative to the controller. Rotation/flip agnostic.
+     */
+    private void detectSideChimneys() {
+        this.leftChimney = false;
+        this.rightChimney = false;
         var level = getLevel();
         var state = getMultiblockState();
-        if (level == null || state == null) return 0;
-        int fireboxes = 0;
-        for (BlockPos pos : state.getCache()) {
-            if (level.getBlockState(pos).is(GTBlocks.FIREBOX_STEEL.get())) fireboxes++;
+        if (level != null && state != null) {
+            Direction right = RelativeDirection.RIGHT.getRelative(getFrontFacing(), getUpwardsFacing(), isFlipped());
+            BlockPos origin = getPos();
+            for (BlockPos pos : state.getCache()) {
+                if (!level.getBlockState(pos).is(GTBlocks.FIREBOX_BRONZE.get())) continue;
+                int dRight = (pos.getX() - origin.getX()) * right.getStepX()
+                        + (pos.getY() - origin.getY()) * right.getStepY()
+                        + (pos.getZ() - origin.getZ()) * right.getStepZ();
+                if (dRight < 0) this.leftChimney = true;
+                else if (dRight > 0) this.rightChimney = true;
+            }
         }
-        return Math.min(2, fireboxes);
+        this.sideChambers = (leftChimney ? 1 : 0) + (rightChimney ? 1 : 0);
     }
 
     public int getSideChambers() {
         return sideChambers;
+    }
+
+    /**
+     * Relative offset from the controller, converted to a world-space {@link BlockPos} delta:
+     * {@code dFront} steps along the front facing, {@code dUp} up, {@code dRight} to the right.
+     */
+    private BlockPos relOffset(Direction front, Direction up, Direction right, int dFront, int dUp, int dRight) {
+        return new BlockPos(
+                front.getStepX() * dFront + up.getStepX() * dUp + right.getStepX() * dRight,
+                front.getStepY() * dFront + up.getStepY() * dUp + right.getStepY() * dRight,
+                front.getStepZ() * dFront + up.getStepZ() * dUp + right.getStepZ() * dRight);
+    }
+
+    /** Floor blocks the lava plane is drawn on: the sealed central 3x3 hearth (the flues are
+     * separate shafts behind the chamber walls, so lava stays inside the chamber). */
+    private Set<BlockPos> computeFloorOffsets() {
+        Direction front = getFrontFacing();
+        Direction up = RelativeDirection.UP.getRelative(front, getUpwardsFacing(), isFlipped());
+        Direction right = RelativeDirection.RIGHT.getRelative(front, getUpwardsFacing(), isFlipped());
+        Set<BlockPos> set = new HashSet<>();
+        for (int dRight = -1; dRight <= 1; dRight++) {
+            for (int dFront = -3; dFront <= -1; dFront++) {
+                set.add(relOffset(front, up, right, dFront, -2, dRight));
+            }
+        }
+        return set;
+    }
+
+    /** Chimney mouths that emit smoke: the tall center chimney (always) plus each built side chimney. */
+    private List<BlockPos> computeChimneyMouths() {
+        Direction front = getFrontFacing();
+        Direction up = RelativeDirection.UP.getRelative(front, getUpwardsFacing(), isFlipped());
+        Direction right = RelativeDirection.RIGHT.getRelative(front, getUpwardsFacing(), isFlipped());
+        List<BlockPos> mouths = new ArrayList<>();
+        mouths.add(relOffset(front, up, right, -2, 7, 0));
+        if (leftChimney) mouths.add(relOffset(front, up, right, -2, 4, -3));
+        if (rightChimney) mouths.add(relOffset(front, up, right, -2, 4, 3));
+        return mouths;
     }
 
     public static ModifierFunction modifyRecipe(MetaMachine machine, GTRecipe recipe) {
@@ -132,15 +191,19 @@ public class LargeBlastFurnaceMachine extends WorkableMultiblockMachine implemen
         super.notifyStatusChanged(oldStatus, newStatus);
         if (newStatus == RecipeLogic.Status.WORKING) {
             this.hurtSubscription = subscribeServerTick(this.hurtSubscription, this::hurtEntitiesAndBreakSnow);
-        } else if (oldStatus == RecipeLogic.Status.WORKING && hurtSubscription != null) {
-            unsubscribe(hurtSubscription);
-            hurtSubscription = null;
+            setFluidBlockOffsets(computeFloorOffsets());
+        } else if (oldStatus == RecipeLogic.Status.WORKING) {
+            if (hurtSubscription != null) {
+                unsubscribe(hurtSubscription);
+                hurtSubscription = null;
+            }
+            setFluidBlockOffsets(new HashSet<>());
         }
     }
 
     @Override
     public @NotNull Set<BlockPos> saveOffsets() {
-        return Collections.singleton(new BlockPos(getFrontFacing().getOpposite().getNormal()));
+        return isActive() ? computeFloorOffsets() : Collections.emptySet();
     }
 
     private void hurtEntitiesAndBreakSnow() {
@@ -157,61 +220,34 @@ public class LargeBlastFurnaceMachine extends WorkableMultiblockMachine implemen
     @OnlyIn(Dist.CLIENT)
     public void clientTick() {
         super.clientTick();
-        if (isFormed) {
-            var pos = this.getPos();
-            var facing = this.getFrontFacing().getOpposite();
-            float xPos = facing.getStepX() * 0.76F + pos.getX() + 0.5F;
-            float yPos = facing.getStepY() * 0.76F + pos.getY() + 0.25F;
-            float zPos = facing.getStepZ() * 0.76F + pos.getZ() + 0.5F;
-
-            var up = RelativeDirection.UP.getRelative(getFrontFacing(), getUpwardsFacing(), isFlipped());
-            var sign = up.getAxisDirection().getStep();
-            var shouldX = up.getAxis() == Direction.Axis.X;
-            var shouldY = up.getAxis() == Direction.Axis.Y;
-            var shouldZ = up.getAxis() == Direction.Axis.Z;
-            var speed = ((shouldY ? facing.getStepY() : shouldX ? facing.getStepX() : facing.getStepZ()) * 0.1F + 0.2F +
-                    0.1F * GTValues.RNG.nextFloat()) * sign;
-            if (getOffsetTimer() % 20 == 0) {
-                getLevel().addParticle(ParticleTypes.LAVA, xPos, yPos, zPos,
-                        shouldX ? speed * 2 : 0,
-                        shouldY ? speed * 2 : 0,
-                        shouldZ ? speed * 2 : 0);
-            }
-            if (isActive()) {
-                getLevel().addParticle(ParticleTypes.LARGE_SMOKE, xPos, yPos, zPos,
-                        shouldX ? speed : 0,
-                        shouldY ? speed : 0,
-                        shouldZ ? speed : 0);
-            }
+        if (!isFormed || !isActive()) return;
+        var level = getLevel();
+        if (level == null || getOffsetTimer() % 2 != 0) return;
+        BlockPos pos = getPos();
+        for (BlockPos mouth : computeChimneyMouths()) {
+            double x = pos.getX() + mouth.getX() + 0.5 + (GTValues.RNG.nextFloat() - 0.5) * 0.3;
+            double y = pos.getY() + mouth.getY() + 0.4;
+            double z = pos.getZ() + mouth.getZ() + 0.5 + (GTValues.RNG.nextFloat() - 0.5) * 0.3;
+            level.addParticle(ParticleTypes.LARGE_SMOKE, x, y, z,
+                    0, 0.06 + 0.04 * GTValues.RNG.nextFloat(), 0);
         }
     }
 
     @Override
     public void animateTick(RandomSource random) {
-        if (this.isActive()) {
-            final BlockPos pos = getPos();
-            float x = pos.getX() + 0.5F;
-            float z = pos.getZ() + 0.5F;
-
-            final var facing = getFrontFacing();
-            final float horizontalOffset = GTValues.RNG.nextFloat() * 0.6F - 0.3F;
-            final float y = pos.getY() + GTValues.RNG.nextFloat() * 0.375F + 0.3F;
-
-            if (facing.getAxis() == Direction.Axis.X) {
-                if (facing.getAxisDirection() == Direction.AxisDirection.POSITIVE) x += 0.52F;
-                else x -= 0.52F;
-                z += horizontalOffset;
-            } else if (facing.getAxis() == Direction.Axis.Z) {
-                if (facing.getAxisDirection() == Direction.AxisDirection.POSITIVE) z += 0.52F;
-                else z -= 0.52F;
-                x += horizontalOffset;
-            }
-            if (ConfigHolder.INSTANCE.machines.machineSounds && GTValues.RNG.nextDouble() < 0.1) {
-                getLevel().playLocalSound(x, y, z, SoundEvents.FURNACE_FIRE_CRACKLE,
-                        SoundSource.BLOCKS, 1.0F, 1.0F, false);
-            }
-            getLevel().addParticle(ParticleTypes.LARGE_SMOKE, x, y, z, 0, 0, 0);
-            getLevel().addParticle(ParticleTypes.FLAME, x, y, z, 0, 0, 0);
+        if (!isActive()) return;
+        var level = getLevel();
+        if (level == null) return;
+        BlockPos pos = getPos();
+        List<BlockPos> mouths = computeChimneyMouths();
+        BlockPos mouth = mouths.get(random.nextInt(mouths.size()));
+        float x = pos.getX() + mouth.getX() + 0.5F + (random.nextFloat() - 0.5F) * 0.3F;
+        float y = pos.getY() + mouth.getY() + 0.3F;
+        float z = pos.getZ() + mouth.getZ() + 0.5F + (random.nextFloat() - 0.5F) * 0.3F;
+        level.addParticle(ParticleTypes.FLAME, x, y, z, 0, 0.02, 0);
+        if (ConfigHolder.INSTANCE.machines.machineSounds && random.nextDouble() < 0.1) {
+            level.playLocalSound(x, y, z, SoundEvents.FURNACE_FIRE_CRACKLE,
+                    SoundSource.BLOCKS, 1.0F, 1.0F, false);
         }
     }
 }
