@@ -1,0 +1,10 @@
+{
+  "parent": "minecraft:block/block",
+  "loader": "gtceu:machine",
+  "machine": "wfcore:copper_heatsink",
+  "variants": {
+    "": {
+      "model": "wfcore:block/machine/part/copper_heatsink"
+    }
+  }
+}

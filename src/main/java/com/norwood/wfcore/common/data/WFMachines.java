@@ -48,7 +48,7 @@ public class WFMachines {
     public static MachineDefinition AC_OUTPUT_HATCH;
     public static MachineDefinition CPU_SLOT;
     public static MachineDefinition RAM_SLOT;
-    public static MachineDefinition COOLING_FAN;
+    public static MachineDefinition COPPER_HEATSINK;
     public static MachineDefinition COOLING_LIQUID;
     public static MachineDefinition CREATIVE_COMPUTATION_SINK;
     public static MultiblockMachineDefinition LARGE_TRANSFORMER;
@@ -156,16 +156,19 @@ public class WFMachines {
                 .model(ramSocketModel())
                 .register();
 
-        COOLING_FAN = WF_MACHINES.machine("cooling_fan", holder -> new CoolingPartMachine(holder, false))
-                .langValue("Cooling Fan")
+        COPPER_HEATSINK = WF_MACHINES.machine("copper_heatsink", holder -> new CoolingPartMachine(holder, false))
+                .langValue("Copper Heatsink")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.GPC_COOLER)
-                .tooltips(Component.translatable("wfcore.machine.cooling_fan.tooltip1"),
-                        Component.translatable("wfcore.machine.cooling_fan.tooltip2"),
-                        Component.translatable("wfcore.machine.cooling_fan.tooltip3"),
-                        Component.translatable("wfcore.machine.cooling_fan.tooltip4"))
+                .tooltips(Component.translatable("wfcore.machine.copper_heatsink.tooltip1"),
+                        Component.translatable("wfcore.machine.copper_heatsink.tooltip2"),
+                        Component.translatable("wfcore.machine.copper_heatsink.tooltip3"),
+                        Component.translatable("wfcore.machine.copper_heatsink.tooltip4"))
                 .tier(GTValues.HV)
-                .overlayTieredHullModel("cooling_fan")
+                // All six faces use the copper heatsink casing texture (a plain cube_all part model); its
+                // .png.mcmeta ldlib connection makes adjacent heatsinks join into a seamless CTM wall. A
+                // Cooling Fan Cover renders on the exposed face on top of this, so no front overlay is used.
+                .model(GTMachineModels.createBasicMachineModel(WFCore.id("block/machine/part/copper_heatsink")))
                 .register();
 
         STEAM_WIREMILL = WF_MACHINES.multiblock("steam_wiremill", SteamParallelMultiblockMachine::new)
