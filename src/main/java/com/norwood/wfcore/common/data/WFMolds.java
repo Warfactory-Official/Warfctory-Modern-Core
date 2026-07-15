@@ -32,17 +32,17 @@ public final class WFMolds {
 
     public enum Shape {
         // Small parts -> Foundry Mold Caster
-        INGOT("ingot", "Ingot", TagPrefix.ingot, SIZE_CASTER, "CC"),
-        PLATE("plate", "Plate", TagPrefix.plate, SIZE_CASTER, "CCC"),
-        RING("ring", "Ring", TagPrefix.ring, SIZE_CASTER, "CCC", "C C", "CCC"),
-        PIPE_TINY("pipe_tiny", "Tiny Pipe", TagPrefix.pipeTinyFluid, SIZE_CASTER, "C", "C"),
-        PIPE_SMALL("pipe_small", "Small Pipe", TagPrefix.pipeSmallFluid, SIZE_CASTER, "C", "C", "C"),
-        PIPE_NORMAL("pipe_normal", "Pipe", TagPrefix.pipeNormalFluid, SIZE_CASTER, "CC", "CC"),
-        GEAR_SMALL("gear_small", "Small Gear", TagPrefix.gearSmall, SIZE_CASTER, "C C", "CCC"),
+        INGOT("ingot", "Ingot", TagPrefix.ingot, SIZE_CASTER, "rC"),
+        PLATE("plate", "Plate", TagPrefix.plate, SIZE_CASTER, "rCC"),
+        RING("ring", "Ring", TagPrefix.ring, SIZE_CASTER, "rC", "CC"),
+        PIPE_TINY("pipe_tiny", "Tiny Pipe", TagPrefix.pipeTinyFluid, SIZE_CASTER, "r", "C"),
+        PIPE_SMALL("pipe_small", "Small Pipe", TagPrefix.pipeSmallFluid, SIZE_CASTER, "r", "C", "C"),
+        PIPE_NORMAL("pipe_normal", "Pipe", TagPrefix.pipeNormalFluid, SIZE_CASTER, "rCC", "CC "),
+        GEAR_SMALL("gear_small", "Small Gear", TagPrefix.gearSmall, SIZE_CASTER, "rC", "CC", "C "),
         // Bulky casts -> Foundry Casting Basin
-        PIPE_LARGE("pipe_large", "Large Pipe", TagPrefix.pipeLargeFluid, SIZE_BASIN, "C C", "C C", "C C"),
-        GEAR("gear", "Gear", TagPrefix.gear, SIZE_BASIN, "C C", "CCC", "C C"),
-        BLOCK("block", "Block", TagPrefix.block, SIZE_BASIN, "CCC", "CCC", "CCC");
+        PIPE_LARGE("pipe_large", "Large Pipe", TagPrefix.pipeLargeFluid, SIZE_BASIN, "rCC", "CCC", "C  "),
+        GEAR("gear", "Gear", TagPrefix.gear, SIZE_BASIN, "rCC", "CCC"),
+        BLOCK("block", "Block", TagPrefix.block, SIZE_BASIN, "rCC", "CCC", "CCC");
 
         public final String id;
         public final String display;
