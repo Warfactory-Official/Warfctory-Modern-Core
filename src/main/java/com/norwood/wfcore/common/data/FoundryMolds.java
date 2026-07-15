@@ -96,6 +96,9 @@ public final class FoundryMolds {
             map.put(GTItems.SHAPE_MOLD_ROTOR.get(), new Mold(TagPrefix.rotor, SIZE_BASIN));
             map.put(GTItems.SHAPE_MOLD_LARGE_PIPE.get(), new Mold(TagPrefix.pipeLargeFluid, SIZE_BASIN));
             map.put(GTItems.SHAPE_MOLD_HUGE_PIPE.get(), new Mold(TagPrefix.pipeHugeFluid, SIZE_BASIN));
+            for (WFMolds.Shape shape : WFMolds.Shape.values()) {
+                map.put(WFMolds.FIRED.get(shape).get(), new Mold(shape.prefix, shape.size));
+            }
             molds = map;
         }
         return molds;

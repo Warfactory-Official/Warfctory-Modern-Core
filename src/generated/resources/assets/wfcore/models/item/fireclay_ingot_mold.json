@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "wfcore:item/mold/fireclay_ingot_mold"
+  }
+}

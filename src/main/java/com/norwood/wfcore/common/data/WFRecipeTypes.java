@@ -128,6 +128,7 @@ public class WFRecipeTypes {
                 "CCC", 'C', Items.CLAY_BALL);
 
         addFoundryRecipes(provider);
+        addMoldRecipes(provider);
 
         // Starter missile recipes (liquid-fuel airframes take Diesel, solid-fuel take RocketFuel);
         // packs override/extend via KubeJS on wfcore:missile_factory.
@@ -174,6 +175,28 @@ public class WFRecipeTypes {
         VanillaRecipeHelper.addShapedRecipe(provider, WFCore.id("foundry_mold_caster"),
                 WFBlocks.FOUNDRY_MOLD_CASTER.asStack(),
                 "B B", "BBB", 'B', new ItemStack(Items.BRICKS));
+    }
+
+    /**
+     * WFCore's fire clay molds (see {@link WFMolds}): each shape's clay-ball {@link WFMolds.Shape#pattern}
+     * crafts the raw {@code clay_*_mold}, which is then smelted into the reusable {@code fireclay_*_mold} — a
+     * clay-then-fire flow that needs no machines, so the foundry can be bootstrapped early. The per-shape
+     * patterns are all distinct, so the ten shaped recipes never collide.
+     */
+    private static void addMoldRecipes(Consumer<FinishedRecipe> provider) {
+        for (WFMolds.Shape shape : WFMolds.Shape.values()) {
+            // Shape clay balls into the raw mold: pattern rows, then the 'C' -> clay ball key.
+            Object[] args = new Object[shape.pattern.length + 2];
+            System.arraycopy(shape.pattern, 0, args, 0, shape.pattern.length);
+            args[shape.pattern.length] = 'C';
+            args[shape.pattern.length + 1] = new ItemStack(Items.CLAY_BALL);
+            VanillaRecipeHelper.addShapedRecipe(provider, WFCore.id(shape.unfiredId()),
+                    WFMolds.UNFIRED.get(shape).asStack(), args);
+
+            // Fire it in a furnace: raw clay mold -> reusable fire clay mold.
+            VanillaRecipeHelper.addSmeltingRecipe(provider, WFCore.id(shape.firedId()),
+                    WFMolds.UNFIRED.get(shape).asStack(), WFMolds.FIRED.get(shape).asStack());
+        }
     }
 
     /**
