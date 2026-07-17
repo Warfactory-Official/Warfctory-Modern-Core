@@ -276,6 +276,7 @@
   "wfcore.tool.detonator.full": "Detonator full (max %s charges)",
   "wfcore.tool.detonator.empty": "No charges linked",
   "wfcore.tool.detonator.detonated": "Detonated %s charge(s)",
+  "wfcore.message.nether_disabled": "The Nether is disabled here.",
   "item.wfcore.cooling_fan_cover_ev": "EV Cooling Fan Cover",
   "item.wfcore.cooling_fan_cover_hv": "HV Cooling Fan Cover",
   "item.wfcore.cooling_fan_cover_lv": "LV Cooling Fan Cover",
