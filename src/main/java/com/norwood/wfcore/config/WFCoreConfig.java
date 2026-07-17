@@ -21,6 +21,7 @@ public final class WFCoreConfig {
     private static final int DEFAULT_ENERGY_TO_FLUID_RATIO = 10;
     private static final int DEFAULT_REFUEL_INTERVAL_TICKS = 20;
     private static final boolean DEFAULT_CLEAR_STRUCTURE_LOOT = true;
+    private static final boolean DEFAULT_DISABLE_NETHER = true;
     private static final int DEFAULT_DEPOSIT_YIELD_MIN = 2000;
     private static final int DEFAULT_DEPOSIT_YIELD_MAX = 8000;
     private static final boolean DEFAULT_DEPOSIT_WORLDGEN_ENABLED = true;
@@ -35,6 +36,7 @@ public final class WFCoreConfig {
     private static volatile int energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
     private static volatile int refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
     private static volatile boolean clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
+    private static volatile boolean disableNether = DEFAULT_DISABLE_NETHER;
     private static volatile int depositYieldMin = DEFAULT_DEPOSIT_YIELD_MIN;
     private static volatile int depositYieldMax = DEFAULT_DEPOSIT_YIELD_MAX;
     private static volatile boolean depositWorldgenEnabled = DEFAULT_DEPOSIT_WORLDGEN_ENABLED;
@@ -48,6 +50,7 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.IntValue ENERGY_TO_FLUID_RATIO;
     private static final ForgeConfigSpec.IntValue REFUEL_INTERVAL_TICKS;
     private static final ForgeConfigSpec.BooleanValue CLEAR_STRUCTURE_LOOT;
+    private static final ForgeConfigSpec.BooleanValue DISABLE_NETHER;
     private static final ForgeConfigSpec.BooleanValue MODEL_TRANSFORM_DEBUG_ENABLED;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> VEHICLES;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> FOLIAGE_BREAKERS;
@@ -74,6 +77,11 @@ public final class WFCoreConfig {
                 .comment(
                         "Empty every chest and fishing loot table by default; repopulate or whitelist via KubeJS (WFLoot).")
                 .define("clearStructureLoot", DEFAULT_CLEAR_STRUCTURE_LOOT);
+
+        DISABLE_NETHER = builder
+                .comment(
+                        "Make the Nether inaccessible: nether portals never form and any travel to the_nether (portals, commands) is blocked.")
+                .define("disableNether", DEFAULT_DISABLE_NETHER);
 
         MODEL_TRANSFORM_DEBUG_ENABLED = builder
                 .comment(
@@ -142,6 +150,11 @@ public final class WFCoreConfig {
         return clearStructureLoot;
     }
 
+    /** When true, the Nether is disabled: portals never form and travel to {@code minecraft:the_nether} is blocked. */
+    public static boolean isNetherDisabled() {
+        return disableNether;
+    }
+
     /** Default per-block deposit yield range, used when a deposit type does not set its own. */
     public static int getDefaultYieldMin() {
         return depositYieldMin;
@@ -178,6 +191,7 @@ public final class WFCoreConfig {
         energyToFluidRatio = ENERGY_TO_FLUID_RATIO.get();
         refuelIntervalTicks = REFUEL_INTERVAL_TICKS.get();
         clearStructureLoot = CLEAR_STRUCTURE_LOOT.get();
+        disableNether = DISABLE_NETHER.get();
         modelTransformDebugEnabled = MODEL_TRANSFORM_DEBUG_ENABLED.get();
         depositYieldMin = DEPOSIT_YIELD_MIN.get();
         depositYieldMax = Math.max(DEPOSIT_YIELD_MAX.get(), depositYieldMin);

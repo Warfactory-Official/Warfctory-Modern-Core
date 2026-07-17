@@ -16,7 +16,9 @@
     "ServerLifecycleHooksMixin",
     "VehiclesDataMessageCompressionMixin",
     "GunsDataMessageCompressionMixin",
-    "FireClayFluidPipeMixin"
+    "FireClayFluidPipeMixin",
+    "ConsumableUseMixin",
+    "SplashPotionMixin"
   ],
   "client": [
     "NamePlateMixin",
