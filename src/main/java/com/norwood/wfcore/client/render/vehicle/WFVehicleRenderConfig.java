@@ -1,56 +1,29 @@
 package com.norwood.wfcore.client.render.vehicle;
 
-import java.util.Set;
-
-import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.fml.ModList;
-import net.minecraftforge.registries.ForgeRegistries;
-
-import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 
 /**
- * Feature gates for the retained-vehicle renderers. Kept deliberately static/simple so the render-thread hot
- * path stays allocation-free.
- * <ul>
- *   <li><b>Strategy 1</b> (idle static swap) is on for every vehicle by default — it is safe and general and
- *       only replaces geometry that is provably not animating.</li>
- *   <li><b>Strategy 2</b> (per-bone retained draw of <em>active</em> vehicles) is opt-in per entity type. The
- *       default allow-list is empty because the mid-batch raw draw needs in-client validation per model; add
- *       an entity-type id here once a vehicle is confirmed to render correctly.</li>
- * </ul>
- * Both strategies fall back to stock GeckoLib rendering whenever an Iris/Oculus shader pack is active, because
- * a raw {@code drawWithShader} bypasses the shader pack's gbuffer pipeline.
+ * Feature gates for retained vehicle rendering. Deliberately static/simple so the render-thread hot path stays
+ * allocation-free.
+ * <p>
+ * Retained rendering draws each bone's cached bone-local {@code VertexBuffer} at GeckoLib's live per-bone
+ * matrix instead of re-tessellating the mesh every frame. It is on for every vehicle by default (bone-local
+ * geometry is pose-independent, so all animation states — turret slew, barrels, wheels — are preserved via the
+ * live matrix). It falls back to stock GeckoLib tessellation whenever an Iris/Oculus shader pack is active,
+ * because a raw {@code drawWithShader} bypasses the shader pack's gbuffer pipeline.
  */
 public final class WFVehicleRenderConfig {
 
     private WFVehicleRenderConfig() {}
 
-    /** Ticks a vehicle is held "active" after its last active frame (debounce for the static swap). */
-    public static final int IDLE_HOLD_TICKS = 20;
+    private static volatile boolean RETAIN = true;
 
-    private static volatile boolean STATIC_SWAP = true;
-
-    /** Entity-type ids allowed to use the per-bone retained path. Empty = Strategy 2 dormant. */
-    private static final Set<ResourceLocation> PER_BONE_MODELS = Set.of(
-            // Populate after in-client validation, e.g.:
-            // new ResourceLocation("superbwarfare", "t_90a"),
-            // new ResourceLocation("superbwarfare", "m_1a_2")
-    );
-
-    public static boolean staticSwapEnabled(VehicleEntity entity) {
-        return STATIC_SWAP;
+    public static boolean retainEnabled() {
+        return RETAIN;
     }
 
-    public static void setStaticSwap(boolean enabled) {
-        STATIC_SWAP = enabled;
-    }
-
-    public static boolean perBoneEnabled(VehicleEntity entity) {
-        if (PER_BONE_MODELS.isEmpty()) {
-            return false;
-        }
-        ResourceLocation id = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
-        return id != null && PER_BONE_MODELS.contains(id);
+    public static void setRetain(boolean enabled) {
+        RETAIN = enabled;
     }
 
     /** Raw VBO draws are only safe without a shader pack (they bypass Iris/Oculus gbuffers). */

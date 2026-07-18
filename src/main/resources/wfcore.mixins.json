@@ -28,7 +28,7 @@
     "BlockShouldRenderFaceMixin",
     "EmbeddiumBlockRendererMixin",
     "McgltfHeadlessConstructMixin",
-    "VehicleStaticSwapMixin",
+    "VehicleRetainFlushMixin",
     "GeoCubeRetainMixin",
     "LightTextureAccessor",
     "EditBoxAccessor",

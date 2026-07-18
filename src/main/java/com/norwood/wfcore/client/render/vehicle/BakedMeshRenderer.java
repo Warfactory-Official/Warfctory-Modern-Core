@@ -1,44 +1,51 @@
 package com.norwood.wfcore.client.render.vehicle;
 
+import java.util.List;
+
 import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexBuffer;
 
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.core.BlockPos;
+import net.minecraft.client.renderer.ShaderInstance;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.Level;
 
 import org.joml.Matrix4f;
 
 /**
- * Draws a baked {@link VertexBuffer} through the vanilla entity-cutout render state with a raw
- * {@code drawWithShader}. Using {@link RenderType#entityCutoutNoCull} + {@code setupRenderState()} gives us the
- * correct shader, blend/cull/depth state and the overlay (Sampler1) binding for free; we only override the
- * lightmap (Sampler2) with a 1x1 world-light texture, because the baked meshes carry {@code FULL_BRIGHT} light
- * UVs and should instead take the real world light at the vehicle's position.
+ * Draws a batch of baked bone {@link VertexBuffer}s through the vanilla entity-cutout render state with a raw
+ * {@code drawWithShader}. Using {@link RenderType#entityCutoutNoCull} + {@code setupRenderState()} once for the
+ * whole vehicle gives the correct shader, blend/cull/depth state and the overlay (Sampler1) binding for free;
+ * only the lightmap (Sampler2) is overridden with a 1x1 world-light texture (from the entity's packed light),
+ * because the baked meshes carry {@code FULL_BRIGHT} light UVs.
  * <p>
- * The model-view matrix is composed exactly like {@code GltfMachineRenderer}:
- * {@code RenderSystem.getModelViewMatrix() * poseStack}. Geometry is opaque, so drawing immediately (rather than
- * through the buffered {@code MultiBufferSource}) is fine — the depth test orders it correctly against the
- * batched entities flushed later in the frame.
+ * Each bone's model-view matrix is composed like {@code GltfMachineRenderer}:
+ * {@code RenderSystem.getModelViewMatrix() * bonePose}, where {@code bonePose} is the live transform GeckoLib
+ * applied for that bone. Geometry is opaque, so drawing immediately is fine — the depth test orders it against
+ * the batched entities flushed later in the frame.
  */
 public final class BakedMeshRenderer {
 
     private BakedMeshRenderer() {}
 
-    public static void draw(VertexBuffer vbo, PoseStack pose, ResourceLocation texture, Level level, BlockPos pos) {
+    public static void drawBatch(List<VertexBuffer> buffers, List<Matrix4f> bonePoses, ResourceLocation texture,
+                                 Level level, int packedLight) {
         RenderType renderType = RenderType.entityCutoutNoCull(texture);
-        Matrix4f modelView = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(pose.last().pose());
+        Matrix4f view = RenderSystem.getModelViewMatrix();
         Matrix4f projection = RenderSystem.getProjectionMatrix();
 
         renderType.setupRenderState();
-        // Override the lightmap the render state just bound (which expects per-vertex real light) with a 1x1
-        // texture holding the world light at this position; the baked FULL_BRIGHT UVs then sample that value.
-        RenderSystem.setShaderTexture(2, WFGlState.worldLightLightmap(level, pos));
+        // Override the lightmap (which the render state binds expecting per-vertex light) with a 1x1 texture
+        // holding the entity's real world light; the baked FULL_BRIGHT UVs then sample that single value.
+        RenderSystem.setShaderTexture(2, WFGlState.packedLightmap(packedLight));
+        ShaderInstance shader = RenderSystem.getShader();
         try {
-            vbo.bind();
-            vbo.drawWithShader(modelView, projection, RenderSystem.getShader());
+            for (int i = 0; i < buffers.size(); i++) {
+                Matrix4f modelView = new Matrix4f(view).mul(bonePoses.get(i));
+                VertexBuffer vbo = buffers.get(i);
+                vbo.bind();
+                vbo.drawWithShader(modelView, projection, shader);
+            }
             VertexBuffer.unbind();
         } finally {
             renderType.clearRenderState();

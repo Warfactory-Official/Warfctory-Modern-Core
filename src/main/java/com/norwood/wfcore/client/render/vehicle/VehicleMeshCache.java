@@ -1,93 +1,147 @@
 package com.norwood.wfcore.client.render.vehicle;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.mojang.blaze3d.vertex.VertexConsumer;
+import com.mojang.blaze3d.vertex.VertexBuffer;
 import com.mojang.blaze3d.vertex.VertexFormat;
 
+import net.minecraft.Util;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
-import com.mojang.blaze3d.vertex.VertexBuffer;
 import com.norwood.wfcore.WFCore;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.core.animatable.GeoAnimatable;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.renderer.GeoRenderer;
-import software.bernie.geckolib.util.RenderUtils;
 
 /**
- * Bakes and caches vehicle geometry into retained GPU {@link VertexBuffer}s, keyed by the vehicle's GeckoLib
- * model resource (so every instance of a model shares one bake).
+ * Bakes and caches each vehicle bone's <em>bone-local</em> geometry into a retained GPU {@link VertexBuffer},
+ * keyed by the GeckoLib model resource. The geometry is captured by driving GeckoLib's own
+ * {@code renderCubesOfBone} at identity into a {@link BufferBuilder}, so only cube-level transforms (pivot,
+ * rotation, inflate, mirror, UVs) are baked in — the bone's own animated transform is applied live at draw
+ * time. That makes the cache pose-independent: one bake per model serves every instance at any turret/wheel
+ * angle.
  * <p>
- * Geometry is captured by driving GeckoLib's own {@code renderCubesOfBone} into a {@link BufferBuilder} — this
- * reuses GeckoLib's exact cube math (pivots, rotation order, inflate, mirror, UVs) instead of re-deriving it:
- * <ul>
- *   <li><b>Whole-vehicle</b> ({@link #getWhole}) walks the bone tree at rest and bakes one buffer with the
- *       rest-pose bone transforms folded in, for Strategy 1's idle draw.</li>
- *   <li><b>Per-bone</b> ({@link #getBone}) bakes each bone's cubes at identity (bone-local space) so Strategy 2
- *       can redraw a bone with its live animation matrix supplied by GeckoLib.</li>
- * </ul>
- * All access is on the render thread. Matrix tracking is forced off before a bake so the shared cached bone
- * tree does not send GeckoLib's {@code renderRecursively} down its tracking branch (which dereferences a null
- * animatable during a manual bake).
- * <p>
- * Caveat: the bake reads the shared, animated {@code BakedGeoModel}. In the rare case where another instance of
- * the same model is mid-animation when the first idle bake happens, the cached rest pose can capture that
- * instance's transient bone angles. The hull is unaffected; only a moving sub-part could freeze at a wrong
- * angle until {@link #invalidateAll()} (resource reload) rebakes.
+ * <b>Async pipeline</b> (per the worker-pool request): {@code renderCubesOfBone} reads only immutable
+ * {@code GeoCube} records and writes a thread-local {@link BufferBuilder}, so the CPU mesh build runs on
+ * {@link Util#backgroundExecutor()}. The resulting {@code RenderedBuffer}s are then uploaded to GPU
+ * {@link VertexBuffer}s on the render thread (GL calls must stay there). While a model is baking, callers get
+ * {@code null} and the bone simply tessellates as usual — no hitch, graceful fallback.
  */
 public final class VehicleMeshCache {
 
     private VehicleMeshCache() {}
 
-    private static final Map<ResourceLocation, VertexBuffer> WHOLE = new HashMap<>();
-    private static final Set<ResourceLocation> WHOLE_FAILED = new HashSet<>();
-    private static final Map<ResourceLocation, Map<String, VertexBuffer>> PER_BONE = new HashMap<>();
+    private static final Map<ResourceLocation, ModelState> STATES = new ConcurrentHashMap<>();
 
-    /** The whole-vehicle rest-pose buffer for this entity's model, baking it on first request. Null on failure. */
-    public static VertexBuffer getWhole(GeoRenderer<?> renderer, VehicleEntity entity) {
-        ResourceLocation res = modelRes(renderer, entity);
-        if (res == null) {
-            return null;
-        }
-        VertexBuffer vb = WHOLE.get(res);
-        if (vb != null) {
-            return vb;
-        }
-        if (WHOLE_FAILED.contains(res)) {
-            return null;
-        }
-        vb = bakeWhole(renderer, res);
-        if (vb == null) {
-            WHOLE_FAILED.add(res);
-            return null;
-        }
-        WHOLE.put(res, vb);
-        return vb;
+    private static final class ModelState {
+        static final int BAKING = 0;   // worker building CPU geometry
+        static final int BUILT = 1;    // geometry ready, awaiting GPU upload on the render thread
+        static final int READY = 2;    // uploaded, usable
+        static final int FAILED = 3;
+
+        volatile int status = BAKING;
+        volatile Map<String, BufferBuilder.RenderedBuffer> pending; // produced off-thread
+        Map<String, VertexBuffer> vbos;                             // owned by the render thread
     }
 
-    /** The bone-local buffer for a named bone of this entity's model, baking the whole model on first request. */
+    /**
+     * The bone-local buffer for a named bone of this entity's model, or {@code null} if not yet baked (the
+     * caller should tessellate that bone this frame). Kicks off the async bake on first request. Render thread
+     * only.
+     */
     public static VertexBuffer getBone(GeoRenderer<?> renderer, VehicleEntity entity, String boneName) {
         ResourceLocation res = modelRes(renderer, entity);
         if (res == null) {
             return null;
         }
-        Map<String, VertexBuffer> map = PER_BONE.get(res);
-        if (map == null) {
-            map = bakePerBone(renderer, res);
-            PER_BONE.put(res, map); // cache even an empty map so a failed bake is not retried every frame
+        ModelState state = STATES.get(res);
+        if (state == null) {
+            state = new ModelState();
+            STATES.put(res, state);
+            BakedGeoModel baked = bakedModel(renderer, res);
+            if (baked == null || baked.topLevelBones().isEmpty()) {
+                state.status = ModelState.FAILED;
+                return null;
+            }
+            final ModelState st = state;
+            final BakedGeoModel model = baked;
+            final GeoRenderer<?> geoRenderer = renderer;
+            Util.backgroundExecutor().execute(() -> buildAsync(res, st, model, geoRenderer));
+            return null;
         }
-        return map.get(boneName);
+        if (state.status == ModelState.BUILT) {
+            uploadPending(state);
+        }
+        if (state.status == ModelState.READY) {
+            return state.vbos.get(boneName);
+        }
+        return null;
+    }
+
+    /** Worker thread: build a {@code RenderedBuffer} for every cube-bearing bone (immutable reads only). */
+    private static void buildAsync(ResourceLocation res, ModelState state, BakedGeoModel baked,
+                                   GeoRenderer<?> renderer) {
+        try {
+            Map<String, BufferBuilder.RenderedBuffer> out = new HashMap<>();
+            for (GeoBone top : baked.topLevelBones()) {
+                buildBoneRec(renderer, top, out);
+            }
+            state.pending = out;
+            state.status = ModelState.BUILT;
+        } catch (Throwable t) {
+            WFCore.LOGGER.warn("[wfcore] async vehicle mesh bake failed for {}", res, t);
+            state.status = ModelState.FAILED;
+        }
+    }
+
+    private static void buildBoneRec(GeoRenderer<?> renderer, GeoBone bone,
+                                     Map<String, BufferBuilder.RenderedBuffer> out) {
+        String name = bone.getName();
+        // Skip SBW's dog-tag bones (rendered specially by SBW) and empty/hidden bones.
+        if (name != null && !name.endsWith("_dogTag") && !bone.isHidden() && !bone.getCubes().isEmpty()) {
+            BufferBuilder builder = new BufferBuilder(512);
+            builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.NEW_ENTITY);
+            // Identity pose → only the cube-level transforms are baked; the bone matrix is applied live at draw.
+            // renderCubesOfBone is a stateless default (reads immutable GeoCube data), safe off the render thread.
+            renderer.renderCubesOfBone(new PoseStack(), bone, builder, LightTexture.FULL_BRIGHT,
+                    OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
+            try {
+                out.put(name, builder.end());
+            } catch (Throwable emptyOrBroken) {
+                // no vertices emitted → skip; this bone falls back to tessellation
+            }
+        }
+        for (GeoBone child : bone.getChildBones()) {
+            buildBoneRec(renderer, child, out);
+        }
+    }
+
+    /** Render thread: upload the worker's {@code RenderedBuffer}s to GPU buffers and flip the state to READY. */
+    private static void uploadPending(ModelState state) {
+        Map<String, BufferBuilder.RenderedBuffer> pending = state.pending;
+        Map<String, VertexBuffer> vbos = new HashMap<>();
+        if (pending != null) {
+            for (Map.Entry<String, BufferBuilder.RenderedBuffer> entry : pending.entrySet()) {
+                VertexBuffer vbo = new VertexBuffer(VertexBuffer.Usage.STATIC);
+                vbo.bind();
+                vbo.upload(entry.getValue());
+                vbos.put(entry.getKey(), vbo);
+            }
+            VertexBuffer.unbind();
+        }
+        state.vbos = vbos;
+        state.pending = null;
+        state.status = ModelState.READY;
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -100,107 +154,23 @@ public final class VehicleMeshCache {
         }
     }
 
-    private static VertexBuffer bakeWhole(GeoRenderer<?> renderer, ResourceLocation res) {
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private static BakedGeoModel bakedModel(GeoRenderer<?> renderer, ResourceLocation res) {
         try {
-            BakedGeoModel baked = renderer.getGeoModel().getBakedModel(res);
-            if (baked == null || baked.topLevelBones().isEmpty()) {
-                return null;
-            }
-            baked.topLevelBones().forEach(VehicleMeshCache::trackingOff);
-
-            BufferBuilder builder = new BufferBuilder(2048);
-            builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.NEW_ENTITY);
-            PoseStack pose = new PoseStack();
-            for (GeoBone top : baked.topLevelBones()) {
-                renderBoneRest(renderer, pose, top, builder);
-            }
-            return upload(builder);
+            GeoModel model = renderer.getGeoModel();
+            return model.getBakedModel(res);
         } catch (Throwable t) {
-            WFCore.LOGGER.warn("[wfcore] vehicle whole-mesh bake failed for {}", res, t);
             return null;
-        }
-    }
-
-    private static Map<String, VertexBuffer> bakePerBone(GeoRenderer<?> renderer, ResourceLocation res) {
-        Map<String, VertexBuffer> out = new HashMap<>();
-        try {
-            BakedGeoModel baked = renderer.getGeoModel().getBakedModel(res);
-            if (baked == null) {
-                return out;
-            }
-            baked.topLevelBones().forEach(VehicleMeshCache::trackingOff);
-            for (GeoBone top : baked.topLevelBones()) {
-                bakeBoneRec(renderer, top, out);
-            }
-        } catch (Throwable t) {
-            WFCore.LOGGER.warn("[wfcore] vehicle per-bone bake failed for {}", res, t);
-        }
-        return out;
-    }
-
-    /** Recursively emit a bone's cubes with its rest-pose transform applied (whole-vehicle capture). */
-    private static void renderBoneRest(GeoRenderer<?> renderer, PoseStack pose, GeoBone bone, VertexConsumer buf) {
-        pose.pushPose();
-        RenderUtils.prepMatrixForBone(pose, bone);
-        if (!bone.isHidden()) {
-            renderer.renderCubesOfBone(pose, bone, buf, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY,
-                    1f, 1f, 1f, 1f);
-        }
-        for (GeoBone child : bone.getChildBones()) {
-            renderBoneRest(renderer, pose, child, buf);
-        }
-        pose.popPose();
-    }
-
-    /** Recursively bake each bone's cubes at identity (bone-local) into its own buffer (per-bone capture). */
-    private static void bakeBoneRec(GeoRenderer<?> renderer, GeoBone bone, Map<String, VertexBuffer> out) {
-        if (!bone.isHidden() && !bone.getCubes().isEmpty()) {
-            try {
-                BufferBuilder builder = new BufferBuilder(512);
-                builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.NEW_ENTITY);
-                renderer.renderCubesOfBone(new PoseStack(), bone, builder, LightTexture.FULL_BRIGHT,
-                        OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
-                VertexBuffer vbo = upload(builder);
-                if (vbo != null) {
-                    out.put(bone.getName(), vbo);
-                }
-            } catch (Throwable ignored) {
-                // skip this bone; it simply falls back to tessellation
-            }
-        }
-        for (GeoBone child : bone.getChildBones()) {
-            bakeBoneRec(renderer, child, out);
-        }
-    }
-
-    /** Finishes a {@link BufferBuilder} and uploads it to a static {@link VertexBuffer}; null if it was empty. */
-    private static VertexBuffer upload(BufferBuilder builder) {
-        BufferBuilder.RenderedBuffer rendered;
-        try {
-            rendered = builder.end();
-        } catch (Throwable emptyOrBroken) {
-            return null; // no vertices were emitted (all bones hidden / no cubes)
-        }
-        VertexBuffer vbo = new VertexBuffer(VertexBuffer.Usage.STATIC);
-        vbo.bind();
-        vbo.upload(rendered);
-        VertexBuffer.unbind();
-        return vbo;
-    }
-
-    private static void trackingOff(GeoBone bone) {
-        bone.setTrackingMatrices(false);
-        for (GeoBone child : bone.getChildBones()) {
-            trackingOff(child);
         }
     }
 
     /** Frees every cached GPU buffer and clears the caches. Call on resource reload (geometry may have changed). */
     public static void invalidateAll() {
-        WHOLE.values().forEach(VertexBuffer::close);
-        WHOLE.clear();
-        WHOLE_FAILED.clear();
-        PER_BONE.values().forEach(map -> map.values().forEach(VertexBuffer::close));
-        PER_BONE.clear();
+        for (ModelState state : STATES.values()) {
+            if (state.vbos != null) {
+                state.vbos.values().forEach(VertexBuffer::close);
+            }
+        }
+        STATES.clear();
     }
 }

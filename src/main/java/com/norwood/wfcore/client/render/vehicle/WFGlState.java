@@ -5,11 +5,8 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferUploader;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LevelRenderer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.core.BlockPos;
-import net.minecraft.world.level.Level;
 
 import com.norwood.wfcore.mixin.LightTextureAccessor;
 import org.lwjgl.opengl.GL11;
@@ -18,10 +15,10 @@ import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 
 /**
- * Shared GL helpers for the retained-vehicle renderers. Extracted from the (self-identical) pattern in
- * {@link com.norwood.wfcore.client.render.gltf.GltfMachineRenderer}: a raw {@code VertexBuffer.drawWithShader}
- * bypasses vanilla's lightmap binding and leaves the VAO/immediate-buffer cache dirty, so the vehicle draws
- * bind a 1x1 world-light texture and reset the raw bindings afterwards the same way the GLTF path does.
+ * Shared GL helpers for the retained-vehicle draws. A raw {@code VertexBuffer.drawWithShader} bypasses vanilla's
+ * lightmap binding and leaves the VAO/immediate-buffer cache dirty (the same pitfalls
+ * {@code GltfMachineRenderer} handles), so the vehicle draws bind a 1x1 world-light texture and reset the raw
+ * bindings afterwards.
  */
 public final class WFGlState {
 
@@ -30,24 +27,21 @@ public final class WFGlState {
     private static DynamicTexture worldLightTexture;
 
     /**
-     * Returns the GL id of a reused 1x1 texture holding the vanilla lightmap colour sampled at {@code pos}.
-     * The baked vehicle meshes carry {@code FULL_BRIGHT} in their light UVs, so binding this to sampler unit 2
-     * makes the whole mesh take the single real world-light value at its position (bright at noon, dim at
-     * night) rather than being stuck full-bright. Mirrors {@code GltfMachineRenderer.worldLightLightmap} but
-     * takes an explicit {@link BlockPos} so a ground vehicle samples at its own position (not {@code +15}).
+     * Returns the GL id of a reused 1x1 texture holding the vanilla lightmap colour for {@code packedLight}
+     * (the authoritative value the entity render dispatcher already computed for the vehicle). The baked meshes
+     * carry {@code FULL_BRIGHT} light UVs, so binding this to sampler unit 2 makes the whole mesh take that one
+     * real light value. Using the passed packed light — instead of re-sampling at the entity's block position —
+     * avoids the "black vehicle" bug where a vehicle sunk against the ground sampled an occluded (dark) block.
      */
-    public static int worldLightLightmap(Level level, BlockPos pos) {
+    public static int packedLightmap(int packedLight) {
         if (worldLightTexture == null) {
             worldLightTexture = new DynamicTexture(new NativeImage(1, 1, false));
         }
         int color = 0xFFFFFFFF;
-        if (level != null) {
-            int packed = LevelRenderer.getLightColor(level, pos);
-            NativeImage pixels = ((LightTextureAccessor) Minecraft.getInstance().gameRenderer.lightTexture())
-                    .wfcore$getLightPixels();
-            if (pixels != null) {
-                color = pixels.getPixelRGBA(LightTexture.block(packed), LightTexture.sky(packed));
-            }
+        NativeImage pixels = ((LightTextureAccessor) Minecraft.getInstance().gameRenderer.lightTexture())
+                .wfcore$getLightPixels();
+        if (pixels != null) {
+            color = pixels.getPixelRGBA(LightTexture.block(packedLight), LightTexture.sky(packedLight));
         }
         worldLightTexture.getPixels().setPixelRGBA(0, 0, color);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, worldLightTexture.getId());

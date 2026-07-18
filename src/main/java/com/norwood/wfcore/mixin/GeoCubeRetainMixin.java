@@ -5,7 +5,7 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 
 import net.minecraft.world.entity.Entity;
 
-import com.norwood.wfcore.client.render.vehicle.VehicleBoneRetain;
+import com.norwood.wfcore.client.render.vehicle.VehicleBoneAccumulator;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -13,15 +13,17 @@ import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
 
 /**
- * Strategy 2 hook. Redirects the {@code renderCubesOfBone} call inside GeckoLib's own
- * {@code GeoEntityRenderer.renderRecursively}, so it covers every vehicle (Superb Warfare or addon) whose
- * renderer extends {@code GeoEntityRenderer}. For an allow-listed, active vehicle,
- * {@link VehicleBoneRetain#drawBone} draws the bone's cached retained buffer with the live pose GeckoLib
- * already applied; for anything else the original tessellating call runs unchanged.
+ * Retained-rendering hook. Redirects the {@code renderCubesOfBone} call inside GeckoLib's own
+ * {@code GeoEntityRenderer.renderRecursively}, so it covers every vehicle (Superb Warfare or any addon) whose
+ * renderer extends {@code GeoEntityRenderer}. For an eligible vehicle whose bone mesh is baked,
+ * {@link VehicleBoneAccumulator#tryRecord} records the bone's cached retained buffer with the live pose GeckoLib
+ * already applied (the bone matrix carries turret slew, barrels, wheels), to be batch-drawn at the end of the
+ * vehicle's render. For anything else — non-vehicles, un-baked bones, shader packs — the original tessellating
+ * call runs unchanged.
  * <p>
  * {@code remap = false}: the target method/name are GeckoLib's own (stable across dev/prod) and the descriptor
  * references only official Minecraft class names (also stable). {@code require = 0} makes the redirect optional
- * — if a GeckoLib version doesn't match, Strategy 2 goes dormant instead of crashing.
+ * — if a GeckoLib version doesn't match, retained rendering goes dormant instead of crashing.
  */
 @Mixin(value = GeoEntityRenderer.class, remap = false)
 public abstract class GeoCubeRetainMixin {
@@ -39,7 +41,7 @@ public abstract class GeoCubeRetainMixin {
                                     float alpha,
                                     // captured prefix of the enclosing renderRecursively args:
                                     PoseStack enclosingPose, Entity animatable) {
-        if (!VehicleBoneRetain.drawBone(self, animatable, pose, bone)) {
+        if (!VehicleBoneAccumulator.tryRecord(self, animatable, pose, bone)) {
             self.renderCubesOfBone(pose, bone, buffer, packedLight, packedOverlay, red, green, blue, alpha);
         }
     }
