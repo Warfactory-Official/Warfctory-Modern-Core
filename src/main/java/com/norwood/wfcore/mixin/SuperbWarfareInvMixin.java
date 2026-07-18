@@ -7,13 +7,9 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.Container;
-import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.fluids.FluidStack;
@@ -21,8 +17,6 @@ import net.minecraftforge.fluids.capability.IFluidHandler;
 
 import com.atsuishio.superbwarfare.data.vehicle.DefaultVehicleData;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
-import com.atsuishio.superbwarfare.init.ModMenuTypes;
-import com.atsuishio.superbwarfare.menu.VehicleMenu;
 import com.norwood.wfcore.IVehicleFuelTank;
 import com.norwood.wfcore.IWFCoreVehicleUI;
 import com.norwood.wfcore.SuperbOverrides;
@@ -32,10 +26,8 @@ import com.norwood.wfcore.gui.VehicleStorageUI;
 import com.norwood.wfcore.gui.VehicleUIFactory;
 import com.norwood.wfcore.handlers.WFCoreFuelHandler;
 import com.norwood.wfcore.serializer.WFCoreSerializers;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -44,14 +36,18 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.OptionalInt;
-
-// Container and MenuProvider are declared here (the target VehicleEntity already implements both)
-// so the Mixin annotation processor can resolve and remap the getContainerSize/createMenu injectors.
+/**
+ * WFCore fuel + storage overrides for Superb Warfare vehicles.
+ *
+ * <p>
+ * As of Superb Warfare 0.8.9, {@code VehicleEntity} no longer implements {@link net.minecraft.world.Container} or
+ * {@link net.minecraft.world.MenuProvider}: its storage is a {@code VehicleContainerHandler} item-handler capability
+ * and it builds its own per-size container menus in {@code createMenu}/{@code openMenu}. So this mixin no longer
+ * declares those interfaces or overwrites {@code createMenu}; instead it intercepts {@code openMenu} to redirect
+ * configured vehicles to the WFCore ModularUI, and adjusts {@code getContainerSize} for configured storage sizes.
+ */
 @Mixin(value = VehicleEntity.class)
-public abstract class SuperbWarfareInvMixin extends Entity
-                                            implements IVehicleFuelTank, Container, MenuProvider, IUIHolder,
-                                            IWFCoreVehicleUI {
+public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFuelTank, IUIHolder, IWFCoreVehicleUI {
 
     @Unique
     private static final EntityDataAccessor<FluidStack> FUEL = SynchedEntityData.defineId(VehicleEntity.class,
@@ -90,6 +86,11 @@ public abstract class SuperbWarfareInvMixin extends Entity
 
     @Shadow(remap = false)
     public abstract DefaultVehicleData computed();
+
+    // getContainerSize is Superb Warfare's own method (not net.minecraft.world.Container's) in 0.8.9, so it is
+    // shadowed with remap = false and matched by its literal name.
+    @Shadow(remap = false)
+    public abstract int getContainerSize();
 
     @Override
     public SyncedEntityFuelStorage getFluidTank() {
@@ -134,77 +135,31 @@ public abstract class SuperbWarfareInvMixin extends Entity
     }
 
     /**
-     * Replace the hardcoded container size with the configured vehicle container size.
+     * Give configured vehicles the WFCore-defined storage size instead of Superb Warfare's fixed
+     * per-container-type size. {@code getContainerSize} drives {@code resizeItems()}, so a larger value grows the
+     * backing item handler and the WFCore ModularUI renders that many slots. Unconfigured vehicles fall through to
+     * the vanilla-sized container.
      *
      * <p>
-     * {@code remap = false} keeps the annotation processor from trying to remap the method (it
-     * cannot, because the method is inherited from the {@link Container} interface rather than the
-     * mixin's superclass). The mixin declares {@code implements Container} so that the build's
-     * reobfuscation step renames this declaration to its SRG name for production, while the named
-     * declaration matches the named dev runtime directly.
-     *
-     * @author MrNorwood
-     * @reason Removing hardcoded limits
+     * The override is read by id from {@code computed()} directly (not the cached {@link #wfcore$vehicleId}, which
+     * is still null when {@code getContainerSize} is called during early construction, before the {@code <init>}
+     * tail sets it).
      */
-    @Overwrite(remap = false)
-    public int getContainerSize() {
+    @Inject(method = "getContainerSize", at = @At("HEAD"), cancellable = true, remap = false)
+    private void wfcore$overrideContainerSize(CallbackInfoReturnable<Integer> cir) {
         var data = computed();
-        if (data == null) return 0;
-
-        // Read the override by id directly (not the cached wfcore$vehicleId, which is still null when the
-        // `items` field initializer first calls this during construction).
+        if (data == null) {
+            return;
+        }
         var override = SuperbOverrides.getOverride(data.getId());
         if (override != null && override.hasStorageOverride()) {
-            return override.storageSize();
+            cir.setReturnValue(override.storageSize());
         }
-
-        var type = data.vehicleContainerType;
-        return type == null ? 0 : type.getSize();
-    }
-
-    /**
-     * Restore the vehicle inventory menu (commented out upstream).
-     *
-     * <p>
-     * {@code remap = false} for the same reason as {@link #getContainerSize()}: {@code createMenu}
-     * is inherited from {@link MenuProvider}, so remapping is handled by the build's reobfuscation
-     * step (driven by the {@code implements MenuProvider} declaration) rather than the refmap.
-     *
-     * @author MrNorwood
-     * @reason Restoring commented code
-     */
-    @Overwrite(remap = false)
-    public @Nullable AbstractContainerMenu createMenu(int pContainerId, @NotNull Inventory pPlayerInventory,
-                                                      Player pPlayer) {
-        if (!pPlayer.isSpectator()) {
-            var computed = computed();
-            var type = computed.vehicleContainerType;
-            if (type == null) return null;
-
-            var upgrade = computed.hasUpgradeSlots;
-            var menu = switch (type) {
-                case MINI -> upgrade ? ModMenuTypes.VEHICLE_MENU_MINI_UPGRADE.get() :
-                        ModMenuTypes.VEHICLE_MENU_MINI.get();
-                case SMALL -> upgrade ? ModMenuTypes.VEHICLE_MENU_SMALL_UPGRADE.get() :
-                        ModMenuTypes.VEHICLE_MENU_SMALL.get();
-                case MEDIUM -> upgrade ? ModMenuTypes.VEHICLE_MENU_MEDIUM_UPGRADE.get() :
-                        ModMenuTypes.VEHICLE_MENU_MEDIUM.get();
-                case LARGE -> upgrade ? ModMenuTypes.VEHICLE_MENU_LARGE_UPGRADE.get() :
-                        ModMenuTypes.VEHICLE_MENU_LARGE.get();
-                case HUGE -> upgrade ? ModMenuTypes.VEHICLE_MENU_HUGE_UPGRADE.get() :
-                        ModMenuTypes.VEHICLE_MENU_HUGE.get();
-                default -> null;
-            };
-            if (menu == null) return null;
-
-            return new VehicleMenu(menu, pContainerId, pPlayerInventory, (Container) (Object) this, type.getRow(),
-                    type.getCol(), upgrade);
-        }
-        return null;
     }
 
     // method = "baseTick" is the vanilla Entity#baseTick and must be remapped (default remap = true);
-    // only the @At target (superbwarfare's hasEnergyStorage) keeps remap = false.
+    // only the @At target (superbwarfare's hasEnergyStorage, called by baseTick's item->energy charging block)
+    // keeps remap = false.
     @Redirect(
               method = "baseTick",
               at = @At(value = "INVOKE",
@@ -295,22 +250,17 @@ public abstract class SuperbWarfareInvMixin extends Entity
     // ----- WFCore ModularUI storage (only for vehicles with a configured storageSize) -----
 
     /**
-     * For configured vehicles, open the resizable WFCore ModularUI instead of Superb Warfare's fixed-bucket menu.
-     * Redirects the {@code player.openMenu(this)} calls in {@code openCustomInventoryScreen} and {@code interact}.
-     * Unconfigured vehicles fall through to the vanilla {@code openMenu} path (native SBW menu, unchanged).
+     * For configured vehicles, open the resizable WFCore ModularUI instead of Superb Warfare's native container
+     * menu. Superb Warfare funnels every inventory-open path ({@code openCustomInventoryScreen} and {@code interact})
+     * through {@code openMenu}, so intercepting it here covers them all. Unconfigured vehicles fall through to the
+     * native menu.
      */
-    @Redirect(
-              method = { "openCustomInventoryScreen", "interact" },
-              at = @At(value = "INVOKE",
-                       target = "Lnet/minecraft/world/entity/player/Player;openMenu(Lnet/minecraft/world/MenuProvider;)Ljava/util/OptionalInt;"))
-    private OptionalInt wfcore$openVehicleStorageUI(Player player, MenuProvider provider) {
-        if (this.wfcore$usesModularStorage) {
-            if (player instanceof ServerPlayer serverPlayer) {
-                VehicleUIFactory.INSTANCE.openUI((VehicleEntity) (Object) this, serverPlayer);
-            }
-            return OptionalInt.empty();
+    @Inject(method = "openMenu", at = @At("HEAD"), cancellable = true, remap = false)
+    private void wfcore$openVehicleStorageUI(Player player, CallbackInfo ci) {
+        if (this.wfcore$usesModularStorage && player instanceof ServerPlayer serverPlayer) {
+            VehicleUIFactory.INSTANCE.openUI((VehicleEntity) (Object) this, serverPlayer);
+            ci.cancel();
         }
-        return player.openMenu(provider);
     }
 
     @Override

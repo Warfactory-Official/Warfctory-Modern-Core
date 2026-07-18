@@ -14,8 +14,6 @@
     "ItemStackEnchantMixin",
     "EnchantmentHelperMixin",
     "ServerLifecycleHooksMixin",
-    "VehiclesDataMessageCompressionMixin",
-    "GunsDataMessageCompressionMixin",
     "FireClayFluidPipeMixin",
     "ConsumableUseMixin",
     "SplashPotionMixin"

@@ -59,7 +59,7 @@ public class WFCoreFuelHandler {
             return;
         }
 
-        for (var stack : instance.getItemStacks()) {
+        for (var stack : instance.getItems()) {
             int neededEnergy = instance.getMaxEnergy() - instance.getEnergy();
             if (neededEnergy <= 0) {
                 break;

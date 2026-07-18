@@ -193,9 +193,13 @@ dependencies {
 
     modCompileOnly("maven.modrinth:embeddium:0.3.31+mc1.20.1") { transitive = false }
 
-    modImplementation("curse.maven:superb-warfare-1218165:7292685") {
+    modImplementation("curse.maven:superb-warfare-1218165:8104849") {
         exclude group: "org.spongepowered", module: "mixin"
     }
+    // Superb Warfare 0.8.9 was rewritten in Kotlin and now requires the Kotlin For Forge language provider
+    // (>= 4.11.0 on 1.20.1). Provides the `kotlinforforge` FML language provider and the Kotlin stdlib that
+    // SBW's compiled classes need at runtime. The modpack must ship KFF too. Not shaded into the WFCore jar.
+    implementation("thedarkcolour:kotlinforforge:4.11.0")
     modRuntimeOnly("curse.maven:geckolib-388172:8285794")
 
     modImplementation("curse.maven:${warforge_version}") { transitive = false }

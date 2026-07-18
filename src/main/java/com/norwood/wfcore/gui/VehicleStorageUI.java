@@ -8,14 +8,16 @@ import com.lowdragmc.lowdraglib.gui.texture.ResourceBorderTexture;
 import com.lowdragmc.lowdraglib.gui.widget.DraggableScrollableWidgetGroup;
 import com.lowdragmc.lowdraglib.gui.widget.SlotWidget;
 
+import net.minecraft.world.Container;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 
 /**
- * Builds the resizable WFCore vehicle-storage {@link ModularUI}. The storage slots bind directly to the
- * {@link VehicleEntity} (which is itself a {@code Container}); LDLib's {@code ModularUIContainer} registers each
+ * Builds the resizable WFCore vehicle-storage {@link ModularUI}. The storage slots bind to the vehicle's item
+ * handler (wrapped as a {@link Container} by {@link VehicleInventoryContainer}, since Superb Warfare 0.8.9 no
+ * longer makes {@code VehicleEntity} a {@code Container}); LDLib's {@code ModularUIContainer} registers each
  * {@link SlotWidget}'s native {@code Slot} and syncs contents like a vanilla menu. The window background is
  * {@link ResourceBorderTexture#BORDERED_BACKGROUND}, a 9-slice texture that scales to any size — so unlike Superb
  * Warfare's fixed per-bucket PNGs, an arbitrary grid renders correctly.
@@ -60,7 +62,8 @@ public final class VehicleStorageUI {
         ModularUI ui = new ModularUI(width, height, (IUIHolder) entity, player);
         ui.background(ResourceBorderTexture.BORDERED_BACKGROUND);
 
-        // Storage slots bound to the vehicle entity (a Container). Indices 0..slots-1.
+        // Storage slots bound to the vehicle's item handler (via a Container adapter). Indices 0..slots-1.
+        Container storage = new VehicleInventoryContainer(entity.getInventory());
         if (scroll) {
             DraggableScrollableWidgetGroup group = new DraggableScrollableWidgetGroup(storageX, gridTop,
                     storageW + scrollBarW, storageAreaH);
@@ -68,13 +71,13 @@ public final class VehicleStorageUI {
             group.setYScrollBarWidth(scrollBarW)
                     .setYBarStyle(new ColorRectTexture(0x40000000), new ColorRectTexture(0xFFAAAAAA));
             for (int i = 0; i < slots; i++) {
-                group.addWidget(new SlotWidget(entity, i, (i % cols) * SLOT, (i / cols) * SLOT)
+                group.addWidget(new SlotWidget(storage, i, (i % cols) * SLOT, (i / cols) * SLOT)
                         .setBackgroundTexture(SlotWidget.ITEM_SLOT_TEXTURE));
             }
             ui.widget(group);
         } else {
             for (int i = 0; i < slots; i++) {
-                ui.widget(new SlotWidget(entity, i, storageX + (i % cols) * SLOT, gridTop + (i / cols) * SLOT)
+                ui.widget(new SlotWidget(storage, i, storageX + (i % cols) * SLOT, gridTop + (i / cols) * SLOT)
                         .setBackgroundTexture(SlotWidget.ITEM_SLOT_TEXTURE));
             }
         }

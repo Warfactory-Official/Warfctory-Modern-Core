@@ -8,6 +8,7 @@ import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
 import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.data.GTSoundEntries;
+import com.gregtechceu.gtceu.data.recipe.builder.GTRecipeBuilder;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.recipes.FinishedRecipe;
@@ -16,40 +17,121 @@ import net.minecraft.resources.ResourceLocation;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 
 /**
- * Standard GT recipe type for the vehicle factories, so recipes are fully programmable from
- * coremods, KubeJS and GroovyScript. Recipes use ordinary item/fluid/EU inputs; the single item
- * output is a {@link com.norwood.wfcore.common.item.PackagedVehicleItem} that encodes which vehicle
- * to spawn on completion.
+ * Per-machine GT recipe maps for the vehicle factories. Every vehicle-assembly multiblock owns its own
+ * recipe type, so each factory has a separate, independently-programmable recipe list and its own JEI
+ * category (a tank recipe can't be built in a plane assembler, and vice versa). All maps share the same
+ * IO layout and are fully programmable from coremods, KubeJS and GroovyScript. Recipes use ordinary
+ * item/fluid/EU inputs; the single item output is a
+ * {@link com.norwood.wfcore.common.item.PackagedVehicleItem} that encodes which vehicle to spawn on
+ * completion.
  */
 public class VehicleFactoryRecipes {
 
-    public static GTRecipeType VEHICLE_ASSEMBLER;
+    /** {@code wfcore:light_ground_vehicle_factory} — the MV Light Ground Vehicle Factory. */
+    public static GTRecipeType LIGHT_GROUND_VEHICLE_FACTORY;
+    /** {@code wfcore:tank_assembly} — the Tank Assembly Line. */
+    public static GTRecipeType TANK_ASSEMBLY;
+    /** {@code wfcore:light_plane_assembler} — the Light Plane Assembler. */
+    public static GTRecipeType LIGHT_PLANE_ASSEMBLER;
+    /** {@code wfcore:heavy_plane_assembler} — the Heavy Plane Assembler. */
+    public static GTRecipeType HEAVY_PLANE_ASSEMBLER;
+    /** {@code wfcore:heavy_vehicle_depot} — the Heavy Vehicle Depot. */
+    public static GTRecipeType HEAVY_VEHICLE_DEPOT;
+
+    /** Every map keyed by its machine path, so KubeJS/GroovyScript can resolve a map by name. */
+    private static final Map<String, GTRecipeType> BY_NAME = new LinkedHashMap<>();
 
     public static void init() {
-        var id = WFCore.id("vehicle_assembler");
-        VEHICLE_ASSEMBLER = new GTRecipeType(id, "electric");
-        GTRegistries.register(BuiltInRegistries.RECIPE_TYPE, id, VEHICLE_ASSEMBLER);
-        GTRegistries.register(BuiltInRegistries.RECIPE_SERIALIZER, id, new GTRecipeSerializer());
-        GTRegistries.RECIPE_TYPES.register(id, VEHICLE_ASSEMBLER);
-        VEHICLE_ASSEMBLER.setMaxIOSize(9, 1, 2, 0).setEUIO(IO.IN).setMaxTooltips(3)
-                .setSound(GTSoundEntries.ASSEMBLER);
+        LIGHT_GROUND_VEHICLE_FACTORY = register("light_ground_vehicle_factory");
+        TANK_ASSEMBLY = register("tank_assembly");
+        LIGHT_PLANE_ASSEMBLER = register("light_plane_assembler");
+        HEAVY_PLANE_ASSEMBLER = register("heavy_plane_assembler");
+        HEAVY_VEHICLE_DEPOT = register("heavy_vehicle_depot");
     }
 
     /**
-     * A single example recipe so the MV factory works out of the box. Packs/coremods/KubeJS/GroovyScript
-     * can add their own recipes to {@code wfcore:vehicle_assembler}; the vehicle is just the item output.
+     * Register one vehicle-factory recipe map. Every map shares the same IO layout (9 item + 2 fluid inputs,
+     * one packaged-vehicle output, EU in) and the assembler sound; only the id and JEI category differ, which
+     * is exactly what gives each factory its own separate recipe list.
+     */
+    private static GTRecipeType register(String name) {
+        var id = WFCore.id(name);
+        GTRecipeType type = new GTRecipeType(id, "electric");
+        GTRegistries.register(BuiltInRegistries.RECIPE_TYPE, id, type);
+        GTRegistries.register(BuiltInRegistries.RECIPE_SERIALIZER, id, new GTRecipeSerializer());
+        GTRegistries.RECIPE_TYPES.register(id, type);
+        type.setMaxIOSize(9, 1, 2, 0).setEUIO(IO.IN).setMaxTooltips(3)
+                .setSound(GTSoundEntries.ASSEMBLER);
+        BY_NAME.put(name, type);
+        return type;
+    }
+
+    /**
+     * Look up a vehicle-factory recipe map by its machine path (e.g. {@code "tank_assembly"}). Accepts a bare
+     * path or a {@code wfcore:}-prefixed id, and throws if no such map exists — used by the KubeJS binding so
+     * scripts can pick which factory a recipe belongs to.
+     */
+    public static GTRecipeType byName(String name) {
+        String path = name.contains(":") ? name.substring(name.indexOf(':') + 1) : name;
+        GTRecipeType type = BY_NAME.get(path);
+        if (type == null) {
+            throw new IllegalArgumentException("Unknown vehicle factory '" + name + "'. Valid factories: "
+                    + String.join(", ", BY_NAME.keySet()));
+        }
+        return type;
+    }
+
+    /**
+     * One example recipe per map so every factory works out of the box and shows in JEI. Packs/coremods/
+     * KubeJS/GroovyScript add their own recipes to each {@code wfcore:*} map; the vehicle is just the item
+     * output.
      */
     public static void addDefaultRecipes(Consumer<FinishedRecipe> provider) {
-        VEHICLE_ASSEMBLER.recipeBuilder(WFCore.id("lav_150"))
-                .inputItems(TagPrefix.plate, GTMaterials.Steel, 16)
-                .inputItems(TagPrefix.gear, GTMaterials.Steel, 4)
-                .inputItems(TagPrefix.plate, GTMaterials.Aluminium, 8)
-                .EUt(GTValues.VA[GTValues.MV])
-                .duration(600)
-                .outputItems(PackagedVehicleItem.of(new ResourceLocation("superbwarfare", "lav_150")))
+        vehicle(provider, LIGHT_GROUND_VEHICLE_FACTORY, "lav_150", "superbwarfare:lav_150", GTValues.MV, 600,
+                b -> b.inputItems(TagPrefix.plate, GTMaterials.Steel, 16)
+                        .inputItems(TagPrefix.gear, GTMaterials.Steel, 4)
+                        .inputItems(TagPrefix.plate, GTMaterials.Aluminium, 8));
+
+        vehicle(provider, TANK_ASSEMBLY, "bmp_2", "superbwarfare:bmp_2", GTValues.HV, 1200,
+                b -> b.inputItems(TagPrefix.plate, GTMaterials.Steel, 32)
+                        .inputItems(TagPrefix.gear, GTMaterials.Steel, 8)
+                        .inputItems(TagPrefix.plate, GTMaterials.TungstenSteel, 8));
+
+        vehicle(provider, LIGHT_PLANE_ASSEMBLER, "ah_6", "superbwarfare:ah_6", GTValues.HV, 900,
+                b -> b.inputItems(TagPrefix.plate, GTMaterials.Aluminium, 24)
+                        .inputItems(TagPrefix.gear, GTMaterials.Steel, 4)
+                        .inputItems(TagPrefix.plate, GTMaterials.Titanium, 6));
+
+        vehicle(provider, HEAVY_PLANE_ASSEMBLER, "a_10a", "superbwarfare:a_10a", GTValues.EV, 1800,
+                b -> b.inputItems(TagPrefix.plate, GTMaterials.Titanium, 32)
+                        .inputItems(TagPrefix.gear, GTMaterials.StainlessSteel, 8)
+                        .inputItems(TagPrefix.plate, GTMaterials.Aluminium, 24));
+
+        vehicle(provider, HEAVY_VEHICLE_DEPOT, "yx_100", "superbwarfare:yx_100", GTValues.EV, 2400,
+                b -> b.inputItems(TagPrefix.plate, GTMaterials.TungstenSteel, 32)
+                        .inputItems(TagPrefix.gear, GTMaterials.TungstenSteel, 8)
+                        .inputItems(TagPrefix.plate, GTMaterials.Steel, 48));
+    }
+
+    /**
+     * One vehicle-factory recipe: {@code customize} adds the material inputs, then the standard EU/duration
+     * and the packaged-vehicle output are appended. The recipe id is {@code wfcore:<recipeId>}; the item
+     * output encodes {@code entityId} (looked up at spawn time, so this carries no compile-time dependency
+     * on the vehicle mod).
+     */
+    private static void vehicle(Consumer<FinishedRecipe> provider, GTRecipeType type, String recipeId,
+                                String entityId, int voltageTier, int duration,
+                                UnaryOperator<GTRecipeBuilder> customize) {
+        customize.apply(type.recipeBuilder(WFCore.id(recipeId)))
+                .EUt(GTValues.VA[voltageTier])
+                .duration(duration)
+                .outputItems(PackagedVehicleItem.of(new ResourceLocation(entityId)))
                 .save(provider);
     }
 }
