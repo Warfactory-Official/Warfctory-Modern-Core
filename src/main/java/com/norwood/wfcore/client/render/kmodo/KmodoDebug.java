@@ -58,9 +58,15 @@ public final class KmodoDebug {
 
         public final AtomicInteger retainedFrameVehicles = new AtomicInteger(0);
 
+        public volatile int retainedFrameLast = 0;
+
         public final AtomicInteger dormantThisFrame = new AtomicInteger(0);
 
         public final AtomicInteger activeThisFrame = new AtomicInteger(0);
+
+        public volatile int dormantLastFrame = 0;
+
+        public volatile int activeLastFrame = 0;
 
         public volatile Mode lastMode = null;
 
@@ -154,9 +160,9 @@ public final class KmodoDebug {
         if (!ENABLED) return;
         RETAINED_THIS_FRAME.clear();
         for (ModelStats s : MODELS.values()) {
-            s.retainedFrameVehicles.set(0);
-            s.dormantThisFrame.set(0);
-            s.activeThisFrame.set(0);
+            s.retainedFrameLast = s.retainedFrameVehicles.getAndSet(0);
+            s.dormantLastFrame = s.dormantThisFrame.getAndSet(0);
+            s.activeLastFrame = s.activeThisFrame.getAndSet(0);
         }
     }
 
@@ -189,8 +195,8 @@ public final class KmodoDebug {
                 sb.append(" | GPU ").append(s.flywheelGpuBytes).append("B (stride ")
                         .append(FullVertexView.STRIDE).append("×").append(totalVerts).append(")\n");
                 sb.append("    [Flywheel] live vehicles=").append(s.flywheelLiveInstances.get()).append('\n');
-                sb.append("    [Flywheel] dormant=").append(s.dormantThisFrame.get())
-                        .append(" active=").append(s.activeThisFrame.get()).append(" (per render frame)\n");
+                sb.append("    [Flywheel] dormant=").append(s.dormantLastFrame)
+                        .append(" active=").append(s.activeLastFrame).append(" (per render frame)\n");
             } else {
                 sb.append("    [Flywheel] not baked\n");
             }
@@ -199,7 +205,7 @@ public final class KmodoDebug {
                 sb.append("    [Retained] ").append(s.retainedVboCount).append(" VBOs | ")
                         .append(s.retainedTotalVertices).append(" total verts\n");
                 sb.append("    [Retained] vehicles this frame=")
-                        .append(s.retainedFrameVehicles.get()).append('\n');
+                        .append(s.retainedFrameLast).append('\n');
             } else {
                 sb.append("    [Retained] not baked\n");
             }

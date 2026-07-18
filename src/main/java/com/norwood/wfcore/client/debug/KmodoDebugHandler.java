@@ -27,8 +27,6 @@ public final class KmodoDebugHandler {
             return;
         }
 
-        KmodoDebug.beginFrame();
-
         // Advance the timed run/ab benchmark state machine on the same main-thread tick boundary
         // (uses wall-clock deltas internally, so a paused game does not corrupt the capture window).
         KmodoBench.tick();
@@ -99,6 +97,9 @@ public final class KmodoDebugHandler {
         if (KmodoProfiler.enabled()) {
             KmodoProfiler.rollFrame();
         }
+        if (KmodoDebug.enabled()) {
+            KmodoDebug.beginFrame();
+        }
 
         if (!KmodoDebug.enabled() && !KmodoProfiler.enabled()) {
             return;
@@ -150,11 +151,11 @@ public final class KmodoDebugHandler {
                         s.flywheelBodyVertices, s.flywheelDynamicBoneCount, s.flywheelDynamicVertices,
                         s.flywheelGpuBytes / 1024,
                         s.flywheelLiveInstances.get(),
-                        s.dormantThisFrame.get(), s.activeThisFrame.get());
+                        s.dormantLastFrame, s.activeLastFrame);
             } else if (mode == KmodoDebug.Mode.RETAINED) {
                 detail = String.format(" vbos=%d verts=%d frm=%d",
                         s.retainedVboCount, s.retainedTotalVertices,
-                        s.retainedFrameVehicles.get());
+                        s.retainedFrameLast);
             } else {
                 detail = "";
             }
