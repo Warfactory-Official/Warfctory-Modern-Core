@@ -18,7 +18,6 @@ import com.mojang.blaze3d.vertex.VertexFormat;
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.entity.EntityRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
@@ -51,6 +50,8 @@ public final class KmodoFlywheelModelCache {
             "wheel", "track", "turret", "barrel", "cannon", "gun", "muzzle", "recoil", "rotor", "prop", "blade",
             "mantlet", "elevation", "traverse", "hatch", "rudder", "elevator", "aileron", "flap", "steer",
             "suspension", "radar", "antenna", "launcher", "missile", "gear", "swivel", "dish");
+
+    private static final int BAKE_LIGHT = 0;
 
     private static final Map<ResourceLocation, ModelState> STATES = new ConcurrentHashMap<>();
     private static final Map<ResourceLocation, Object> LOCKS = new ConcurrentHashMap<>();
@@ -197,7 +198,7 @@ public final class KmodoFlywheelModelCache {
             }
         } else if (drawable) {
 
-            renderer.renderCubesOfBone(pose, bone, body, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY,
+            renderer.renderCubesOfBone(pose, bone, body, BAKE_LIGHT, OverlayTexture.NO_OVERLAY,
                     1f, 1f, 1f, 1f);
             anyBody[0] = true;
         }
@@ -214,7 +215,7 @@ public final class KmodoFlywheelModelCache {
         try {
             BufferBuilder builder = new BufferBuilder(512);
             builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.NEW_ENTITY);
-            renderer.renderCubesOfBone(new PoseStack(), bone, builder, LightTexture.FULL_BRIGHT,
+            renderer.renderCubesOfBone(new PoseStack(), bone, builder, BAKE_LIGHT,
                     OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
             BufferBuilder.RenderedBuffer rendered = builder.end();
             if (vertCountOut != null) {
