@@ -23,15 +23,15 @@ public final class KmodoFlywheelRegistrar {
     private static boolean done;
 
     @SuppressWarnings({"unchecked", "rawtypes"})
-    public static void ensureRegistered() {
+    public static boolean ensureRegistered() {
         if (done) {
-            return;
+            return false;
         }
         Object dispatcher = Minecraft.getInstance().getEntityRenderDispatcher();
         Map<EntityType<?>, EntityRenderer<?>> renderers =
                 ((EntityRenderDispatcherAccessor) dispatcher).wfcore$getRenderers();
         if (renderers == null || renderers.isEmpty()) {
-            return;
+            return false;
         }
 
         int count = 0;
@@ -54,6 +54,8 @@ public final class KmodoFlywheelRegistrar {
         if (count > 0) {
             done = true;
             WFCore.LOGGER.info("[wfcore] Kmodo Flywheel registered visualizers for {} vehicle type(s)", count);
+            return true;
         }
+        return false;
     }
 }
