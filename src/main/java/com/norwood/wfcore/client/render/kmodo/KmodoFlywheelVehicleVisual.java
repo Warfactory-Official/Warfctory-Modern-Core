@@ -83,29 +83,31 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
         }
 
         ResourceLocation res = modelRes();
-        BakedGeoModel baked = res == null ? null : bakedModel(res);
-        if (baked == null) {
+        if (res == null) {
             return;
         }
 
         synchronized (KmodoFlywheelModelCache.lockFor(res)) {
             GeoModel geoModel = renderer.getGeoModel();
-            geoModel.handleAnimations(entity, renderer.getInstanceId(entity),
-                    new AnimationState<>(entity, 0f, 0f, partialTick, false));
+            BakedGeoModel baked = bakedModel(res);
+            if (baked != null) {
+                geoModel.handleAnimations(entity, renderer.getInstanceId(entity),
+                        new AnimationState<>(entity, 0f, 0f, partialTick, false));
 
-            PoseStack pose = new PoseStack();
-            Vector3f visualPos = getVisualPosition(partialTick);
-            pose.translate(visualPos.x(), visualPos.y(), visualPos.z());
-            float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
-            ((VehicleRenderer) renderer).vehicleAxis(entity, pose, yaw, partialTick);
+                PoseStack pose = new PoseStack();
+                Vector3f visualPos = getVisualPosition(partialTick);
+                pose.translate(visualPos.x(), visualPos.y(), visualPos.z());
+                float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+                ((VehicleRenderer) renderer).vehicleAxis(entity, pose, yaw, partialTick);
 
-            if (bodyInstance != null) {
-                bodyInstance.setTransform(pose.last().pose());
-                bodyInstance.setChanged();
-            }
-            if (!dynamicInstances.isEmpty()) {
-                for (Object top : baked.topLevelBones()) {
-                    walk(pose, (GeoBone) top);
+                if (bodyInstance != null) {
+                    bodyInstance.setTransform(pose.last().pose());
+                    bodyInstance.setChanged();
+                }
+                if (!dynamicInstances.isEmpty()) {
+                    for (Object top : baked.topLevelBones()) {
+                        walk(pose, (GeoBone) top);
+                    }
                 }
             }
         }

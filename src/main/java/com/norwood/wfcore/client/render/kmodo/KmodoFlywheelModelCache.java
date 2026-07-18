@@ -15,7 +15,8 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexFormat;
 
-import net.minecraft.Util;
+import com.mojang.blaze3d.systems.RenderSystem;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -25,6 +26,7 @@ import net.minecraft.world.entity.Entity;
 
 import com.atsuishio.superbwarfare.entity.vehicle.base.GeoVehicleEntity;
 import com.norwood.wfcore.WFCore;
+import dev.engine_room.flywheel.api.material.CardinalLightingMode;
 import dev.engine_room.flywheel.api.material.Material;
 import dev.engine_room.flywheel.api.model.Mesh;
 import dev.engine_room.flywheel.api.model.Model;
@@ -97,6 +99,9 @@ public final class KmodoFlywheelModelCache {
         }
         ModelState state = STATES.get(res);
         if (state == null) {
+            if (!RenderSystem.isOnRenderThread()) {
+                return null;
+            }
             state = new ModelState();
             STATES.put(res, state);
             BakedGeoModel baked = bakedModel(renderer, res);
@@ -105,12 +110,7 @@ public final class KmodoFlywheelModelCache {
                 state.status = ModelState.FAILED;
                 return null;
             }
-            final ModelState st = state;
-            final BakedGeoModel model = baked;
-            final GeoRenderer<?> geoRenderer = renderer;
-            final ResourceLocation tex = texture;
-            Util.backgroundExecutor().execute(() -> buildAsync(res, st, model, geoRenderer, tex));
-            return null;
+            buildModels(res, state, baked, renderer, texture);
         }
         return state.status == ModelState.READY ? state.models : null;
     }
@@ -129,10 +129,12 @@ public final class KmodoFlywheelModelCache {
         }
     }
 
-    private static void buildAsync(ResourceLocation res, ModelState state, BakedGeoModel baked,
-                                   GeoRenderer<?> renderer, ResourceLocation texture) {
+    private static void buildModels(ResourceLocation res, ModelState state, BakedGeoModel baked,
+                                    GeoRenderer<?> renderer, ResourceLocation texture) {
         try {
             Material material = new SimpleMaterial.Builder().copyFrom(Materials.CUTOUT_MIPPED_BLOCK)
+                    .cardinalLightingMode(CardinalLightingMode.ENTITY)
+                    .diffuse(true)
                     .texture(texture).build();
 
             BufferBuilder body = new BufferBuilder(4096);
