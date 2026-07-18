@@ -28,6 +28,8 @@
     "BlockShouldRenderFaceMixin",
     "EmbeddiumBlockRendererMixin",
     "McgltfHeadlessConstructMixin",
+    "VehicleStaticSwapMixin",
+    "GeoCubeRetainMixin",
     "LightTextureAccessor",
     "EditBoxAccessor",
     "EditBoxCursorRecursionMixin",

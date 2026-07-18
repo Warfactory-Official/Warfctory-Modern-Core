@@ -1,12 +1,16 @@
 package com.norwood.wfcore.client;
 
+import net.minecraft.server.packs.resources.ResourceManagerReloadListener;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
+import net.minecraftforge.client.event.RegisterClientReloadListenersEvent;
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+
+import com.norwood.wfcore.client.render.vehicle.VehicleMeshCache;
 
 import com.modularmods.mcgltf.MCglTF;
 import com.norwood.wfcore.WFCore;
@@ -72,6 +76,17 @@ public class WFClientEvents {
                 ctx -> new GltfMachineRenderer<>(IRON_DOME_MODEL));
         event.registerBlockEntityRenderer(WFBlocks.DEPOSIT_BE.get(), DepositBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(WFBlocks.FOUNDRY_CASTING_BE.get(), FoundryCastingRenderer::new);
+    }
+
+    /**
+     * Free the retained vehicle GPU buffers on resource reload (F3+T / resource-pack change). GeckoLib rebakes
+     * its {@code BakedGeoModel}s on reload, so the cached meshes may reference stale geometry and must be
+     * dropped; they lazily rebake on the next idle/active frame.
+     */
+    @SubscribeEvent
+    public static void onRegisterClientReloadListeners(RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener(
+                (ResourceManagerReloadListener) resourceManager -> VehicleMeshCache.invalidateAll());
     }
 
     @SubscribeEvent
