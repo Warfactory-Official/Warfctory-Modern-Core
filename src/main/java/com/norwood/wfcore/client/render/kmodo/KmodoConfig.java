@@ -17,6 +17,7 @@ public final class KmodoConfig {
     private KmodoConfig() {}
 
     private static volatile boolean RETAIN = true;
+    private static volatile boolean FLYWHEEL = true;
 
     public static boolean retainEnabled() {
         return RETAIN;
@@ -24,6 +25,19 @@ public final class KmodoConfig {
 
     public static void setRetain(boolean enabled) {
         RETAIN = enabled;
+    }
+
+    /**
+     * Whether the top-tier Flywheel GPU-instanced path may engage (when Flywheel's backend is on). When true and
+     * a vehicle's per-bone Flywheel model is baked, that vehicle is instanced and its vanilla/retained render is
+     * suppressed; otherwise the vehicle falls back to the retained ({@link #retainEnabled}) path.
+     */
+    public static boolean flywheelEnabled() {
+        return FLYWHEEL;
+    }
+
+    public static void setFlywheel(boolean enabled) {
+        FLYWHEEL = enabled;
     }
 
     /** Raw VBO draws are only safe without a shader pack (they bypass Iris/Oculus gbuffers). */

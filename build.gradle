@@ -211,6 +211,9 @@ dependencies {
     // wfballistics only jarJars flywheel; nested-jar extraction from a flatDir jar isn't reliable in dev,
     // so resolve it explicitly for the dev runtime. Drop this if runClient ever reports a duplicate.
     modRuntimeOnly("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}")
+    // Kmodo Flywheel path: compile against the Flywheel API (visuals/instancer/model/material live in the -api
+    // artifact). Provided-only — wfballistics jarJars flywheel for prod and the pack ships it; do NOT shade it.
+    modCompileOnly("dev.engine-room.flywheel:flywheel-forge-api-${minecraft_version}:${flywheel_version}")
 }
 
 tasks.named('shadowJar', ShadowJar).configure {

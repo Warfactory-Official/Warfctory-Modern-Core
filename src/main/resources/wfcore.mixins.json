@@ -30,6 +30,7 @@
     "McgltfHeadlessConstructMixin",
     "KmodoFlushMixin",
     "KmodoCubeRedirectMixin",
+    "EntityRenderDispatcherAccessor",
     "LightTextureAccessor",
     "EditBoxAccessor",
     "EditBoxCursorRecursionMixin",
