@@ -12,19 +12,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
 
-/**
- * Kmodo Accelerator hook. Redirects the {@code renderCubesOfBone} call inside GeckoLib's own
- * {@code GeoEntityRenderer.renderRecursively}, so it covers every vehicle (Superb Warfare or any addon) whose
- * renderer extends {@code GeoEntityRenderer}. For an eligible vehicle whose bone mesh is baked,
- * {@link KmodoAccumulator#tryRecord} records the bone's cached retained buffer with the live pose GeckoLib
- * already applied (the bone matrix carries turret slew, barrels, wheels), to be batch-drawn at the end of the
- * vehicle's render. For anything else — non-vehicles, un-baked bones, shader packs — the original tessellating
- * call runs unchanged.
- * <p>
- * {@code remap = false}: the target method/name are GeckoLib's own (stable across dev/prod) and the descriptor
- * references only official Minecraft class names (also stable). {@code require = 0} makes the redirect optional
- * — if a GeckoLib version doesn't match, retained rendering goes dormant instead of crashing.
- */
 @Mixin(value = GeoEntityRenderer.class, remap = false)
 public abstract class KmodoCubeRedirectMixin {
 
@@ -39,7 +26,7 @@ public abstract class KmodoCubeRedirectMixin {
     private void kmodo$retainCubes(GeoEntityRenderer<?> self, PoseStack pose, GeoBone bone, VertexConsumer buffer,
                                    int packedLight, int packedOverlay, float red, float green, float blue,
                                    float alpha,
-                                   // captured prefix of the enclosing renderRecursively args:
+
                                    PoseStack enclosingPose, Entity animatable) {
         if (!KmodoAccumulator.tryRecord(self, animatable, pose, bone)) {
             self.renderCubesOfBone(pose, bone, buffer, packedLight, packedOverlay, red, green, blue, alpha);

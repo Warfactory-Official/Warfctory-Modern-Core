@@ -13,17 +13,6 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * Kmodo Accelerator — batches the retained bone draws for a vehicle. Targets the single abstract base
- * {@link VehicleRenderer} that every Superb Warfare vehicle renderer (and any addon that reuses it) extends, so
- * it applies to all vehicles with no per-vehicle wiring.
- * <p>
- * During {@code render}, {@code KmodoCubeRedirectMixin} records each retained bone into {@link KmodoAccumulator};
- * this mixin clears the accumulator at the start and flushes it (one render-state pass, using the entity's own
- * packed light) at the end. {@code render} is SBW's own covariant override (the vanilla-mapped method is the
- * synthetic {@code render(Entity,...)} bridge), so {@code remap} is left off. {@code require = 0} keeps the game
- * running if a future SBW build changes the signature.
- */
 @Mixin(value = VehicleRenderer.class, remap = false)
 public abstract class KmodoFlushMixin {
 

@@ -14,15 +14,6 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.render.kmodo.KmodoDebug;
 import com.norwood.wfcore.client.render.kmodo.KmodoDebug.ModelStats;
 
-/**
- * Drives the {@link KmodoDebug} toggle + dump keybinds ({@link KmodoDebugKeyMappings}) and renders
- * the compact on-screen overlay while the debug layer is enabled.
- * <p>
- * The overlay shows one line per tracked model: mode, GPU/VBO upload counts, and live vehicle
- * instances. It is deliberately small so it does not obscure gameplay. The {@code ClientTickEvent}
- * handler runs on the Forge bus (client side); the key poll follows the same pattern as
- * {@link ModelTransformDebugHandler}.
- */
 @Mod.EventBusSubscriber(modid = WFCore.MOD_ID, value = Dist.CLIENT)
 public final class KmodoDebugHandler {
 
@@ -33,7 +24,7 @@ public final class KmodoDebugHandler {
         if (event.phase != TickEvent.Phase.END) {
             return;
         }
-        // Reset per-frame retained vehicle counts at the start of each tick.
+
         KmodoDebug.beginFrame();
 
         if (KmodoDebugKeyMappings.TOGGLE.consumeClick()) {
@@ -47,7 +38,7 @@ public final class KmodoDebugHandler {
                                     .append(Component.literal("Kmodo debug ON — dumping stats...")
                                             .withStyle(ChatFormatting.GREEN)),
                             false);
-                    // Immediately dump a snapshot when toggling on.
+
                     dumpToChat(mc);
                 } else {
                     mc.player.displayClientMessage(
@@ -58,7 +49,7 @@ public final class KmodoDebugHandler {
                             false);
                 }
             } else if (nowOn) {
-                // No player (e.g. menu) — just log
+
                 KmodoDebug.dump();
             }
         }
@@ -73,12 +64,8 @@ public final class KmodoDebugHandler {
         }
     }
 
-    /**
-     * Calls {@link KmodoDebug#dump()} (which logs to file) and also sends each non-blank line as a
-     * chat message to the local player so it is visible in-world without opening a log file.
-     */
     private static void dumpToChat(Minecraft mc) {
-        String full = KmodoDebug.dump(); // also logs to file
+        String full = KmodoDebug.dump();
         for (String line : full.split("\n")) {
             if (line.isBlank()) continue;
             ChatFormatting color;
@@ -124,10 +111,10 @@ public final class KmodoDebugHandler {
             int modeColor;
             String modeTag;
             if (mode == KmodoDebug.Mode.FLYWHEEL) {
-                modeColor = 0x55FF55; // green
+                modeColor = 0x55FF55;
                 modeTag = "FLY";
             } else if (mode == KmodoDebug.Mode.RETAINED) {
-                modeColor = 0xFFFF55; // yellow
+                modeColor = 0xFFFF55;
                 modeTag = "RET";
             } else if (mode == KmodoDebug.Mode.VANILLA) {
                 modeColor = 0xAAAAAA;
@@ -137,7 +124,6 @@ public final class KmodoDebugHandler {
                 modeTag = "???";
             }
 
-            // Short model name (last path component) to keep lines short
             String label = s.res.getPath();
             int slash = label.lastIndexOf('/');
             if (slash >= 0) label = label.substring(slash + 1);

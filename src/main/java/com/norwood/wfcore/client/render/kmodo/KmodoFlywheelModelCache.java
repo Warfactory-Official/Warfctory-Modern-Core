@@ -41,27 +41,10 @@ import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.renderer.GeoRenderer;
 import software.bernie.geckolib.util.RenderUtils;
 
-/**
- * Kmodo Accelerator (Flywheel path) — bakes a vehicle's geometry into Flywheel {@link Model}s, keyed by GeckoLib
- * model resource.
- * <p>
- * To avoid z-fighting between coplanar faces of different bones (which GeckoLib masks by drawing the whole model
- * in one pass, but per-bone instanced draws expose), all <em>static</em> bones (hull, decals, fixed detail) are
- * merged into a single "body" mesh baked with their bind transforms relative to the root — one draw, resolved
- * exactly like GeckoLib. Only genuinely-animated bones (turret, wheels, barrels, …) are kept as separate
- * bone-local models so they can move via per-instance transforms. A bone is treated as animated if its name (or
- * an ancestor's) matches {@link #DYNAMIC_PATTERNS}; anything else merges into the body.
- * <p>
- * Everything is baked off-thread ({@link Util#backgroundExecutor()}): {@code renderCubesOfBone} reads only
- * immutable {@code GeoCube} data, and static bones are never animated so reading their bind transforms is safe.
- * Bytes are copied from the MC {@code RenderedBuffer} into a Flywheel {@link FullVertexView} over off-heap
- * {@link MemoryBlock} memory. A per-model lock guards the shared bone tree during the visual's animate+walk.
- */
 public final class KmodoFlywheelModelCache {
 
     private KmodoFlywheelModelCache() {}
 
-    /** Bone-name substrings (lower-case) that mark a bone — and its subtree — as animated (kept separate). */
     private static final Set<String> DYNAMIC_PATTERNS = Set.of(
             "wheel", "track", "turret", "barrel", "cannon", "gun", "muzzle", "recoil", "rotor", "prop", "blade",
             "mantlet", "elevation", "traverse", "hatch", "rudder", "elevator", "aileron", "flap", "steer",
@@ -70,9 +53,8 @@ public final class KmodoFlywheelModelCache {
     private static final Map<ResourceLocation, ModelState> STATES = new ConcurrentHashMap<>();
     private static final Map<ResourceLocation, Object> LOCKS = new ConcurrentHashMap<>();
 
-    /** The merged static body model plus the per-bone models for the animated bones of one vehicle model. */
     public static final class VehicleModels {
-        public final Model body; // nullable (a vehicle with no static geometry)
+        public final Model body;
         public final Map<String, Model> dynamicBones;
 
         VehicleModels(Model body, Map<String, Model> dynamicBones) {
@@ -91,7 +73,6 @@ public final class KmodoFlywheelModelCache {
         final List<MemoryBlock> blocks = new ArrayList<>();
     }
 
-    /** Per-model lock so same-model vehicles serialise their shared-bone-tree animation. */
     public static Object lockFor(ResourceLocation res) {
         return LOCKS.computeIfAbsent(res, k -> new Object());
     }
@@ -109,7 +90,6 @@ public final class KmodoFlywheelModelCache {
         return false;
     }
 
-    /** The merged-body + animated-bone models for this entity's model, or {@code null} if not baked yet. */
     public static VehicleModels getModels(GeoRenderer<?> renderer, GeoVehicleEntity entity) {
         ResourceLocation res = modelRes(renderer, entity);
         if (res == null) {
@@ -135,7 +115,6 @@ public final class KmodoFlywheelModelCache {
         return state.status == ModelState.READY ? state.models : null;
     }
 
-    /** True once this entity's model is baked and ready — the gate for suppressing the vanilla/retained render. */
     public static boolean isReady(Entity entity) {
         try {
             EntityRenderer<?> er = Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity);
@@ -159,7 +138,7 @@ public final class KmodoFlywheelModelCache {
             BufferBuilder body = new BufferBuilder(4096);
             body.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.NEW_ENTITY);
             Map<String, Model> dynamicBones = new HashMap<>();
-            // Parallel vertex-count tracking for KmodoDebug (indexed by same positions as dynamicBones).
+
             Map<String, Integer> dynamicBoneVertCounts = new HashMap<>();
             boolean[] anyBody = {false};
 
@@ -181,7 +160,6 @@ public final class KmodoFlywheelModelCache {
             state.models = new VehicleModels(bodyModel, dynamicBones);
             state.status = ModelState.READY;
 
-            // Notify KmodoDebug of the bake result (off-thread call, guarded by enabled() inside).
             if (KmodoDebug.enabled()) {
                 int dynVerts = dynamicBoneVertCounts.values().stream().mapToInt(Integer::intValue).sum();
                 long gpuBytes = state.blocks.stream().mapToLong(dev.engine_room.flywheel.lib.memory.MemoryBlock::size).sum();
@@ -193,12 +171,6 @@ public final class KmodoFlywheelModelCache {
         }
     }
 
-    /**
-     * Walk the bone tree: static bones (no animated ancestor and no animated name) are emitted into the shared
-     * {@code body} builder at their bind transform; animated bones are baked bone-local as their own model.
-     * {@code dynamicBoneVertCounts} is populated (when debug is enabled) with the vertex count for each
-     * dynamic-bone model, for {@link KmodoDebug} stats.
-     */
     private static void bakeWalk(GeoRenderer<?> renderer, PoseStack pose, GeoBone bone, boolean dynamicAncestor,
                                  BufferBuilder body, Map<String, Model> dynamicBones, Material material,
                                  List<MemoryBlock> blocks, boolean[] anyBody,
@@ -222,7 +194,7 @@ public final class KmodoFlywheelModelCache {
                 }
             }
         } else if (drawable) {
-            // Emit this static bone's cubes into the merged body mesh at its bind (accumulated) transform.
+
             renderer.renderCubesOfBone(pose, bone, body, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY,
                     1f, 1f, 1f, 1f);
             anyBody[0] = true;
@@ -235,10 +207,6 @@ public final class KmodoFlywheelModelCache {
         pose.popPose();
     }
 
-    /**
-     * Bakes a single bone's cubes at identity into a Flywheel model. When {@code vertCountOut} is
-     * non-null, its first element is set to the vertex count of the baked mesh (for debug tracking).
-     */
     private static Model bakeBoneLocal(GeoRenderer<?> renderer, GeoBone bone, Material material,
                                        List<MemoryBlock> blocks, int[] vertCountOut) {
         try {
@@ -258,7 +226,6 @@ public final class KmodoFlywheelModelCache {
         }
     }
 
-    /** Copies one NEW_ENTITY {@code RenderedBuffer} into a Flywheel {@link FullVertexView} → mesh → model. */
     private static Model toModel(BufferBuilder.RenderedBuffer rendered, Material material, String name,
                                  List<MemoryBlock> blocks) {
         BufferBuilder.DrawState draw = rendered.drawState();
@@ -278,7 +245,7 @@ public final class KmodoFlywheelModelCache {
 
         for (int i = 0; i < count; i++) {
             int base = origin + i * stride;
-            // NEW_ENTITY: pos 3f@0, color 4ub@12, uv0 2f@16, uv1(overlay) 2s@24, uv2(light) 2s@28, normal 3b@32
+
             view.x(i, bytes.getFloat(base));
             view.y(i, bytes.getFloat(base + 4));
             view.z(i, bytes.getFloat(base + 8));
@@ -328,7 +295,6 @@ public final class KmodoFlywheelModelCache {
         }
     }
 
-    /** Frees the off-heap mesh memory and clears the caches. Call on resource reload. */
     public static void invalidateAll() {
         for (ModelState state : STATES.values()) {
             for (MemoryBlock block : state.blocks) {

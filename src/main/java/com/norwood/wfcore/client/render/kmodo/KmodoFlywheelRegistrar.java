@@ -15,17 +15,6 @@ import com.norwood.wfcore.mixin.EntityRenderDispatcherAccessor;
 import dev.engine_room.flywheel.api.backend.BackendManager;
 import dev.engine_room.flywheel.lib.visualization.SimpleEntityVisualizer;
 
-/**
- * Kmodo Accelerator (Flywheel path) — one-time generic registration of a Flywheel visualizer for every entity
- * type whose renderer is a Superb Warfare {@code VehicleRenderer} (covers SBW and any addon that reuses the base
- * renderer, mirroring how the retained-path mixins target the single {@code VehicleRenderer} base). No hard-coded
- * vehicle list.
- * <p>
- * {@code skipVanillaRender} returns true only when Flywheel is enabled, its backend is on, AND the vehicle's
- * per-bone model is already baked — so a vehicle keeps rendering through the vanilla/Kmodo-retained path while
- * its Flywheel model bakes (sub-second) or if the bake ever fails. Flywheel's own {@code LevelRendererMixin}
- * cancels the vanilla render when this predicate is true, so no wfcore suppression mixin is needed.
- */
 public final class KmodoFlywheelRegistrar {
 
     private KmodoFlywheelRegistrar() {}
@@ -42,7 +31,7 @@ public final class KmodoFlywheelRegistrar {
         Map<EntityType<?>, EntityRenderer<?>> renderers =
                 ((EntityRenderDispatcherAccessor) dispatcher).wfcore$getRenderers();
         if (renderers == null || renderers.isEmpty()) {
-            return; // renderer map not populated yet — retry on a later frame
+            return;
         }
 
         int count = 0;
