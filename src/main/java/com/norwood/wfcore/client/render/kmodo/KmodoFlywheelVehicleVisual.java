@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Axis;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.EntityRenderer;
@@ -99,6 +100,8 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
                 pose.translate(visualPos.x(), visualPos.y(), visualPos.z());
                 float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
                 ((VehicleRenderer) renderer).vehicleAxis(entity, pose, yaw, partialTick);
+                pose.mulPose(Axis.YP.rotationDegrees(180.0F));
+                pose.translate(0.0F, 0.01F, 0.0F);
 
                 if (bodyInstance != null) {
                     bodyInstance.setTransform(pose.last().pose());
