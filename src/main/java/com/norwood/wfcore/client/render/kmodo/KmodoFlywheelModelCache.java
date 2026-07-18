@@ -159,22 +159,34 @@ public final class KmodoFlywheelModelCache {
             BufferBuilder body = new BufferBuilder(4096);
             body.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.NEW_ENTITY);
             Map<String, Model> dynamicBones = new HashMap<>();
+            // Parallel vertex-count tracking for KmodoDebug (indexed by same positions as dynamicBones).
+            Map<String, Integer> dynamicBoneVertCounts = new HashMap<>();
             boolean[] anyBody = {false};
 
             PoseStack pose = new PoseStack();
             for (GeoBone top : baked.topLevelBones()) {
-                bakeWalk(renderer, pose, top, false, body, dynamicBones, material, state.blocks, anyBody);
+                bakeWalk(renderer, pose, top, false, body, dynamicBones, material, state.blocks, anyBody,
+                        dynamicBoneVertCounts);
             }
 
             Model bodyModel = null;
+            int bodyVertices = 0;
             if (anyBody[0]) {
                 BufferBuilder.RenderedBuffer rendered = body.end();
+                bodyVertices = rendered.drawState().vertexCount();
                 bodyModel = toModel(rendered, material, "body", state.blocks);
                 rendered.release();
             }
 
             state.models = new VehicleModels(bodyModel, dynamicBones);
             state.status = ModelState.READY;
+
+            // Notify KmodoDebug of the bake result (off-thread call, guarded by enabled() inside).
+            if (KmodoDebug.enabled()) {
+                int dynVerts = dynamicBoneVertCounts.values().stream().mapToInt(Integer::intValue).sum();
+                long gpuBytes = state.blocks.stream().mapToLong(dev.engine_room.flywheel.lib.memory.MemoryBlock::size).sum();
+                KmodoDebug.onFlywheelBaked(res, bodyVertices, dynamicBones.size(), dynVerts, gpuBytes);
+            }
         } catch (Throwable t) {
             WFCore.LOGGER.warn("[wfcore] Kmodo Flywheel model bake failed for {}", res, t);
             state.status = ModelState.FAILED;
@@ -184,10 +196,13 @@ public final class KmodoFlywheelModelCache {
     /**
      * Walk the bone tree: static bones (no animated ancestor and no animated name) are emitted into the shared
      * {@code body} builder at their bind transform; animated bones are baked bone-local as their own model.
+     * {@code dynamicBoneVertCounts} is populated (when debug is enabled) with the vertex count for each
+     * dynamic-bone model, for {@link KmodoDebug} stats.
      */
     private static void bakeWalk(GeoRenderer<?> renderer, PoseStack pose, GeoBone bone, boolean dynamicAncestor,
                                  BufferBuilder body, Map<String, Model> dynamicBones, Material material,
-                                 List<MemoryBlock> blocks, boolean[] anyBody) {
+                                 List<MemoryBlock> blocks, boolean[] anyBody,
+                                 Map<String, Integer> dynamicBoneVertCounts) {
         boolean dynamic = dynamicAncestor || isDynamic(bone.getName());
         boolean drawable = bone.getName() != null && !bone.getName().endsWith("_dogTag")
                 && !bone.isHidden() && !bone.getCubes().isEmpty();
@@ -197,9 +212,13 @@ public final class KmodoFlywheelModelCache {
 
         if (dynamic) {
             if (drawable) {
-                Model model = bakeBoneLocal(renderer, bone, material, blocks);
+                int[] vertCount = {0};
+                Model model = bakeBoneLocal(renderer, bone, material, blocks, vertCount);
                 if (model != null) {
                     dynamicBones.put(bone.getName(), model);
+                    if (KmodoDebug.enabled()) {
+                        dynamicBoneVertCounts.put(bone.getName(), vertCount[0]);
+                    }
                 }
             }
         } else if (drawable) {
@@ -210,19 +229,27 @@ public final class KmodoFlywheelModelCache {
         }
 
         for (GeoBone child : bone.getChildBones()) {
-            bakeWalk(renderer, pose, child, dynamic, body, dynamicBones, material, blocks, anyBody);
+            bakeWalk(renderer, pose, child, dynamic, body, dynamicBones, material, blocks, anyBody,
+                    dynamicBoneVertCounts);
         }
         pose.popPose();
     }
 
+    /**
+     * Bakes a single bone's cubes at identity into a Flywheel model. When {@code vertCountOut} is
+     * non-null, its first element is set to the vertex count of the baked mesh (for debug tracking).
+     */
     private static Model bakeBoneLocal(GeoRenderer<?> renderer, GeoBone bone, Material material,
-                                       List<MemoryBlock> blocks) {
+                                       List<MemoryBlock> blocks, int[] vertCountOut) {
         try {
             BufferBuilder builder = new BufferBuilder(512);
             builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.NEW_ENTITY);
             renderer.renderCubesOfBone(new PoseStack(), bone, builder, LightTexture.FULL_BRIGHT,
                     OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
             BufferBuilder.RenderedBuffer rendered = builder.end();
+            if (vertCountOut != null) {
+                vertCountOut[0] = rendered.drawState().vertexCount();
+            }
             Model model = toModel(rendered, material, bone.getName(), blocks);
             rendered.release();
             return model;

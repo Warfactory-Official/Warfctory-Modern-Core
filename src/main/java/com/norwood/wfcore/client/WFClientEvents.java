@@ -10,6 +10,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
+import com.norwood.wfcore.client.render.kmodo.KmodoDebug;
 import com.norwood.wfcore.client.render.kmodo.KmodoFlywheelModelCache;
 import com.norwood.wfcore.client.render.kmodo.KmodoMeshCache;
 
@@ -89,6 +90,7 @@ public class WFClientEvents {
         event.registerReloadListener((ResourceManagerReloadListener) resourceManager -> {
             KmodoMeshCache.invalidateAll();
             KmodoFlywheelModelCache.invalidateAll();
+            KmodoDebug.invalidateAll();
         });
     }
 

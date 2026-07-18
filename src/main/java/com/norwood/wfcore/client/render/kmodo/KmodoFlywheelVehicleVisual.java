@@ -85,6 +85,13 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
                 dynamicInstances.put(e.getKey(), instancer(e.getValue()).createInstance());
             }
             instancesCreated = true;
+            // Debug: record instance creation.
+            if (KmodoDebug.enabled()) {
+                ResourceLocation debugRes = modelRes();
+                if (debugRes != null) {
+                    KmodoDebug.onFlywheelInstanceCreated(debugRes, dynamicInstances.size());
+                }
+            }
         }
         if (bodyInstance == null && dynamicInstances.isEmpty()) {
             return;
@@ -124,6 +131,11 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
             lit.add(bodyInstance);
         }
         relight(partialTick, lit.toArray(new FlatLit[0]));
+
+        // Debug: record that this vehicle is actively rendering via Flywheel this frame.
+        if (KmodoDebug.enabled()) {
+            KmodoDebug.onFlywheelFrameDrawing(res);
+        }
     }
 
     /** Walks the whole tree (static ancestors + animated bones) and pushes each animated bone's live pose. */
@@ -147,6 +159,13 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
 
     @Override
     protected void _delete() {
+        // Debug: decrement live instance count before clearing.
+        if (KmodoDebug.enabled() && instancesCreated) {
+            ResourceLocation debugRes = modelRes();
+            if (debugRes != null) {
+                KmodoDebug.onFlywheelInstanceDeleted(debugRes);
+            }
+        }
         if (bodyInstance != null) {
             bodyInstance.delete();
             bodyInstance = null;

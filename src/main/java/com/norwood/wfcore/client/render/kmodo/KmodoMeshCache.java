@@ -52,6 +52,10 @@ public final class KmodoMeshCache {
         volatile int status = BAKING;
         volatile Map<String, BufferBuilder.RenderedBuffer> pending; // produced off-thread
         Map<String, VertexBuffer> vbos;                             // owned by the render thread
+        /** Vertex counts per bone, captured during the worker build for KmodoDebug reporting. */
+        volatile Map<String, Integer> pendingVertCounts;
+        /** The model RL, kept so uploadPending can report to KmodoDebug without an extra parameter. */
+        ResourceLocation res;
     }
 
     /**
@@ -67,6 +71,7 @@ public final class KmodoMeshCache {
         ModelState state = STATES.get(res);
         if (state == null) {
             state = new ModelState();
+            state.res = res;
             STATES.put(res, state);
             BakedGeoModel baked = bakedModel(renderer, res);
             if (baked == null || baked.topLevelBones().isEmpty()) {
@@ -93,10 +98,12 @@ public final class KmodoMeshCache {
                                    GeoRenderer<?> renderer) {
         try {
             Map<String, BufferBuilder.RenderedBuffer> out = new HashMap<>();
+            Map<String, Integer> vertCounts = KmodoDebug.enabled() ? new HashMap<>() : null;
             for (GeoBone top : baked.topLevelBones()) {
-                buildBoneRec(renderer, top, out);
+                buildBoneRec(renderer, top, out, vertCounts);
             }
             state.pending = out;
+            state.pendingVertCounts = vertCounts;
             state.status = ModelState.BUILT;
         } catch (Throwable t) {
             WFCore.LOGGER.warn("[wfcore] Kmodo async mesh bake failed for {}", res, t);
@@ -105,7 +112,8 @@ public final class KmodoMeshCache {
     }
 
     private static void buildBoneRec(GeoRenderer<?> renderer, GeoBone bone,
-                                     Map<String, BufferBuilder.RenderedBuffer> out) {
+                                     Map<String, BufferBuilder.RenderedBuffer> out,
+                                     Map<String, Integer> vertCountsOut) {
         String name = bone.getName();
         // Skip SBW's dog-tag bones (rendered specially by SBW) and empty/hidden bones.
         if (name != null && !name.endsWith("_dogTag") && !bone.isHidden() && !bone.getCubes().isEmpty()) {
@@ -116,13 +124,17 @@ public final class KmodoMeshCache {
             renderer.renderCubesOfBone(new PoseStack(), bone, builder, LightTexture.FULL_BRIGHT,
                     OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
             try {
-                out.put(name, builder.end());
+                BufferBuilder.RenderedBuffer rendered = builder.end();
+                if (vertCountsOut != null) {
+                    vertCountsOut.put(name, rendered.drawState().vertexCount());
+                }
+                out.put(name, rendered);
             } catch (Throwable emptyOrBroken) {
                 // no vertices emitted → skip; this bone falls back to tessellation
             }
         }
         for (GeoBone child : bone.getChildBones()) {
-            buildBoneRec(renderer, child, out);
+            buildBoneRec(renderer, child, out, vertCountsOut);
         }
     }
 
@@ -140,7 +152,17 @@ public final class KmodoMeshCache {
             VertexBuffer.unbind();
         }
         state.vbos = vbos;
+
+        // Notify KmodoDebug of the retained bake result (on the render thread, guarded by enabled()).
+        if (KmodoDebug.enabled() && state.res != null) {
+            Map<String, Integer> vertCounts = state.pendingVertCounts;
+            int totalVerts = vertCounts != null
+                    ? vertCounts.values().stream().mapToInt(Integer::intValue).sum() : 0;
+            KmodoDebug.onRetainedBaked(state.res, vbos.size(), totalVerts);
+        }
+
         state.pending = null;
+        state.pendingVertCounts = null;
         state.status = ModelState.READY;
     }
 

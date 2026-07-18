@@ -14,6 +14,8 @@ import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.norwood.wfcore.WFCore;
 import org.joml.Matrix4f;
 import software.bernie.geckolib.cache.object.GeoBone;
+import software.bernie.geckolib.core.animatable.GeoAnimatable;
+import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.renderer.GeoRenderer;
 
 /**
@@ -35,6 +37,8 @@ public final class KmodoAccumulator {
     private static final List<VertexBuffer> BUFFERS = new ArrayList<>();
     private static final List<Matrix4f> MATRICES = new ArrayList<>();
     private static volatile boolean logged;
+    /** The model RL of the vehicle currently being accumulated (set from tryRecord, cleared in clear). */
+    private static ResourceLocation currentRes;
 
     /**
      * @return true if the bone's retained buffer was recorded (the caller must skip the original tessellation)
@@ -52,6 +56,14 @@ public final class KmodoAccumulator {
         }
         BUFFERS.add(vbo);
         MATRICES.add(new Matrix4f(pose.last().pose()));
+        // Capture the model RL for KmodoDebug reporting (only on first bone per vehicle, rest are same model).
+        if (KmodoDebug.enabled() && currentRes == null && animatable instanceof GeoAnimatable) {
+            try {
+                @SuppressWarnings({"unchecked", "rawtypes"})
+                GeoModel model = ((GeoRenderer) renderer).getGeoModel();
+                currentRes = model.getModelResource((GeoAnimatable) animatable);
+            } catch (Throwable ignored) {}
+        }
         return true;
     }
 
@@ -62,6 +74,7 @@ public final class KmodoAccumulator {
     public static void clear() {
         BUFFERS.clear();
         MATRICES.clear();
+        currentRes = null;
     }
 
     /** Draws every recorded bone buffer for the vehicle in one render-state pass, then clears. */
@@ -73,6 +86,10 @@ public final class KmodoAccumulator {
             logged = true;
             WFCore.LOGGER.info("[wfcore] Kmodo Accelerator engaged — retained vehicle rendering "
                     + "({} bone buffers on first vehicle)", BUFFERS.size());
+        }
+        // Debug: record retained-path render before drawing (currentRes captured during tryRecord).
+        if (KmodoDebug.enabled()) {
+            KmodoDebug.onRetainedFlush(currentRes);
         }
         try {
             KmodoRenderer.drawBatch(BUFFERS, MATRICES, texture, level, packedLight);
