@@ -17,25 +17,31 @@ import org.lwjgl.opengl.GL30;
 /**
  * Kmodo Accelerator — shared GL helpers for the retained vehicle draws. A raw {@code VertexBuffer.drawWithShader}
  * bypasses vanilla's lightmap binding and leaves the VAO/immediate-buffer cache dirty (the same pitfalls
- * {@code GltfMachineRenderer} handles), so the draws bind a 1x1 world-light texture and reset the raw bindings
+ * {@code GltfMachineRenderer} handles), so the draws bind a world-light texture and reset the raw bindings
  * afterwards.
  */
 public final class KmodoLight {
 
     private KmodoLight() {}
 
+    /**
+     * Must be 16x16: the entity vertex shader reads the lightmap with {@code texelFetch(Sampler2, UV2 / 16, 0)},
+     * and the baked meshes carry {@code UV2 = FULL_BRIGHT}, so the fetch lands at texel (15,15). A smaller
+     * texture is out of bounds for that fetch and {@code texelFetch} returns black (the pure-black bug).
+     */
+    private static final int LIGHTMAP_SIZE = 16;
+
     private static DynamicTexture worldLightTexture;
 
     /**
-     * Returns the GL id of a reused 1x1 texture holding the vanilla lightmap colour for {@code packedLight}
-     * (the authoritative value the entity render dispatcher already computed for the vehicle). The baked meshes
-     * carry {@code FULL_BRIGHT} light UVs, so binding this to sampler unit 2 makes the whole mesh take that one
-     * real light value. Using the passed packed light — instead of re-sampling at the entity's block position —
-     * avoids the "black vehicle" bug where a vehicle sunk against the ground sampled an occluded (dark) block.
+     * Returns the GL id of a reused 16x16 texture filled uniformly with the vanilla lightmap colour for
+     * {@code packedLight} (the authoritative value the entity render dispatcher already computed for the
+     * vehicle). The baked meshes carry {@code FULL_BRIGHT} light UVs, so every {@code texelFetch} into this
+     * texture returns that one real world-light value — bright at noon, dim at night.
      */
-    public static int packedLightmap(int packedLight) {
+    public static int worldLightLightmap(int packedLight) {
         if (worldLightTexture == null) {
-            worldLightTexture = new DynamicTexture(new NativeImage(1, 1, false));
+            worldLightTexture = new DynamicTexture(new NativeImage(LIGHTMAP_SIZE, LIGHTMAP_SIZE, false));
         }
         int color = 0xFFFFFFFF;
         NativeImage pixels = ((LightTextureAccessor) Minecraft.getInstance().gameRenderer.lightTexture())
@@ -43,9 +49,14 @@ public final class KmodoLight {
         if (pixels != null) {
             color = pixels.getPixelRGBA(LightTexture.block(packedLight), LightTexture.sky(packedLight));
         }
-        worldLightTexture.getPixels().setPixelRGBA(0, 0, color);
+        NativeImage image = worldLightTexture.getPixels();
+        for (int y = 0; y < LIGHTMAP_SIZE; y++) {
+            for (int x = 0; x < LIGHTMAP_SIZE; x++) {
+                image.setPixelRGBA(x, y, color);
+            }
+        }
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, worldLightTexture.getId());
-        worldLightTexture.getPixels().upload(0, 0, 0, false);
+        image.upload(0, 0, 0, false);
         return worldLightTexture.getId();
     }
 
