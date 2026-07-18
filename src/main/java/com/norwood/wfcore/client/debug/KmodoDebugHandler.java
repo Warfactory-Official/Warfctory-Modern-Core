@@ -131,10 +131,11 @@ public final class KmodoDebugHandler {
 
             String detail;
             if (mode == KmodoDebug.Mode.FLYWHEEL) {
-                detail = String.format(" b=%dv d=%d(%dv) %dkB live=%d",
+                detail = String.format(" b=%dv d=%d(%dv) %dkB live=%d drm=%d act=%d",
                         s.flywheelBodyVertices, s.flywheelDynamicBoneCount, s.flywheelDynamicVertices,
                         s.flywheelGpuBytes / 1024,
-                        s.flywheelLiveInstances.get());
+                        s.flywheelLiveInstances.get(),
+                        s.dormantThisFrame.get(), s.activeThisFrame.get());
             } else if (mode == KmodoDebug.Mode.RETAINED) {
                 detail = String.format(" vbos=%d verts=%d frm=%d",
                         s.retainedVboCount, s.retainedTotalVertices,

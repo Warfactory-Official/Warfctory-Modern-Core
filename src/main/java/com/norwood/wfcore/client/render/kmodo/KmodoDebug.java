@@ -54,6 +54,10 @@ public final class KmodoDebug {
 
         public final AtomicInteger retainedFrameVehicles = new AtomicInteger(0);
 
+        public final AtomicInteger dormantThisFrame = new AtomicInteger(0);
+
+        public final AtomicInteger activeThisFrame = new AtomicInteger(0);
+
         public volatile Mode lastMode = null;
 
         volatile boolean flywheelBakeSummarised = false;
@@ -114,6 +118,13 @@ public final class KmodoDebug {
         recordMode(res, Mode.FLYWHEEL);
     }
 
+    public static void onDormancy(ResourceLocation res, boolean dormant) {
+        if (!ENABLED) return;
+        if (res == null) return;
+        ModelStats s = statsFor(res);
+        (dormant ? s.dormantThisFrame : s.activeThisFrame).incrementAndGet();
+    }
+
     public static void onRetainedBaked(ResourceLocation res, int vboCount, int totalVertices) {
         if (!ENABLED) return;
         ModelStats s = statsFor(res);
@@ -140,6 +151,8 @@ public final class KmodoDebug {
         RETAINED_THIS_FRAME.clear();
         for (ModelStats s : MODELS.values()) {
             s.retainedFrameVehicles.set(0);
+            s.dormantThisFrame.set(0);
+            s.activeThisFrame.set(0);
         }
     }
 
@@ -172,6 +185,8 @@ public final class KmodoDebug {
                 sb.append(" | GPU ").append(s.flywheelGpuBytes).append("B (stride ")
                         .append(FullVertexView.STRIDE).append("×").append(totalVerts).append(")\n");
                 sb.append("    [Flywheel] live vehicles=").append(s.flywheelLiveInstances.get()).append('\n');
+                sb.append("    [Flywheel] dormant=").append(s.dormantThisFrame.get())
+                        .append(" active=").append(s.activeThisFrame.get()).append(" (per render frame)\n");
             } else {
                 sb.append("    [Flywheel] not baked\n");
             }

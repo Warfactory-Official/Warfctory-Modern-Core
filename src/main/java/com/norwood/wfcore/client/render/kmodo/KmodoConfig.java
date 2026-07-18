@@ -8,6 +8,7 @@ public final class KmodoConfig {
 
     private static volatile boolean RETAIN = true;
     private static volatile boolean FLYWHEEL = true;
+    private static volatile boolean DORMANCY = true;
 
     public static boolean retainEnabled() {
         return RETAIN;
@@ -15,6 +16,14 @@ public final class KmodoConfig {
 
     public static void setRetain(boolean enabled) {
         RETAIN = enabled;
+    }
+
+    public static boolean dormancyEnabled() {
+        return DORMANCY;
+    }
+
+    public static void setDormancy(boolean enabled) {
+        DORMANCY = enabled;
     }
 
     public static boolean flywheelEnabled() {
