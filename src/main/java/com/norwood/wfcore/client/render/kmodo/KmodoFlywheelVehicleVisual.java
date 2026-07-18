@@ -1,6 +1,8 @@
 package com.norwood.wfcore.client.render.kmodo;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -12,6 +14,7 @@ import net.minecraft.util.Mth;
 
 import com.atsuishio.superbwarfare.client.renderer.entity.VehicleRenderer;
 import com.atsuishio.superbwarfare.entity.vehicle.base.GeoVehicleEntity;
+import com.norwood.wfcore.client.render.kmodo.KmodoFlywheelModelCache.VehicleModels;
 import dev.engine_room.flywheel.api.backend.BackendManager;
 import dev.engine_room.flywheel.api.instance.Instancer;
 import dev.engine_room.flywheel.api.model.Model;
@@ -32,27 +35,26 @@ import software.bernie.geckolib.renderer.GeoRenderer;
 import software.bernie.geckolib.util.RenderUtils;
 
 /**
- * Kmodo Accelerator (Flywheel path) — the per-vehicle Flywheel {@link AbstractEntityVisual}. One
- * {@link TransformedInstance} per cube-bearing bone is drawn from the cached bone-local models; instances of the
- * same bone across all vehicles of a model are batched into a single GPU draw by Flywheel.
+ * Kmodo Accelerator (Flywheel path) — the per-vehicle Flywheel {@link AbstractEntityVisual}. Renders a vehicle as
+ * one merged static "body" instance plus one {@link TransformedInstance} per animated bone (turret, wheels, …);
+ * instances of the same bone/body across all vehicles of a model are batched into a single GPU draw by Flywheel.
  * <p>
- * {@link #beginFrame} runs at {@code renderLevel} HEAD (before the vanilla entity pass), so it computes each
- * bone's live transform this frame with zero lag: it drives GeckoLib's own animation
- * ({@code getGeoModel().handleAnimations} — reproducing SBW's turret/wheel/track bone mutations), then walks the
- * bone tree with {@link RenderUtils#prepMatrixForBone} under a root of {@code visualPosition * vehicleAxis}
- * (SBW's own public {@code vehicleAxis} is reused for exact body yaw/pitch/roll). Light is pushed per-instance
- * via {@link #relight}.
+ * {@link #beginFrame} runs at {@code renderLevel} HEAD, so it computes transforms this frame with zero lag: it
+ * drives GeckoLib's own animation ({@code handleAnimations}), places the body at the root ({@code visualPosition}
+ * + SBW's public {@code vehicleAxis}), then walks the bone tree with {@link RenderUtils#prepMatrixForBone} —
+ * static ancestors contribute their bind transform, animated bones their live one — and pushes each animated
+ * bone's pose to its instance. The merged body avoids the inter-bone coplanar z-fighting that separate per-bone
+ * instances cause. Light is pushed per-instance via {@link #relight}.
  * <p>
  * The GeckoLib bone tree is shared per model, so {@code handleAnimations} + the walk are done under
- * {@link KmodoFlywheelModelCache#lockFor} to be safe under Flywheel's parallel frame plan. When Flywheel is off
- * or the model isn't baked, this bows out and the vanilla renderer (and the Kmodo retained path) draw instead —
- * gated identically by the visualizer's {@code skipVanillaRender} predicate.
+ * {@link KmodoFlywheelModelCache#lockFor} (Flywheel may run visuals' {@code beginFrame} in parallel).
  */
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleEntity> implements SimpleDynamicVisual {
 
     private final GeoRenderer renderer;
-    private final Map<String, TransformedInstance> instances = new HashMap<>();
+    private final Map<String, TransformedInstance> dynamicInstances = new HashMap<>();
+    private TransformedInstance bodyInstance;
     private boolean instancesCreated;
 
     public KmodoFlywheelVehicleVisual(VisualizationContext ctx, GeoVehicleEntity entity, float partialTick) {
@@ -71,19 +73,20 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
         }
         float partialTick = ctx.partialTick();
 
-        Map<String, Model> models = KmodoFlywheelModelCache.getModels(renderer, entity);
-        if (models == null || models.isEmpty()) {
+        VehicleModels models = KmodoFlywheelModelCache.getModels(renderer, entity);
+        if (models == null) {
             return; // still baking (or failed) — vanilla/retained path is drawing it
         }
         if (!instancesCreated) {
-            for (Map.Entry<String, Model> e : models.entrySet()) {
-                Instancer<TransformedInstance> instancer =
-                        instancerProvider().instancer(InstanceTypes.TRANSFORMED, e.getValue());
-                instances.put(e.getKey(), instancer.createInstance());
+            if (models.body != null) {
+                bodyInstance = instancer(models.body).createInstance();
+            }
+            for (Map.Entry<String, Model> e : models.dynamicBones.entrySet()) {
+                dynamicInstances.put(e.getKey(), instancer(e.getValue()).createInstance());
             }
             instancesCreated = true;
         }
-        if (instances.isEmpty()) {
+        if (bodyInstance == null && dynamicInstances.isEmpty()) {
             return;
         }
 
@@ -93,7 +96,6 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
             return;
         }
 
-        // The GeckoLib bone tree is shared per model; serialise animation + walk per model against parallel visuals.
         synchronized (KmodoFlywheelModelCache.lockFor(res)) {
             GeoModel geoModel = renderer.getGeoModel();
             geoModel.handleAnimations(entity, renderer.getInstanceId(entity),
@@ -105,19 +107,30 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
             float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
             ((VehicleRenderer) renderer).vehicleAxis(entity, pose, yaw, partialTick);
 
-            for (Object top : baked.topLevelBones()) {
-                walk(pose, (GeoBone) top);
+            // The merged body mesh already carries the static bones' bind transforms, so it sits at the root pose.
+            if (bodyInstance != null) {
+                bodyInstance.setTransform(pose.last().pose());
+                bodyInstance.setChanged();
+            }
+            if (!dynamicInstances.isEmpty()) {
+                for (Object top : baked.topLevelBones()) {
+                    walk(pose, (GeoBone) top);
+                }
             }
         }
 
-        relight(partialTick, instances.values().toArray(new FlatLit[0]));
+        List<FlatLit> lit = new ArrayList<>(dynamicInstances.values());
+        if (bodyInstance != null) {
+            lit.add(bodyInstance);
+        }
+        relight(partialTick, lit.toArray(new FlatLit[0]));
     }
 
-    /** Recursively reproduces GeckoLib's renderRecursively transform, pushing each bone's live pose to its instance. */
+    /** Walks the whole tree (static ancestors + animated bones) and pushes each animated bone's live pose. */
     private void walk(PoseStack pose, GeoBone bone) {
         pose.pushPose();
         RenderUtils.prepMatrixForBone(pose, bone);
-        TransformedInstance instance = instances.get(bone.getName());
+        TransformedInstance instance = dynamicInstances.get(bone.getName());
         if (instance != null) {
             instance.setTransform(pose.last().pose());
             instance.setChanged();
@@ -128,10 +141,18 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
         pose.popPose();
     }
 
+    private Instancer<TransformedInstance> instancer(Model model) {
+        return instancerProvider().instancer(InstanceTypes.TRANSFORMED, model);
+    }
+
     @Override
     protected void _delete() {
-        instances.values().forEach(TransformedInstance::delete);
-        instances.clear();
+        if (bodyInstance != null) {
+            bodyInstance.delete();
+            bodyInstance = null;
+        }
+        dynamicInstances.values().forEach(TransformedInstance::delete);
+        dynamicInstances.clear();
     }
 
     private ResourceLocation modelRes() {

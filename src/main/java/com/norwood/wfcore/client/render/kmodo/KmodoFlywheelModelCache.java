@@ -5,7 +5,9 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.mojang.blaze3d.vertex.BufferBuilder;
@@ -37,29 +39,47 @@ import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.core.animatable.GeoAnimatable;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.renderer.GeoRenderer;
+import software.bernie.geckolib.util.RenderUtils;
 
 /**
- * Kmodo Accelerator (Flywheel path) — bakes each vehicle bone's bone-local geometry into a Flywheel
- * {@link Model}, keyed by GeckoLib model resource, and caches it per model. Mirrors {@link KmodoMeshCache}: the
- * geometry is captured by driving GeckoLib's own {@code renderCubesOfBone} at identity into a NEW_ENTITY
- * {@link BufferBuilder}, so it is bone-local and pose-independent — the bone's live transform is applied by the
- * instance each frame.
+ * Kmodo Accelerator (Flywheel path) — bakes a vehicle's geometry into Flywheel {@link Model}s, keyed by GeckoLib
+ * model resource.
  * <p>
- * The MC {@code RenderedBuffer} bytes are copied into a Flywheel {@link FullVertexView} over off-heap
- * {@link MemoryBlock} memory (Flywheel's own {@code MeshHelper} bridge is package-private), wrapped as a
- * {@link SimpleQuadMesh} + {@link SingleMeshModel} with a per-texture {@link SimpleMaterial}. All of this is pure
- * CPU/off-heap work (no GL), so it runs on {@link Util#backgroundExecutor()}; only the instancer upload (in the
- * visual) touches the GPU on the render thread.
+ * To avoid z-fighting between coplanar faces of different bones (which GeckoLib masks by drawing the whole model
+ * in one pass, but per-bone instanced draws expose), all <em>static</em> bones (hull, decals, fixed detail) are
+ * merged into a single "body" mesh baked with their bind transforms relative to the root — one draw, resolved
+ * exactly like GeckoLib. Only genuinely-animated bones (turret, wheels, barrels, …) are kept as separate
+ * bone-local models so they can move via per-instance transforms. A bone is treated as animated if its name (or
+ * an ancestor's) matches {@link #DYNAMIC_PATTERNS}; anything else merges into the body.
  * <p>
- * A per-model lock ({@link #lockFor}) guards the shared GeckoLib bone tree while the visual runs
- * {@code handleAnimations} + the bone walk, because Flywheel may run visuals' {@code beginFrame} in parallel.
+ * Everything is baked off-thread ({@link Util#backgroundExecutor()}): {@code renderCubesOfBone} reads only
+ * immutable {@code GeoCube} data, and static bones are never animated so reading their bind transforms is safe.
+ * Bytes are copied from the MC {@code RenderedBuffer} into a Flywheel {@link FullVertexView} over off-heap
+ * {@link MemoryBlock} memory. A per-model lock guards the shared bone tree during the visual's animate+walk.
  */
 public final class KmodoFlywheelModelCache {
 
     private KmodoFlywheelModelCache() {}
 
+    /** Bone-name substrings (lower-case) that mark a bone — and its subtree — as animated (kept separate). */
+    private static final Set<String> DYNAMIC_PATTERNS = Set.of(
+            "wheel", "track", "turret", "barrel", "cannon", "gun", "muzzle", "recoil", "rotor", "prop", "blade",
+            "mantlet", "elevation", "traverse", "hatch", "rudder", "elevator", "aileron", "flap", "steer",
+            "suspension", "radar", "antenna", "launcher", "missile", "gear", "swivel", "dish");
+
     private static final Map<ResourceLocation, ModelState> STATES = new ConcurrentHashMap<>();
     private static final Map<ResourceLocation, Object> LOCKS = new ConcurrentHashMap<>();
+
+    /** The merged static body model plus the per-bone models for the animated bones of one vehicle model. */
+    public static final class VehicleModels {
+        public final Model body; // nullable (a vehicle with no static geometry)
+        public final Map<String, Model> dynamicBones;
+
+        VehicleModels(Model body, Map<String, Model> dynamicBones) {
+            this.body = body;
+            this.dynamicBones = dynamicBones;
+        }
+    }
 
     private static final class ModelState {
         static final int BAKING = 0;
@@ -67,17 +87,30 @@ public final class KmodoFlywheelModelCache {
         static final int FAILED = 2;
 
         volatile int status = BAKING;
-        volatile Map<String, Model> models;
-        final List<MemoryBlock> blocks = new ArrayList<>(); // keep the mesh backing memory alive until reload
+        volatile VehicleModels models;
+        final List<MemoryBlock> blocks = new ArrayList<>();
     }
 
-    /** Per-model lock so same-model vehicles serialise their shared-bone-tree animation; different models run free. */
+    /** Per-model lock so same-model vehicles serialise their shared-bone-tree animation. */
     public static Object lockFor(ResourceLocation res) {
         return LOCKS.computeIfAbsent(res, k -> new Object());
     }
 
-    /** The per-bone Flywheel models for this entity's model, or {@code null} if not baked yet. Triggers the bake. */
-    public static Map<String, Model> getModels(GeoRenderer<?> renderer, GeoVehicleEntity entity) {
+    private static boolean isDynamic(String boneName) {
+        if (boneName == null) {
+            return false;
+        }
+        String name = boneName.toLowerCase(Locale.ROOT);
+        for (String pattern : DYNAMIC_PATTERNS) {
+            if (name.contains(pattern)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** The merged-body + animated-bone models for this entity's model, or {@code null} if not baked yet. */
+    public static VehicleModels getModels(GeoRenderer<?> renderer, GeoVehicleEntity entity) {
         ResourceLocation res = modelRes(renderer, entity);
         if (res == null) {
             return null;
@@ -122,11 +155,25 @@ public final class KmodoFlywheelModelCache {
         try {
             Material material = new SimpleMaterial.Builder().copyFrom(Materials.CUTOUT_MIPPED_BLOCK)
                     .texture(texture).build();
-            Map<String, Model> out = new HashMap<>();
+
+            BufferBuilder body = new BufferBuilder(4096);
+            body.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.NEW_ENTITY);
+            Map<String, Model> dynamicBones = new HashMap<>();
+            boolean[] anyBody = {false};
+
+            PoseStack pose = new PoseStack();
             for (GeoBone top : baked.topLevelBones()) {
-                buildBoneRec(renderer, top, out, state.blocks, material);
+                bakeWalk(renderer, pose, top, false, body, dynamicBones, material, state.blocks, anyBody);
             }
-            state.models = out;
+
+            Model bodyModel = null;
+            if (anyBody[0]) {
+                BufferBuilder.RenderedBuffer rendered = body.end();
+                bodyModel = toModel(rendered, material, "body", state.blocks);
+                rendered.release();
+            }
+
+            state.models = new VehicleModels(bodyModel, dynamicBones);
             state.status = ModelState.READY;
         } catch (Throwable t) {
             WFCore.LOGGER.warn("[wfcore] Kmodo Flywheel model bake failed for {}", res, t);
@@ -134,32 +181,58 @@ public final class KmodoFlywheelModelCache {
         }
     }
 
-    private static void buildBoneRec(GeoRenderer<?> renderer, GeoBone bone, Map<String, Model> out,
-                                     List<MemoryBlock> blocks, Material material) {
-        String name = bone.getName();
-        if (name != null && !name.endsWith("_dogTag") && !bone.isHidden() && !bone.getCubes().isEmpty()) {
-            try {
-                BufferBuilder builder = new BufferBuilder(512);
-                builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.NEW_ENTITY);
-                renderer.renderCubesOfBone(new PoseStack(), bone, builder, LightTexture.FULL_BRIGHT,
-                        OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
-                BufferBuilder.RenderedBuffer rendered = builder.end();
-                Model model = toModel(rendered, material, name, blocks);
-                rendered.release();
+    /**
+     * Walk the bone tree: static bones (no animated ancestor and no animated name) are emitted into the shared
+     * {@code body} builder at their bind transform; animated bones are baked bone-local as their own model.
+     */
+    private static void bakeWalk(GeoRenderer<?> renderer, PoseStack pose, GeoBone bone, boolean dynamicAncestor,
+                                 BufferBuilder body, Map<String, Model> dynamicBones, Material material,
+                                 List<MemoryBlock> blocks, boolean[] anyBody) {
+        boolean dynamic = dynamicAncestor || isDynamic(bone.getName());
+        boolean drawable = bone.getName() != null && !bone.getName().endsWith("_dogTag")
+                && !bone.isHidden() && !bone.getCubes().isEmpty();
+
+        pose.pushPose();
+        RenderUtils.prepMatrixForBone(pose, bone);
+
+        if (dynamic) {
+            if (drawable) {
+                Model model = bakeBoneLocal(renderer, bone, material, blocks);
                 if (model != null) {
-                    out.put(name, model);
+                    dynamicBones.put(bone.getName(), model);
                 }
-            } catch (Throwable ignored) {
-                // skip this bone; it just won't be instanced
             }
+        } else if (drawable) {
+            // Emit this static bone's cubes into the merged body mesh at its bind (accumulated) transform.
+            renderer.renderCubesOfBone(pose, bone, body, LightTexture.FULL_BRIGHT, OverlayTexture.NO_OVERLAY,
+                    1f, 1f, 1f, 1f);
+            anyBody[0] = true;
         }
+
         for (GeoBone child : bone.getChildBones()) {
-            buildBoneRec(renderer, child, out, blocks, material);
+            bakeWalk(renderer, pose, child, dynamic, body, dynamicBones, material, blocks, anyBody);
+        }
+        pose.popPose();
+    }
+
+    private static Model bakeBoneLocal(GeoRenderer<?> renderer, GeoBone bone, Material material,
+                                       List<MemoryBlock> blocks) {
+        try {
+            BufferBuilder builder = new BufferBuilder(512);
+            builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.NEW_ENTITY);
+            renderer.renderCubesOfBone(new PoseStack(), bone, builder, LightTexture.FULL_BRIGHT,
+                    OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
+            BufferBuilder.RenderedBuffer rendered = builder.end();
+            Model model = toModel(rendered, material, bone.getName(), blocks);
+            rendered.release();
+            return model;
+        } catch (Throwable t) {
+            return null;
         }
     }
 
     /** Copies one NEW_ENTITY {@code RenderedBuffer} into a Flywheel {@link FullVertexView} → mesh → model. */
-    private static Model toModel(BufferBuilder.RenderedBuffer rendered, Material material, String boneName,
+    private static Model toModel(BufferBuilder.RenderedBuffer rendered, Material material, String name,
                                  List<MemoryBlock> blocks) {
         BufferBuilder.DrawState draw = rendered.drawState();
         int count = draw.vertexCount();
@@ -178,7 +251,7 @@ public final class KmodoFlywheelModelCache {
 
         for (int i = 0; i < count; i++) {
             int base = origin + i * stride;
-            // NEW_ENTITY layout: pos 3f@0, color 4ub@12, uv0 2f@16, uv1(overlay) 2s@24, uv2(light) 2s@28, normal 3b@32
+            // NEW_ENTITY: pos 3f@0, color 4ub@12, uv0 2f@16, uv1(overlay) 2s@24, uv2(light) 2s@28, normal 3b@32
             view.x(i, bytes.getFloat(base));
             view.y(i, bytes.getFloat(base + 4));
             view.z(i, bytes.getFloat(base + 8));
@@ -195,7 +268,7 @@ public final class KmodoFlywheelModelCache {
             view.normalZ(i, bytes.get(base + 34) / 127f);
         }
 
-        Mesh mesh = new SimpleQuadMesh(view, "wfcore_vehicle_bone:" + boneName);
+        Mesh mesh = new SimpleQuadMesh(view, "wfcore_vehicle:" + name);
         return new SingleMeshModel(mesh, material);
     }
 
