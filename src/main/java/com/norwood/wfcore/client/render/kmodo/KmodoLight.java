@@ -1,4 +1,4 @@
-package com.norwood.wfcore.client.render.vehicle;
+package com.norwood.wfcore.client.render.kmodo;
 
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.systems.RenderSystem;
@@ -15,14 +15,14 @@ import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 
 /**
- * Shared GL helpers for the retained-vehicle draws. A raw {@code VertexBuffer.drawWithShader} bypasses vanilla's
- * lightmap binding and leaves the VAO/immediate-buffer cache dirty (the same pitfalls
- * {@code GltfMachineRenderer} handles), so the vehicle draws bind a 1x1 world-light texture and reset the raw
- * bindings afterwards.
+ * Kmodo Accelerator — shared GL helpers for the retained vehicle draws. A raw {@code VertexBuffer.drawWithShader}
+ * bypasses vanilla's lightmap binding and leaves the VAO/immediate-buffer cache dirty (the same pitfalls
+ * {@code GltfMachineRenderer} handles), so the draws bind a 1x1 world-light texture and reset the raw bindings
+ * afterwards.
  */
-public final class WFGlState {
+public final class KmodoLight {
 
-    private WFGlState() {}
+    private KmodoLight() {}
 
     private static DynamicTexture worldLightTexture;
 

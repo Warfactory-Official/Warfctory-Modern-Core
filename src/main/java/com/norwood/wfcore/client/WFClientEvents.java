@@ -10,7 +10,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
-import com.norwood.wfcore.client.render.vehicle.VehicleMeshCache;
+import com.norwood.wfcore.client.render.kmodo.KmodoMeshCache;
 
 import com.modularmods.mcgltf.MCglTF;
 import com.norwood.wfcore.WFCore;
@@ -86,7 +86,7 @@ public class WFClientEvents {
     @SubscribeEvent
     public static void onRegisterClientReloadListeners(RegisterClientReloadListenersEvent event) {
         event.registerReloadListener(
-                (ResourceManagerReloadListener) resourceManager -> VehicleMeshCache.invalidateAll());
+                (ResourceManagerReloadListener) resourceManager -> KmodoMeshCache.invalidateAll());
     }
 
     @SubscribeEvent

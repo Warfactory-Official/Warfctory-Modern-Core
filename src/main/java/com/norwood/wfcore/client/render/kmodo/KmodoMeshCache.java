@@ -1,4 +1,4 @@
-package com.norwood.wfcore.client.render.vehicle;
+package com.norwood.wfcore.client.render.kmodo;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -24,22 +24,22 @@ import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.renderer.GeoRenderer;
 
 /**
- * Bakes and caches each vehicle bone's <em>bone-local</em> geometry into a retained GPU {@link VertexBuffer},
- * keyed by the GeckoLib model resource. The geometry is captured by driving GeckoLib's own
+ * Kmodo Accelerator — bakes and caches each vehicle bone's <em>bone-local</em> geometry into a retained GPU
+ * {@link VertexBuffer}, keyed by the GeckoLib model resource. Geometry is captured by driving GeckoLib's own
  * {@code renderCubesOfBone} at identity into a {@link BufferBuilder}, so only cube-level transforms (pivot,
  * rotation, inflate, mirror, UVs) are baked in — the bone's own animated transform is applied live at draw
  * time. That makes the cache pose-independent: one bake per model serves every instance at any turret/wheel
  * angle.
  * <p>
- * <b>Async pipeline</b> (per the worker-pool request): {@code renderCubesOfBone} reads only immutable
- * {@code GeoCube} records and writes a thread-local {@link BufferBuilder}, so the CPU mesh build runs on
- * {@link Util#backgroundExecutor()}. The resulting {@code RenderedBuffer}s are then uploaded to GPU
- * {@link VertexBuffer}s on the render thread (GL calls must stay there). While a model is baking, callers get
- * {@code null} and the bone simply tessellates as usual — no hitch, graceful fallback.
+ * <b>Async pipeline</b>: {@code renderCubesOfBone} reads only immutable {@code GeoCube} records and writes a
+ * thread-local {@link BufferBuilder}, so the CPU mesh build runs on {@link Util#backgroundExecutor()}. The
+ * resulting {@code RenderedBuffer}s are then uploaded to GPU {@link VertexBuffer}s on the render thread (GL
+ * calls must stay there). While a model is baking, callers get {@code null} and the bone simply tessellates as
+ * usual — no hitch, graceful fallback.
  */
-public final class VehicleMeshCache {
+public final class KmodoMeshCache {
 
-    private VehicleMeshCache() {}
+    private KmodoMeshCache() {}
 
     private static final Map<ResourceLocation, ModelState> STATES = new ConcurrentHashMap<>();
 
@@ -99,7 +99,7 @@ public final class VehicleMeshCache {
             state.pending = out;
             state.status = ModelState.BUILT;
         } catch (Throwable t) {
-            WFCore.LOGGER.warn("[wfcore] async vehicle mesh bake failed for {}", res, t);
+            WFCore.LOGGER.warn("[wfcore] Kmodo async mesh bake failed for {}", res, t);
             state.status = ModelState.FAILED;
         }
     }

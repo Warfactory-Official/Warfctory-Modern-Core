@@ -1,4 +1,4 @@
-package com.norwood.wfcore.client.render.vehicle;
+package com.norwood.wfcore.client.render.kmodo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -17,20 +17,20 @@ import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.renderer.GeoRenderer;
 
 /**
- * Collects the retained bone draws for one vehicle during GeckoLib's bone recursion, then draws them all in a
- * single render-state pass at the end of the vehicle's render.
+ * Kmodo Accelerator — collects the retained bone draws for one vehicle during GeckoLib's bone recursion, then
+ * draws them all in a single render-state pass at the end of the vehicle's render.
  * <p>
- * {@code GeoCubeRetainMixin} calls {@link #tryRecord} in place of each {@code renderCubesOfBone}: for an
+ * {@code KmodoCubeRedirectMixin} calls {@link #tryRecord} in place of each {@code renderCubesOfBone}: for an
  * eligible vehicle whose bone mesh is baked, it records the bone's cached {@link VertexBuffer} together with the
  * live pose GeckoLib has already applied for that bone (so turret slew, barrels and wheels are all preserved on
- * the GPU with no per-vertex tessellation). {@code VehicleRetainFlushMixin} then calls {@link #flush} at the
- * end of {@code VehicleRenderer.render}, so the whole vehicle costs one render-state setup, not one per bone.
+ * the GPU with no per-vertex tessellation). {@code KmodoFlushMixin} then calls {@link #flush} at the end of
+ * {@code VehicleRenderer.render}, so the whole vehicle costs one render-state setup, not one per bone.
  * <p>
  * Render thread only (Minecraft entity rendering is single-threaded), so the buffers are plain static lists.
  */
-public final class VehicleBoneAccumulator {
+public final class KmodoAccumulator {
 
-    private VehicleBoneAccumulator() {}
+    private KmodoAccumulator() {}
 
     private static final List<VertexBuffer> BUFFERS = new ArrayList<>();
     private static final List<Matrix4f> MATRICES = new ArrayList<>();
@@ -43,10 +43,10 @@ public final class VehicleBoneAccumulator {
         if (!(animatable instanceof VehicleEntity vehicle)) {
             return false;
         }
-        if (!WFVehicleRenderConfig.retainEnabled() || !WFVehicleRenderConfig.rawDrawAllowed()) {
+        if (!KmodoConfig.retainEnabled() || !KmodoConfig.rawDrawAllowed()) {
             return false;
         }
-        VertexBuffer vbo = VehicleMeshCache.getBone(renderer, vehicle, bone.getName());
+        VertexBuffer vbo = KmodoMeshCache.getBone(renderer, vehicle, bone.getName());
         if (vbo == null) {
             return false; // not baked yet → tessellate this bone this frame
         }
@@ -71,13 +71,13 @@ public final class VehicleBoneAccumulator {
         }
         if (!logged) {
             logged = true;
-            WFCore.LOGGER.info("[wfcore] retained vehicle rendering engaged ({} bone buffers on first vehicle)",
-                    BUFFERS.size());
+            WFCore.LOGGER.info("[wfcore] Kmodo Accelerator engaged — retained vehicle rendering "
+                    + "({} bone buffers on first vehicle)", BUFFERS.size());
         }
         try {
-            BakedMeshRenderer.drawBatch(BUFFERS, MATRICES, texture, level, packedLight);
+            KmodoRenderer.drawBatch(BUFFERS, MATRICES, texture, level, packedLight);
         } catch (Throwable t) {
-            WFCore.LOGGER.warn("[wfcore] retained vehicle draw failed", t);
+            WFCore.LOGGER.warn("[wfcore] Kmodo retained vehicle draw failed", t);
         } finally {
             clear();
         }

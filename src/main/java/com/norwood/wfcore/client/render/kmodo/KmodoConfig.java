@@ -1,10 +1,10 @@
-package com.norwood.wfcore.client.render.vehicle;
+package com.norwood.wfcore.client.render.kmodo;
 
 import net.minecraftforge.fml.ModList;
 
 /**
- * Feature gates for retained vehicle rendering. Deliberately static/simple so the render-thread hot path stays
- * allocation-free.
+ * Kmodo Accelerator — feature gates for retained vehicle rendering. Deliberately static/simple so the
+ * render-thread hot path stays allocation-free.
  * <p>
  * Retained rendering draws each bone's cached bone-local {@code VertexBuffer} at GeckoLib's live per-bone
  * matrix instead of re-tessellating the mesh every frame. It is on for every vehicle by default (bone-local
@@ -12,9 +12,9 @@ import net.minecraftforge.fml.ModList;
  * live matrix). It falls back to stock GeckoLib tessellation whenever an Iris/Oculus shader pack is active,
  * because a raw {@code drawWithShader} bypasses the shader pack's gbuffer pipeline.
  */
-public final class WFVehicleRenderConfig {
+public final class KmodoConfig {
 
-    private WFVehicleRenderConfig() {}
+    private KmodoConfig() {}
 
     private static volatile boolean RETAIN = true;
 
