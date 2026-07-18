@@ -76,6 +76,10 @@ public final class KmodoFlywheelEvents {
             if (entities != null) {
                 entities.queueAdd(vehicle);
             }
+            KmodoFlywheelVehicleVisual visual = KmodoFlywheelVehicleVisual.byEntity(vehicle.getId());
+            if (visual != null) {
+                visual.renderThreadUpdate(partialTick);
+            }
             if (drawHitboxes && !vehicle.isInvisible() && VisualizationHelper.skipVanillaRender(vehicle)) {
                 double ex = Mth.lerp((double) partialTick, vehicle.xOld, vehicle.getX());
                 double ey = Mth.lerp((double) partialTick, vehicle.yOld, vehicle.getY());

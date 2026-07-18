@@ -31,6 +31,7 @@
     "KmodoFlushMixin",
     "KmodoCubeRedirectMixin",
     "EntityRenderDispatcherAccessor",
+    "GeoEntityRendererAccessor",
     "LightTextureAccessor",
     "EditBoxAccessor",
     "EditBoxCursorRecursionMixin",

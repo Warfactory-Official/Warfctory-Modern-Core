@@ -4,18 +4,22 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.entity.EntityRenderer;
+import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 
 import com.atsuishio.superbwarfare.client.renderer.entity.VehicleRenderer;
 import com.atsuishio.superbwarfare.entity.vehicle.base.GeoVehicleEntity;
 import com.norwood.wfcore.client.render.kmodo.KmodoFlywheelModelCache.VehicleModels;
+import com.norwood.wfcore.mixin.GeoEntityRendererAccessor;
 import dev.engine_room.flywheel.api.backend.BackendManager;
 import dev.engine_room.flywheel.api.instance.Instancer;
 import dev.engine_room.flywheel.api.model.Model;
@@ -42,6 +46,8 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
     private static final long FNV_OFFSET = -3750763034362895579L;
     private static final long FNV_PRIME = 1099511628211L;
 
+    private static final Map<Integer, KmodoFlywheelVehicleVisual> BY_ENTITY = new ConcurrentHashMap<>();
+
     private final GeoRenderer renderer;
     private final Map<String, TransformedInstance> dynamicInstances = new HashMap<>();
     private TransformedInstance bodyInstance;
@@ -49,15 +55,118 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
 
     private final KmodoDormancy dormancy = new KmodoDormancy();
     private long poseHash;
-    private float lastVisualX;
-    private float lastVisualY;
-    private float lastVisualZ;
-    private boolean hasVisualPos;
+
+    private volatile Map<String, Matrix4f> boneLocal;
+    private volatile boolean dormantFlag;
+    private volatile long poseStamp;
+    private volatile float scaleW = 1.0f;
+    private volatile float scaleH = 1.0f;
+
+    private long appliedStamp = Long.MIN_VALUE;
+    private float appliedX;
+    private float appliedY;
+    private float appliedZ;
+    private boolean hasApplied;
 
     public KmodoFlywheelVehicleVisual(VisualizationContext ctx, GeoVehicleEntity entity, float partialTick) {
         super(ctx, entity, partialTick);
         EntityRenderer<?> er = Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(entity);
         this.renderer = (er instanceof GeoRenderer) ? (GeoRenderer) er : null;
+        BY_ENTITY.put(entity.getId(), this);
+    }
+
+    static KmodoFlywheelVehicleVisual byEntity(int entityId) {
+        return BY_ENTITY.get(entityId);
+    }
+
+    public void renderThreadUpdate(float partialTick) {
+        if (renderer == null || !KmodoConfig.flywheelEnabled() || !BackendManager.isBackendOn()) {
+            return;
+        }
+        VehicleModels models = KmodoFlywheelModelCache.getModels(renderer, entity);
+        if (models == null) {
+            return;
+        }
+        ResourceLocation res = modelRes();
+        if (res == null) {
+            return;
+        }
+        final boolean prof = KmodoProfiler.enabled();
+        long updateStart = prof ? System.nanoTime() : 0L;
+        if (prof) {
+            KmodoProfiler.countProcessed();
+        }
+
+        long dormStart = prof ? System.nanoTime() : 0L;
+        boolean needsUpdate = dormancy.needsUpdate(entity, false);
+        if (prof) {
+            KmodoProfiler.addPhase(KmodoProfiler.Phase.DORMANCY, System.nanoTime() - dormStart);
+            KmodoProfiler.countState(dormancy.state());
+        }
+        if (!needsUpdate) {
+            dormantFlag = true;
+            if (prof) {
+                KmodoProfiler.countSkipped();
+            }
+            return;
+        }
+
+        GeoModel geoModel = renderer.getGeoModel();
+        BakedGeoModel baked = bakedModel(res);
+        if (baked == null) {
+            return;
+        }
+
+        long animStart = prof ? System.nanoTime() : 0L;
+        geoModel.handleAnimations(entity, renderer.getInstanceId(entity),
+                new AnimationState<>(entity, 0f, 0f, partialTick, false));
+        if (prof) {
+            KmodoProfiler.addPhase(KmodoProfiler.Phase.ANIMATE, System.nanoTime() - animStart);
+        }
+
+        try {
+            renderer.preRender(new PoseStack(), entity, baked, null, null, false, partialTick, 0,
+                    OverlayTexture.NO_OVERLAY, 1f, 1f, 1f, 1f);
+            scaleW = ((GeoEntityRendererAccessor) renderer).wfcore$getScaleWidth();
+            scaleH = ((GeoEntityRendererAccessor) renderer).wfcore$getScaleHeight();
+        } catch (Throwable ignored) {
+        }
+
+        Set<String> dynBones = models.dynamicBones.keySet();
+        Map<String, Matrix4f> local = new HashMap<>();
+        poseHash = FNV_OFFSET;
+        long walkStart = prof ? System.nanoTime() : 0L;
+        PoseStack pose = new PoseStack();
+        for (Object top : baked.topLevelBones()) {
+            walkLocal(pose, (GeoBone) top, dynBones, local);
+        }
+        if (prof) {
+            KmodoProfiler.addPhase(KmodoProfiler.Phase.WALK, System.nanoTime() - walkStart);
+        }
+
+        boneLocal = local;
+        poseStamp++;
+        dormancy.recordPose(poseHash, entity.tickCount);
+        dormantFlag = dormancy.isDormant();
+
+        if (prof) {
+            KmodoProfiler.countUpdated();
+            KmodoProfiler.addUpdatedTotal(System.nanoTime() - updateStart);
+        }
+    }
+
+    private void walkLocal(PoseStack pose, GeoBone bone, Set<String> dynBones, Map<String, Matrix4f> out) {
+        pose.pushPose();
+        RenderUtils.prepMatrixForBone(pose, bone);
+        if (dynBones.contains(bone.getName())) {
+            Matrix4f m = new Matrix4f(pose.last().pose());
+            out.put(bone.getName(), m);
+            foldMatrix(m);
+        }
+        for (GeoBone child : bone.getChildBones()) {
+            walkLocal(pose, child, dynBones, out);
+        }
+        pose.popPose();
     }
 
     @Override
@@ -70,9 +179,6 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
         }
         final boolean prof = KmodoProfiler.enabled();
         long totalStart = prof ? System.nanoTime() : 0L;
-        if (prof) {
-            KmodoProfiler.countProcessed();
-        }
         float partialTick = ctx.partialTick();
 
         long bakeStart = prof ? System.nanoTime() : 0L;
@@ -81,9 +187,6 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
             KmodoProfiler.addPhase(KmodoProfiler.Phase.BAKE, System.nanoTime() - bakeStart);
         }
         if (models == null) {
-            if (prof) {
-                KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, System.nanoTime() - totalStart);
-            }
             return;
         }
         if (!instancesCreated) {
@@ -106,109 +209,59 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
             }
         }
         if (bodyInstance == null && dynamicInstances.isEmpty()) {
-            if (prof) {
-                KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, System.nanoTime() - totalStart);
-            }
             return;
         }
 
         ResourceLocation res = modelRes();
         if (res == null) {
-            if (prof) {
-                KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, System.nanoTime() - totalStart);
-            }
             return;
+        }
+
+        boolean dormant = dormantFlag;
+        if (KmodoDebug.enabled()) {
+            KmodoDebug.onDormancy(res, dormant);
         }
 
         Vector3f visualPos = getVisualPosition(partialTick);
-        boolean visualMoved = !hasVisualPos
-                || visualPos.x() != lastVisualX
-                || visualPos.y() != lastVisualY
-                || visualPos.z() != lastVisualZ;
-
-        long dormStart = prof ? System.nanoTime() : 0L;
-        boolean needsUpdate = dormancy.needsUpdate(entity, visualMoved);
-        if (prof) {
-            KmodoProfiler.addPhase(KmodoProfiler.Phase.DORMANCY, System.nanoTime() - dormStart);
-            KmodoProfiler.countState(dormancy.state());
-        }
-        if (!needsUpdate) {
-            if (KmodoDebug.enabled()) {
-                KmodoDebug.onDormancy(res, true);
-            }
+        long stamp = poseStamp;
+        if (hasApplied && stamp == appliedStamp
+                && visualPos.x() == appliedX && visualPos.y() == appliedY && visualPos.z() == appliedZ) {
             if (prof) {
-                KmodoProfiler.countSkipped();
                 KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, System.nanoTime() - totalStart);
             }
             return;
         }
-        if (prof && visualMoved) {
-            KmodoProfiler.countWake();
-        }
 
-        poseHash = FNV_OFFSET;
-        foldFloat(visualPos.x());
-        foldFloat(visualPos.y());
-        foldFloat(visualPos.z());
+        Map<String, Matrix4f> local = boneLocal;
 
-        boolean posed = false;
-        long lockStart = prof ? System.nanoTime() : 0L;
-        synchronized (KmodoFlywheelModelCache.lockFor(res)) {
+        PoseStack pose = new PoseStack();
+        pose.translate(visualPos.x(), visualPos.y(), visualPos.z());
+        float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
+        ((VehicleRenderer) renderer).vehicleAxis(entity, pose, yaw, partialTick);
+        pose.scale(scaleW, scaleH, scaleW);
+        pose.mulPose(Axis.YP.rotationDegrees(180.0F));
+        pose.translate(0.0F, 0.01F, 0.0F);
+        Matrix4f root = pose.last().pose();
+
+        if (bodyInstance != null) {
+            bodyInstance.setTransform(root);
+            bodyInstance.setChanged();
             if (prof) {
-                KmodoProfiler.addPhase(KmodoProfiler.Phase.LOCK_WAIT, System.nanoTime() - lockStart);
+                KmodoProfiler.countInstances(1);
             }
-            GeoModel geoModel = renderer.getGeoModel();
-            BakedGeoModel baked = bakedModel(res);
-            if (baked != null) {
-                long animStart = prof ? System.nanoTime() : 0L;
-                geoModel.handleAnimations(entity, renderer.getInstanceId(entity),
-                        new AnimationState<>(entity, 0f, 0f, partialTick, false));
-                if (prof) {
-                    KmodoProfiler.addPhase(KmodoProfiler.Phase.ANIMATE, System.nanoTime() - animStart);
-                }
-
-                PoseStack pose = new PoseStack();
-                pose.translate(visualPos.x(), visualPos.y(), visualPos.z());
-                float yaw = Mth.rotLerp(partialTick, entity.yRotO, entity.getYRot());
-                ((VehicleRenderer) renderer).vehicleAxis(entity, pose, yaw, partialTick);
-                pose.mulPose(Axis.YP.rotationDegrees(180.0F));
-                pose.translate(0.0F, 0.01F, 0.0F);
-
-                long walkStart = prof ? System.nanoTime() : 0L;
-                if (bodyInstance != null) {
-                    Matrix4f m = pose.last().pose();
-                    foldMatrix(m);
-                    bodyInstance.setTransform(m);
-                    bodyInstance.setChanged();
+        }
+        if (local != null && !dynamicInstances.isEmpty()) {
+            for (Map.Entry<String, TransformedInstance> e : dynamicInstances.entrySet()) {
+                Matrix4f lm = local.get(e.getKey());
+                if (lm != null) {
+                    e.getValue().setTransform(new Matrix4f(root).mul(lm));
+                    e.getValue().setChanged();
                     if (prof) {
                         KmodoProfiler.countInstances(1);
                     }
                 }
-                if (!dynamicInstances.isEmpty()) {
-                    for (Object top : baked.topLevelBones()) {
-                        walk(pose, (GeoBone) top, prof);
-                    }
-                }
-                if (prof) {
-                    KmodoProfiler.addPhase(KmodoProfiler.Phase.WALK, System.nanoTime() - walkStart);
-                }
-                posed = true;
             }
         }
-
-        lastVisualX = visualPos.x();
-        lastVisualY = visualPos.y();
-        lastVisualZ = visualPos.z();
-        hasVisualPos = true;
-
-        if (!posed) {
-            if (prof) {
-                KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, System.nanoTime() - totalStart);
-            }
-            return;
-        }
-
-        dormancy.recordPose(poseHash, entity.tickCount);
 
         List<FlatLit> lit = new ArrayList<>(dynamicInstances.values());
         if (bodyInstance != null) {
@@ -218,35 +271,20 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
         relight(partialTick, lit.toArray(new FlatLit[0]));
         if (prof) {
             KmodoProfiler.addPhase(KmodoProfiler.Phase.RELIGHT, System.nanoTime() - relightStart);
-            KmodoProfiler.countUpdated();
-            long totalDelta = System.nanoTime() - totalStart;
-            KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, totalDelta);
-            KmodoProfiler.addUpdatedTotal(totalDelta);
         }
+
+        appliedStamp = stamp;
+        appliedX = visualPos.x();
+        appliedY = visualPos.y();
+        appliedZ = visualPos.z();
+        hasApplied = true;
 
         if (KmodoDebug.enabled()) {
             KmodoDebug.onFlywheelFrameDrawing(res);
-            KmodoDebug.onDormancy(res, dormancy.isDormant());
         }
-    }
-
-    private void walk(PoseStack pose, GeoBone bone, boolean prof) {
-        pose.pushPose();
-        RenderUtils.prepMatrixForBone(pose, bone);
-        TransformedInstance instance = dynamicInstances.get(bone.getName());
-        if (instance != null) {
-            Matrix4f m = pose.last().pose();
-            foldMatrix(m);
-            instance.setTransform(m);
-            instance.setChanged();
-            if (prof) {
-                KmodoProfiler.countInstances(1);
-            }
+        if (prof) {
+            KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, System.nanoTime() - totalStart);
         }
-        for (GeoBone child : bone.getChildBones()) {
-            walk(pose, child, prof);
-        }
-        pose.popPose();
     }
 
     private void foldMatrix(Matrix4f m) {
@@ -279,6 +317,7 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
 
     @Override
     protected void _delete() {
+        BY_ENTITY.remove(entity.getId(), this);
 
         if (KmodoDebug.enabled() && instancesCreated) {
             ResourceLocation debugRes = modelRes();
