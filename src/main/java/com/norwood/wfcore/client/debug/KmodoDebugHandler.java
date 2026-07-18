@@ -11,8 +11,10 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
 import com.norwood.wfcore.WFCore;
+import com.norwood.wfcore.bench.KmodoBench;
 import com.norwood.wfcore.client.render.kmodo.KmodoDebug;
 import com.norwood.wfcore.client.render.kmodo.KmodoDebug.ModelStats;
+import com.norwood.wfcore.client.render.kmodo.KmodoProfiler;
 
 @Mod.EventBusSubscriber(modid = WFCore.MOD_ID, value = Dist.CLIENT)
 public final class KmodoDebugHandler {
@@ -26,6 +28,10 @@ public final class KmodoDebugHandler {
         }
 
         KmodoDebug.beginFrame();
+
+        // Advance the timed run/ab benchmark state machine on the same main-thread tick boundary
+        // (uses wall-clock deltas internally, so a paused game does not corrupt the capture window).
+        KmodoBench.tick();
 
         if (KmodoDebugKeyMappings.TOGGLE.consumeClick()) {
             boolean nowOn = KmodoDebug.toggle();
@@ -87,7 +93,14 @@ public final class KmodoDebugHandler {
 
     @SubscribeEvent
     public static void onRenderGui(RenderGuiEvent.Post event) {
-        if (!KmodoDebug.enabled()) {
+        // Roll the profiler window on the true render-frame boundary (after Flywheel's
+        // beginFrame worker barrier), NOT on the 20 Hz client tick — so per-frame metrics
+        // and percentiles are per render frame and A/B-comparable.
+        if (KmodoProfiler.enabled()) {
+            KmodoProfiler.rollFrame();
+        }
+
+        if (!KmodoDebug.enabled() && !KmodoProfiler.enabled()) {
             return;
         }
         Minecraft mc = Minecraft.getInstance();
@@ -96,6 +109,8 @@ public final class KmodoDebugHandler {
         int y = 6;
         final int lineH = 10;
 
+        if (KmodoDebug.enabled()) {
+
         gg.drawString(mc.font,
                 "§b[KmodoDebug]§r (TOGGLE=off / DUMP=refresh)", x, y, 0xFFFFFF);
         y += lineH;
@@ -103,8 +118,8 @@ public final class KmodoDebugHandler {
         if (KmodoDebug.allStats().isEmpty()) {
             gg.drawString(mc.font,
                     "§7  (no models tracked — drive a vehicle)", x, y, 0xAAAAAA);
-            return;
-        }
+            y += lineH;
+        } else {
 
         for (ModelStats s : KmodoDebug.allStats()) {
             KmodoDebug.Mode mode = s.lastMode;
@@ -149,5 +164,60 @@ public final class KmodoDebugHandler {
                     x, y, modeColor);
             y += lineH;
         }
+        }
+        y += lineH;
+        }
+
+        if (KmodoProfiler.enabled()) {
+            drawProfiler(mc, gg, x, y, lineH);
+        }
+    }
+
+    private static void drawProfiler(Minecraft mc, GuiGraphics gg, int x, int y, int lineH) {
+        KmodoProfiler.Snapshot s = KmodoProfiler.snapshot();
+
+        gg.drawString(mc.font, "§d[KmodoProfiler]§r "
+                + (KmodoProfiler.isRunActive() ? "§e(capturing)" : "") + " n=" + s.frames, x, y, 0xFFFFFF);
+        y += lineH;
+
+        gg.drawString(mc.font, String.format(
+                "§7fps §f%.0f§7 (mc %.0f)  frame §f%.2f§7ms", s.windowFps, s.mcFps, s.avgFrameMs),
+                x, y, 0xFFFFFF);
+        y += lineH;
+
+        gg.drawString(mc.font, String.format(
+                "§7veh CPU agg §f%.2f§7/p95 §f%.2f§7ms/frame  ~%.1f%% frame",
+                s.aggCpuMsPerFrameAvg, s.aggCpuMsPerFrameP95, s.pctOfFrame),
+                x, y, 0xFFDD55);
+        y += lineH;
+
+        gg.drawString(mc.font, String.format(
+                "§7per-veh §f%.1f§7us  upd/frame §f%.1f§7  bake/frame §f%.2f",
+                s.perVehicleCpuUs, s.updatedPerFrame, s.bakesPerFrame),
+                x, y, 0xFFDD55);
+        y += lineH;
+
+        gg.drawString(mc.font, String.format(
+                "§7ph(us) bake §f%.0f§7 anim §f%.0f§7 walk §f%.0f§7 relit §f%.0f§7 dorm §f%.0f§7 lock §f%.0f",
+                ns(s, KmodoProfiler.Phase.BAKE), ns(s, KmodoProfiler.Phase.ANIMATE),
+                ns(s, KmodoProfiler.Phase.WALK), ns(s, KmodoProfiler.Phase.RELIGHT),
+                ns(s, KmodoProfiler.Phase.DORMANCY), ns(s, KmodoProfiler.Phase.LOCK_WAIT)),
+                x, y, 0xAAAAAA);
+        y += lineH;
+
+        gg.drawString(mc.font, String.format(
+                "§7state act §f%.1f§7 set §f%.1f§7 drm §f%.1f§7  wake/s §f%.1f",
+                s.stateActiveAvg, s.stateSettlingAvg, s.stateDormantAvg, s.wakePerSec),
+                x, y, 0x55FFFF);
+        y += lineH;
+
+        gg.drawString(mc.font, String.format(
+                "§7megabuffer: inst/frame §f%.0f§7 live §f%d§7 verts §f%d§7 gpu §f%d§7kB",
+                s.instancesPerFrame, s.liveInstances, s.totalVertices, s.gpuBytes / 1024),
+                x, y, 0x55FF55);
+    }
+
+    private static double ns(KmodoProfiler.Snapshot s, KmodoProfiler.Phase p) {
+        return s.phaseAvgNanos[p.ordinal()] / 1000.0;
     }
 }

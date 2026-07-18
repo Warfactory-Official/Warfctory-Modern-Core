@@ -64,6 +64,25 @@ public final class KmodoDormancy {
         return dormant && KmodoConfig.dormancyEnabled();
     }
 
+    public enum State {
+        ACTIVE,
+        SETTLING,
+        DORMANT
+    }
+
+    public State state() {
+        if (!KmodoConfig.dormancyEnabled()) {
+            return State.ACTIVE;
+        }
+        if (dormant) {
+            return State.DORMANT;
+        }
+        if (stableCount > 0) {
+            return State.SETTLING;
+        }
+        return State.ACTIVE;
+    }
+
     private void wake() {
         dormant = false;
         stableCount = 0;

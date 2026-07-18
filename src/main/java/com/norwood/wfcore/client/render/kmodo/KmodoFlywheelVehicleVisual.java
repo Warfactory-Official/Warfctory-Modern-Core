@@ -68,13 +68,28 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
         if (!isVisible(ctx.frustum())) {
             return;
         }
+        final boolean prof = KmodoProfiler.enabled();
+        long totalStart = prof ? System.nanoTime() : 0L;
+        if (prof) {
+            KmodoProfiler.countProcessed();
+        }
         float partialTick = ctx.partialTick();
 
+        long bakeStart = prof ? System.nanoTime() : 0L;
         VehicleModels models = KmodoFlywheelModelCache.getModels(renderer, entity);
+        if (prof) {
+            KmodoProfiler.addPhase(KmodoProfiler.Phase.BAKE, System.nanoTime() - bakeStart);
+        }
         if (models == null) {
+            if (prof) {
+                KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, System.nanoTime() - totalStart);
+            }
             return;
         }
         if (!instancesCreated) {
+            if (prof) {
+                KmodoProfiler.countBake();
+            }
             if (models.body != null) {
                 bodyInstance = instancer(models.body).createInstance();
             }
@@ -91,11 +106,17 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
             }
         }
         if (bodyInstance == null && dynamicInstances.isEmpty()) {
+            if (prof) {
+                KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, System.nanoTime() - totalStart);
+            }
             return;
         }
 
         ResourceLocation res = modelRes();
         if (res == null) {
+            if (prof) {
+                KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, System.nanoTime() - totalStart);
+            }
             return;
         }
 
@@ -105,11 +126,24 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
                 || visualPos.y() != lastVisualY
                 || visualPos.z() != lastVisualZ;
 
-        if (!dormancy.needsUpdate(entity, visualMoved)) {
+        long dormStart = prof ? System.nanoTime() : 0L;
+        boolean needsUpdate = dormancy.needsUpdate(entity, visualMoved);
+        if (prof) {
+            KmodoProfiler.addPhase(KmodoProfiler.Phase.DORMANCY, System.nanoTime() - dormStart);
+            KmodoProfiler.countState(dormancy.state());
+        }
+        if (!needsUpdate) {
             if (KmodoDebug.enabled()) {
                 KmodoDebug.onDormancy(res, true);
             }
+            if (prof) {
+                KmodoProfiler.countSkipped();
+                KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, System.nanoTime() - totalStart);
+            }
             return;
+        }
+        if (prof && visualMoved) {
+            KmodoProfiler.countWake();
         }
 
         poseHash = FNV_OFFSET;
@@ -118,12 +152,20 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
         foldFloat(visualPos.z());
 
         boolean posed = false;
+        long lockStart = prof ? System.nanoTime() : 0L;
         synchronized (KmodoFlywheelModelCache.lockFor(res)) {
+            if (prof) {
+                KmodoProfiler.addPhase(KmodoProfiler.Phase.LOCK_WAIT, System.nanoTime() - lockStart);
+            }
             GeoModel geoModel = renderer.getGeoModel();
             BakedGeoModel baked = bakedModel(res);
             if (baked != null) {
+                long animStart = prof ? System.nanoTime() : 0L;
                 geoModel.handleAnimations(entity, renderer.getInstanceId(entity),
                         new AnimationState<>(entity, 0f, 0f, partialTick, false));
+                if (prof) {
+                    KmodoProfiler.addPhase(KmodoProfiler.Phase.ANIMATE, System.nanoTime() - animStart);
+                }
 
                 PoseStack pose = new PoseStack();
                 pose.translate(visualPos.x(), visualPos.y(), visualPos.z());
@@ -132,16 +174,23 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
                 pose.mulPose(Axis.YP.rotationDegrees(180.0F));
                 pose.translate(0.0F, 0.01F, 0.0F);
 
+                long walkStart = prof ? System.nanoTime() : 0L;
                 if (bodyInstance != null) {
                     Matrix4f m = pose.last().pose();
                     foldMatrix(m);
                     bodyInstance.setTransform(m);
                     bodyInstance.setChanged();
+                    if (prof) {
+                        KmodoProfiler.countInstances(1);
+                    }
                 }
                 if (!dynamicInstances.isEmpty()) {
                     for (Object top : baked.topLevelBones()) {
-                        walk(pose, (GeoBone) top);
+                        walk(pose, (GeoBone) top, prof);
                     }
+                }
+                if (prof) {
+                    KmodoProfiler.addPhase(KmodoProfiler.Phase.WALK, System.nanoTime() - walkStart);
                 }
                 posed = true;
             }
@@ -153,6 +202,9 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
         hasVisualPos = true;
 
         if (!posed) {
+            if (prof) {
+                KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, System.nanoTime() - totalStart);
+            }
             return;
         }
 
@@ -162,7 +214,15 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
         if (bodyInstance != null) {
             lit.add(bodyInstance);
         }
+        long relightStart = prof ? System.nanoTime() : 0L;
         relight(partialTick, lit.toArray(new FlatLit[0]));
+        if (prof) {
+            KmodoProfiler.addPhase(KmodoProfiler.Phase.RELIGHT, System.nanoTime() - relightStart);
+            KmodoProfiler.countUpdated();
+            long totalDelta = System.nanoTime() - totalStart;
+            KmodoProfiler.addPhase(KmodoProfiler.Phase.TOTAL, totalDelta);
+            KmodoProfiler.addUpdatedTotal(totalDelta);
+        }
 
         if (KmodoDebug.enabled()) {
             KmodoDebug.onFlywheelFrameDrawing(res);
@@ -170,7 +230,7 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
         }
     }
 
-    private void walk(PoseStack pose, GeoBone bone) {
+    private void walk(PoseStack pose, GeoBone bone, boolean prof) {
         pose.pushPose();
         RenderUtils.prepMatrixForBone(pose, bone);
         TransformedInstance instance = dynamicInstances.get(bone.getName());
@@ -179,9 +239,12 @@ public class KmodoFlywheelVehicleVisual extends AbstractEntityVisual<GeoVehicleE
             foldMatrix(m);
             instance.setTransform(m);
             instance.setChanged();
+            if (prof) {
+                KmodoProfiler.countInstances(1);
+            }
         }
         for (GeoBone child : bone.getChildBones()) {
-            walk(pose, child);
+            walk(pose, child, prof);
         }
         pose.popPose();
     }

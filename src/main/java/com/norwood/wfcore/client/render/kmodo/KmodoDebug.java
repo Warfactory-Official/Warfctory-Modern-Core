@@ -27,6 +27,10 @@ public final class KmodoDebug {
         return ENABLED;
     }
 
+    public static void setEnabled(boolean value) {
+        ENABLED = value;
+    }
+
     public enum Mode {
 
         FLYWHEEL,
