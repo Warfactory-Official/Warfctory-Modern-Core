@@ -1,37 +1,61 @@
 package com.norwood.wfcore.client.render.kmodo;
 
+import net.minecraft.util.Mth;
+import net.minecraft.world.entity.EntityType;
+
 import com.atsuishio.superbwarfare.entity.vehicle.base.AutoAimableEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.base.GeoVehicleEntity;
+
+import com.norwood.wfcore.config.WFCoreConfig;
 
 public final class KmodoDormancy {
 
     private static final int STABLE_FRAMES = 3;
-    private static final int PROBE_INTERVAL = 20;
+    private static final int MIN_PROBE_INTERVAL = 20;
+    private static final int MAX_PROBE_INTERVAL = 160;
     private static final String NO_TARGET = "undefined";
 
+    private static final double MOVE_EPS_SQ = 1.0e-4;
+    private static final double POS_EPS = 1.0e-3;
+    private static final float ROT_EPS = 0.05f;
+
     private boolean dormant;
+    private boolean dormancyBlocked;
     private int stableCount;
     private long lastHash;
     private boolean hasHash;
     private long lastProbeTick;
-    private boolean hasProbeTick;
+    private int probeInterval = MIN_PROBE_INTERVAL;
+    private boolean probePending;
+
+
+    private boolean probeAllowed;
+    private int probePolicyGen = -1;
 
     public boolean needsUpdate(GeoVehicleEntity e, boolean visualMoved) {
         if (!KmodoConfig.dormancyEnabled()) {
             dormant = false;
+            dormancyBlocked = false;
             return true;
         }
+
+        dormancyBlocked = occupied(e);
         if (!dormant) {
             return true;
         }
-        if (visualMoved || wakeSignal(e)) {
+        if (visualMoved || dormancyBlocked || wakeSignal(e)) {
             wake();
             return true;
         }
+        if (!probeAllowed(e)) {
+
+            return false;
+        }
         long now = e.tickCount;
-        if (!hasProbeTick || now - lastProbeTick >= PROBE_INTERVAL) {
+        int phase = Math.floorMod(e.getId(), probeInterval);
+        if (now != lastProbeTick && Math.floorMod(now, probeInterval) == phase) {
             lastProbeTick = now;
-            hasProbeTick = true;
+            probePending = true;
             return true;
         }
         return false;
@@ -43,21 +67,33 @@ public final class KmodoDormancy {
             lastHash = hash;
             hasHash = true;
             lastProbeTick = tick;
-            hasProbeTick = true;
+            probeInterval = MIN_PROBE_INTERVAL;
+            probePending = false;
             return;
         }
-        if (hasHash && hash == lastHash) {
+        if (dormancyBlocked) {
+            // Occupied vehicles stay live regardless of how still they are
+
+            stableCount = 0;
+            dormant = false;
+            probeInterval = MIN_PROBE_INTERVAL;
+        } else if (hasHash && hash == lastHash) {
             if (!dormant && ++stableCount >= STABLE_FRAMES) {
                 dormant = true;
+            }
+            // A probe that found no pose change: prove-out the vehicle by backing off.
+            if (probePending && probeInterval < MAX_PROBE_INTERVAL) {
+                probeInterval = Math.min(probeInterval * 2, MAX_PROBE_INTERVAL);
             }
         } else {
             stableCount = 0;
             dormant = false;
+            probeInterval = MIN_PROBE_INTERVAL;
         }
         lastHash = hash;
         hasHash = true;
         lastProbeTick = tick;
-        hasProbeTick = true;
+        probePending = false;
     }
 
     public boolean isDormant() {
@@ -86,28 +122,48 @@ public final class KmodoDormancy {
     private void wake() {
         dormant = false;
         stableCount = 0;
+        probeInterval = MIN_PROBE_INTERVAL;
+        probePending = false;
+    }
+
+    /** Whether this vehicle is opted into the periodic probe. Cached, re-resolved only on config re-bake. */
+    private boolean probeAllowed(GeoVehicleEntity e) {
+        int gen = WFCoreConfig.probeVehiclesGeneration();
+        if (gen != probePolicyGen) {
+            probePolicyGen = gen;
+            EntityType<?> type = e.getType();
+            probeAllowed = WFCoreConfig.shouldProbeVehicle(EntityType.getKey(type).toString());
+        }
+        return probeAllowed;
+    }
+
+
+    private static boolean occupied(GeoVehicleEntity e) {
+        return e.isVehicle() || e.getFirstPassenger() != null;
     }
 
     private boolean wakeSignal(GeoVehicleEntity e) {
-        if (e.getControllingPassenger() != null) {
+        if (e.getDeltaMovement().lengthSqr() > MOVE_EPS_SQ) {
             return true;
         }
-        if (e.isVehicle()) {
+        if (Math.abs(e.getX() - e.xOld) > POS_EPS
+                || Math.abs(e.getY() - e.yOld) > POS_EPS
+                || Math.abs(e.getZ() - e.zOld) > POS_EPS) {
             return true;
         }
-        if (e.getDeltaMovement().lengthSqr() > 1.0e-6) {
+        if (Math.abs(Mth.degreesDifference(e.yRotO, e.getYRot())) > ROT_EPS
+                || Math.abs(Mth.degreesDifference(e.xRotO, e.getXRot())) > ROT_EPS) {
             return true;
         }
-        if (e.getX() != e.xOld || e.getY() != e.yOld || e.getZ() != e.zOld) {
+        if (Math.abs(Mth.degreesDifference(e.getPrevRoll(), e.getRoll())) > ROT_EPS) {
             return true;
         }
-        if (e.getYRot() != e.yRotO || e.getXRot() != e.xRotO) {
+        if (Math.abs(Mth.degreesDifference(e.getTurretYRotO(), e.getTurretYRot())) > ROT_EPS
+                || Math.abs(Mth.degreesDifference(e.getTurretXRotO(), e.getTurretXRot())) > ROT_EPS) {
             return true;
         }
-        if (e.getTurretYRot() != e.getTurretYRotO() || e.getTurretXRot() != e.getTurretXRotO()) {
-            return true;
-        }
-        if (e.getGunYRot() != e.getGunYRotO() || e.getGunXRot() != e.getGunXRotO()) {
+        if (Math.abs(Mth.degreesDifference(e.getGunYRotO(), e.getGunYRot())) > ROT_EPS
+                || Math.abs(Mth.degreesDifference(e.getGunXRotO(), e.getGunXRot())) > ROT_EPS) {
             return true;
         }
         if (e.getCannonRecoilTime() > 0) {

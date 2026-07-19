@@ -9,6 +9,7 @@ public final class KmodoConfig {
     private static volatile boolean RETAIN = true;
     private static volatile boolean FLYWHEEL = true;
     private static volatile boolean DORMANCY = true;
+    private static volatile boolean GARAGE = false;
 
     public static boolean retainEnabled() {
         return RETAIN;
@@ -32,6 +33,14 @@ public final class KmodoConfig {
 
     public static void setFlywheel(boolean enabled) {
         FLYWHEEL = enabled;
+    }
+
+    public static boolean garageEnabled() {
+        return GARAGE;
+    }
+
+    public static void setGarage(boolean enabled) {
+        GARAGE = enabled;
     }
 
     public static boolean rawDrawAllowed() {

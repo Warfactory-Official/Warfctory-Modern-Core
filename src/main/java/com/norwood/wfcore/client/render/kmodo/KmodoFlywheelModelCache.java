@@ -93,6 +93,23 @@ public final class KmodoFlywheelModelCache {
         return false;
     }
 
+    /**
+     * Dynamic classification for a specific model res. On LOD models the ~200 track-segment bones are
+     * baked into the static body instead of each becoming a persistent Flywheel instance — track scroll
+     * is invisible at range and the instance count is what drives Flywheel's per-frame GC. The full
+     * (closest) model keeps them animated.
+     */
+    private static boolean isDynamicFor(String boneName, boolean lodModel) {
+        if (lodModel && boneName != null && boneName.toLowerCase(Locale.ROOT).contains("track")) {
+            return false;
+        }
+        return isDynamic(boneName);
+    }
+
+    private static boolean isLodModel(ResourceLocation res) {
+        return res != null && res.getPath().contains("_lod");
+    }
+
     public static VehicleModels getModels(GeoRenderer<?> renderer, GeoVehicleEntity entity) {
         ResourceLocation res = modelRes(renderer, entity);
         if (res == null) {
@@ -145,10 +162,15 @@ public final class KmodoFlywheelModelCache {
             Map<String, Integer> dynamicBoneVertCounts = new HashMap<>();
             boolean[] anyBody = {false};
 
+            boolean lodModel = isLodModel(res);
+            // Dedup identical dynamic-bone meshes (e.g. the ~200 track links are one mesh baked in
+            // pivot-local space, differing only by their instance transform). Sharing one Model makes
+            // them share one Flywheel instancer/draw call instead of one instancer per bone.
+            Map<ByteBuffer, Model> meshDedup = new HashMap<>();
             PoseStack pose = new PoseStack();
             for (GeoBone top : baked.topLevelBones()) {
                 bakeWalk(renderer, pose, top, false, body, dynamicBones, material, state.blocks, anyBody,
-                        dynamicBoneVertCounts);
+                        dynamicBoneVertCounts, lodModel, meshDedup);
             }
 
             Model bodyModel = null;
@@ -167,6 +189,8 @@ public final class KmodoFlywheelModelCache {
                 int dynVerts = dynamicBoneVertCounts.values().stream().mapToInt(Integer::intValue).sum();
                 long gpuBytes = state.blocks.stream().mapToLong(dev.engine_room.flywheel.lib.memory.MemoryBlock::size).sum();
                 KmodoDebug.onFlywheelBaked(res, bodyVertices, dynamicBones.size(), dynVerts, gpuBytes);
+                WFCore.LOGGER.info("[Kmodo] {} baked: {} dynamic bones -> {} unique meshes/instancers{}",
+                        res, dynamicBones.size(), meshDedup.size(), lodModel ? " (LOD, tracks baked)" : "");
             }
         } catch (Throwable t) {
             WFCore.LOGGER.warn("[wfcore] Kmodo Flywheel model bake failed for {}", res, t);
@@ -177,8 +201,9 @@ public final class KmodoFlywheelModelCache {
     private static void bakeWalk(GeoRenderer<?> renderer, PoseStack pose, GeoBone bone, boolean dynamicAncestor,
                                  BufferBuilder body, Map<String, Model> dynamicBones, Material material,
                                  List<MemoryBlock> blocks, boolean[] anyBody,
-                                 Map<String, Integer> dynamicBoneVertCounts) {
-        boolean dynamic = dynamicAncestor || isDynamic(bone.getName());
+                                 Map<String, Integer> dynamicBoneVertCounts, boolean lodModel,
+                                 Map<ByteBuffer, Model> meshDedup) {
+        boolean dynamic = dynamicAncestor || isDynamicFor(bone.getName(), lodModel);
         boolean drawable = bone.getName() != null && !bone.getName().endsWith("_dogTag")
                 && !bone.isHidden() && !bone.getCubes().isEmpty();
 
@@ -188,7 +213,7 @@ public final class KmodoFlywheelModelCache {
         if (dynamic) {
             if (drawable) {
                 int[] vertCount = {0};
-                Model model = bakeBoneLocal(renderer, bone, material, blocks, vertCount);
+                Model model = bakeBoneLocal(renderer, bone, material, blocks, vertCount, meshDedup);
                 if (model != null) {
                     dynamicBones.put(bone.getName(), model);
                     if (KmodoDebug.enabled()) {
@@ -205,13 +230,14 @@ public final class KmodoFlywheelModelCache {
 
         for (GeoBone child : bone.getChildBones()) {
             bakeWalk(renderer, pose, child, dynamic, body, dynamicBones, material, blocks, anyBody,
-                    dynamicBoneVertCounts);
+                    dynamicBoneVertCounts, lodModel, meshDedup);
         }
         pose.popPose();
     }
 
     private static Model bakeBoneLocal(GeoRenderer<?> renderer, GeoBone bone, Material material,
-                                       List<MemoryBlock> blocks, int[] vertCountOut) {
+                                       List<MemoryBlock> blocks, int[] vertCountOut,
+                                       Map<ByteBuffer, Model> meshDedup) {
         try {
             BufferBuilder builder = new BufferBuilder(512);
             builder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.NEW_ENTITY);
@@ -221,12 +247,42 @@ public final class KmodoFlywheelModelCache {
             if (vertCountOut != null) {
                 vertCountOut[0] = rendered.drawState().vertexCount();
             }
+            ByteBuffer signature = meshSignature(rendered);
+            Model shared = signature == null ? null : meshDedup.get(signature);
+            if (shared != null) {
+                // Identical geometry already baked (e.g. another track link / wheel): reuse its Model
+                // so both bones instance from one instancer, and don't allocate a duplicate GPU buffer.
+                rendered.release();
+                return shared;
+            }
             Model model = toModel(rendered, material, bone.getName(), blocks);
             rendered.release();
+            if (model != null && signature != null) {
+                meshDedup.put(signature, model);
+            }
             return model;
         } catch (Throwable t) {
             return null;
         }
+    }
+
+    /** Exact content key (heap ByteBuffer has content-based equals/hashCode) over a bone's baked verts. */
+    private static ByteBuffer meshSignature(BufferBuilder.RenderedBuffer rendered) {
+        BufferBuilder.DrawState draw = rendered.drawState();
+        int count = draw.vertexCount();
+        if (count == 0) {
+            return null;
+        }
+        int stride = draw.format().getVertexSize();
+        ByteBuffer src = rendered.vertexBuffer().duplicate().order(ByteOrder.nativeOrder());
+        int origin = src.position();
+        int total = count * stride;
+        ByteBuffer sig = ByteBuffer.allocate(total);
+        for (int i = 0; i < total; i++) {
+            sig.put(src.get(origin + i));
+        }
+        sig.flip();
+        return sig;
     }
 
     private static Model toModel(BufferBuilder.RenderedBuffer rendered, Material material, String name,

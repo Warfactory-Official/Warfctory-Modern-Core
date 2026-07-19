@@ -15,6 +15,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.entity.PartEntity;
+import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
@@ -25,6 +26,7 @@ import dev.engine_room.flywheel.api.backend.BackendManager;
 import dev.engine_room.flywheel.api.visualization.VisualManager;
 import dev.engine_room.flywheel.api.visualization.VisualizationManager;
 import dev.engine_room.flywheel.lib.visualization.VisualizationHelper;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import software.bernie.geckolib.renderer.GeoRenderer;
@@ -33,6 +35,30 @@ import software.bernie.geckolib.renderer.GeoRenderer;
 public final class KmodoFlywheelEvents {
 
     private KmodoFlywheelEvents() {}
+
+    @SubscribeEvent
+    public static void onRenderTick(TickEvent.RenderTickEvent event) {
+        if (event.phase != TickEvent.Phase.START) {
+            return;
+        }
+        if (!KmodoConfig.flywheelEnabled() || !BackendManager.isBackendOn()) {
+            return;
+        }
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null) {
+            return;
+        }
+        float partialTick = event.renderTickTime;
+        for (Entity entity : mc.level.entitiesForRendering()) {
+            if (!(entity instanceof GeoVehicleEntity vehicle)) {
+                continue;
+            }
+            KmodoFlywheelVehicleVisual visual = KmodoFlywheelVehicleVisual.byEntity(vehicle.getId());
+            if (visual != null) {
+                visual.renderThreadUpdate(partialTick);
+            }
+        }
+    }
 
     @SubscribeEvent
     public static void onRenderStage(RenderLevelStageEvent event) {
@@ -65,9 +91,15 @@ public final class KmodoFlywheelEvents {
         MultiBufferSource.BufferSource buffers = mc.renderBuffers().bufferSource();
         boolean drewHitbox = false;
 
+        boolean garage = KmodoConfig.garageEnabled() && KmodoConfig.rawDrawAllowed();
+        IntOpenHashSet liveIds = garage ? new IntOpenHashSet() : null;
+
         for (Entity entity : mc.level.entitiesForRendering()) {
             if (!(entity instanceof GeoVehicleEntity vehicle)) {
                 continue;
+            }
+            if (liveIds != null) {
+                liveIds.add(vehicle.getId());
             }
             EntityRenderer<?> er = mc.getEntityRenderDispatcher().getRenderer(vehicle);
             if (er instanceof GeoRenderer<?> renderer) {
@@ -76,14 +108,10 @@ public final class KmodoFlywheelEvents {
             if (entities != null) {
                 entities.queueAdd(vehicle);
             }
-            KmodoFlywheelVehicleVisual visual = KmodoFlywheelVehicleVisual.byEntity(vehicle.getId());
-            if (visual != null) {
-                visual.renderThreadUpdate(partialTick);
-            }
             if (drawHitboxes && !vehicle.isInvisible() && VisualizationHelper.skipVanillaRender(vehicle)) {
-                double ex = Mth.lerp((double) partialTick, vehicle.xOld, vehicle.getX());
-                double ey = Mth.lerp((double) partialTick, vehicle.yOld, vehicle.getY());
-                double ez = Mth.lerp((double) partialTick, vehicle.zOld, vehicle.getZ());
+                double ex = Mth.lerp(partialTick, vehicle.xOld, vehicle.getX());
+                double ey = Mth.lerp(partialTick, vehicle.yOld, vehicle.getY());
+                double ez = Mth.lerp(partialTick, vehicle.zOld, vehicle.getZ());
                 pose.pushPose();
                 pose.translate(ex - cam.x, ey - cam.y, ez - cam.z);
                 renderHitbox(pose, buffers.getBuffer(RenderType.lines()), vehicle, partialTick);
@@ -95,6 +123,26 @@ public final class KmodoFlywheelEvents {
         if (drewHitbox) {
             buffers.endBatch(RenderType.lines());
         }
+
+        if (garage) {
+            drawGarage(mc, event, cam, liveIds);
+        } else if (KmodoGarage.poolCount() > 0) {
+            KmodoGarage.invalidateAll();
+        }
+    }
+
+    private static void drawGarage(Minecraft mc, RenderLevelStageEvent event, Vec3 cam, IntOpenHashSet liveIds) {
+        VisualizationManager manager = VisualizationManager.supportsVisualization(mc.level)
+                ? VisualizationManager.get(mc.level) : null;
+        if (manager == null) {
+            return;
+        }
+        KmodoGarage.syncOrigin(manager.renderOrigin());
+        KmodoGarage.freeMissing(liveIds);
+        KmodoGarage.compactStep();
+        Matrix4f cameraView = new Matrix4f(event.getPoseStack().last().pose());
+        Matrix4f projection = event.getProjectionMatrix();
+        KmodoGarage.drawAll(cameraView, projection, cam.x, cam.y, cam.z);
     }
 
     private static void renderHitbox(PoseStack pose, VertexConsumer lines, Entity entity, float partialTick) {
@@ -102,14 +150,14 @@ public final class KmodoFlywheelEvents {
         LevelRenderer.renderLineBox(pose, lines, box, 1.0F, 1.0F, 1.0F, 1.0F);
 
         if (entity.isMultipartEntity() && entity.getParts() != null) {
-            double px = -Mth.lerp((double) partialTick, entity.xOld, entity.getX());
-            double py = -Mth.lerp((double) partialTick, entity.yOld, entity.getY());
-            double pz = -Mth.lerp((double) partialTick, entity.zOld, entity.getZ());
+            double px = -Mth.lerp(partialTick, entity.xOld, entity.getX());
+            double py = -Mth.lerp(partialTick, entity.yOld, entity.getY());
+            double pz = -Mth.lerp(partialTick, entity.zOld, entity.getZ());
             for (PartEntity<?> part : entity.getParts()) {
                 pose.pushPose();
-                pose.translate(px + Mth.lerp((double) partialTick, part.xOld, part.getX()),
-                        py + Mth.lerp((double) partialTick, part.yOld, part.getY()),
-                        pz + Mth.lerp((double) partialTick, part.zOld, part.getZ()));
+                pose.translate(px + Mth.lerp(partialTick, part.xOld, part.getX()),
+                        py + Mth.lerp(partialTick, part.yOld, part.getY()),
+                        pz + Mth.lerp(partialTick, part.zOld, part.getZ()));
                 LevelRenderer.renderLineBox(pose, lines,
                         part.getBoundingBox().move(-part.getX(), -part.getY(), -part.getZ()),
                         0.25F, 1.0F, 0.0F, 1.0F);
@@ -145,6 +193,7 @@ public final class KmodoFlywheelEvents {
     private static void purge() {
         KmodoMeshCache.invalidateAll();
         KmodoFlywheelModelCache.invalidateAll();
+        KmodoGarage.invalidateAll();
         KmodoDebug.invalidateAll();
     }
 }

@@ -38,11 +38,23 @@ public final class KmodoProfiler {
         WALK,
         RELIGHT,
         DORMANCY,
-        LOCK_WAIT,
+        GARAGE_BAKE,
+        GARAGE_DRAW,
+        GARAGE_COMPACT,
         TOTAL
     }
 
     public static final int PHASE_COUNT = Phase.values().length;
+
+    private static final boolean[] RENDER_THREAD = new boolean[PHASE_COUNT];
+    static {
+        RENDER_THREAD[Phase.ANIMATE.ordinal()] = true;
+        RENDER_THREAD[Phase.WALK.ordinal()] = true;
+        RENDER_THREAD[Phase.DORMANCY.ordinal()] = true;
+        RENDER_THREAD[Phase.GARAGE_BAKE.ordinal()] = true;
+        RENDER_THREAD[Phase.GARAGE_DRAW.ordinal()] = true;
+        RENDER_THREAD[Phase.GARAGE_COMPACT.ordinal()] = true;
+    }
 
     private static final LongAdder[] PHASE_NANOS = new LongAdder[PHASE_COUNT];
     static {
@@ -124,6 +136,13 @@ public final class KmodoProfiler {
     private static long lastFrameStamp = 0L;
     private static boolean hasFrameStamp = false;
 
+    // Current garage megabuffer state, sampled on the render thread in rollFrame (where the pools are
+    // safely mutated) so Snapshot — which may be built off-thread for a run — reads a stable copy.
+    private static volatile int garagePoolsCur;
+    private static volatile int garageSlicesCur;
+    private static volatile int garageHolesCur;
+    private static volatile long garageBytesCur;
+
     private static Run activeRun = null;
     private static final List<Run> COMPLETED = Collections.synchronizedList(new ArrayList<>());
 
@@ -163,6 +182,11 @@ public final class KmodoProfiler {
         frameActive[ringHead] = active;
         frameSettling[ringHead] = settling;
         frameDormant[ringHead] = dormant;
+
+        garagePoolsCur = KmodoGarage.poolCount();
+        garageSlicesCur = KmodoGarage.liveSlices();
+        garageHolesCur = KmodoGarage.holes();
+        garageBytesCur = KmodoGarage.gpuBytes();
 
         ringHead = (ringHead + 1) % RING;
         if (ringValid < RING) {
@@ -278,6 +302,12 @@ public final class KmodoProfiler {
         public final double perVehicleCpuUs;
         public final double pctOfFrame;
 
+        public double renderThreadMsPerFrame;
+        public double unaccountedMsPerFrame;
+        public double gpuMsPerFrame;
+        public String topPhase = "-";
+        public double topPhaseMs;
+
         public final double processedPerFrame;
         public final double updatedPerFrame;
         public final double skippedPerFrame;
@@ -294,10 +324,19 @@ public final class KmodoProfiler {
         public final long totalVertices;
         public final long gpuBytes;
 
+        public final int garagePools;
+        public final int garageSlices;
+        public final int garageHoles;
+        public final long garageGpuBytes;
+
         Snapshot(Window w) {
             this.frames = w.frames;
             this.workerThreads = Math.max(1, Runtime.getRuntime().availableProcessors());
             this.mcFps = Minecraft.getInstance().getFps();
+            this.garagePools = garagePoolsCur;
+            this.garageSlices = garageSlicesCur;
+            this.garageHoles = garageHolesCur;
+            this.garageGpuBytes = garageBytesCur;
 
             long meshes = 0L;
             long live = 0L;
@@ -389,6 +428,26 @@ public final class KmodoProfiler {
             this.stateActiveAvg = (double) w.active / n;
             this.stateSettlingAvg = (double) w.settling / n;
             this.stateDormantAvg = (double) w.dormant / n;
+
+            double rtNs = 0;
+            long bestNs = 0;
+            int bestIdx = -1;
+            for (int p = 0; p < PHASE_COUNT; p++) {
+                if (RENDER_THREAD[p]) {
+                    rtNs += phaseAvgNanos[p];
+                }
+                if (p != Phase.TOTAL.ordinal() && phaseAvgNanos[p] > bestNs) {
+                    bestNs = phaseAvgNanos[p];
+                    bestIdx = p;
+                }
+            }
+            this.renderThreadMsPerFrame = rtNs / 1.0e6;
+            this.gpuMsPerFrame = KmodoGpuTimer.avgNanos() / 1.0e6;
+            this.unaccountedMsPerFrame = Math.max(0.0, avgFrameMs - renderThreadMsPerFrame);
+            if (bestIdx >= 0) {
+                this.topPhase = Phase.values()[bestIdx].name();
+                this.topPhaseMs = bestNs / 1.0e6;
+            }
         }
     }
 
@@ -458,11 +517,12 @@ public final class KmodoProfiler {
         public String summaryLine() {
             if (summary == null) return "(no data)";
             return String.format(
-                    "frames=%d fps=%.1f frameMs=%.2f vehCPU(agg)=%.2fms/frame p95=%.2f pctFrame=%.1f%% "
-                            + "perVeh=%.1fus upd/frame=%.1f inst/frame=%.0f bake/frame=%.2f wake/s=%.1f "
+                    "frames=%d fps=%.1f frameMs=%.2f rtCPU=%.2fms other=%.2fms top=%s(%.2fms) gpuGarage=%.2fms "
+                            + "workerAgg=%.2fms perVeh=%.1fus upd/frame=%.1f inst/frame=%.0f bake/frame=%.2f wake/s=%.1f "
                             + "active=%.1f settling=%.1f dormant=%.1f live=%d verts=%d gpu=%dkB",
                     summary.frames, summary.windowFps, summary.avgFrameMs,
-                    summary.aggCpuMsPerFrameAvg, summary.aggCpuMsPerFrameP95, summary.pctOfFrame,
+                    summary.renderThreadMsPerFrame, summary.unaccountedMsPerFrame, summary.topPhase,
+                    summary.topPhaseMs, summary.gpuMsPerFrame, summary.aggCpuMsPerFrameAvg,
                     summary.perVehicleCpuUs, summary.updatedPerFrame, summary.instancesPerFrame,
                     summary.bakesPerFrame, summary.wakePerSec, summary.stateActiveAvg,
                     summary.stateSettlingAvg, summary.stateDormantAvg, summary.liveInstances,
@@ -527,6 +587,11 @@ public final class KmodoProfiler {
                 fw.write("veh_cpu_agg_ms_per_frame_p95," + s.aggCpuMsPerFrameP95 + "\n");
                 fw.write("veh_cpu_agg_ms_per_frame_max," + s.aggCpuMsPerFrameMax + "\n");
                 fw.write("wall_est_ms_per_frame," + s.wallEstMsPerFrame + "\n");
+                fw.write("render_thread_ms_per_frame," + s.renderThreadMsPerFrame + "\n");
+                fw.write("unaccounted_ms_per_frame," + s.unaccountedMsPerFrame + "\n");
+                fw.write("gpu_garage_ms_per_frame," + s.gpuMsPerFrame + "\n");
+                fw.write("top_phase," + s.topPhase + "\n");
+                fw.write("top_phase_ms," + s.topPhaseMs + "\n");
                 fw.write("per_vehicle_us," + s.perVehicleCpuUs + "\n");
                 fw.write("pct_of_frame," + s.pctOfFrame + "\n");
                 fw.write("worker_threads," + s.workerThreads + "\n");
@@ -543,6 +608,10 @@ public final class KmodoProfiler {
                 fw.write("live_instances," + s.liveInstances + "\n");
                 fw.write("total_vertices," + s.totalVertices + "\n");
                 fw.write("gpu_bytes," + s.gpuBytes + "\n");
+                fw.write("garage_pools," + s.garagePools + "\n");
+                fw.write("garage_slices," + s.garageSlices + "\n");
+                fw.write("garage_holes," + s.garageHoles + "\n");
+                fw.write("garage_gpu_bytes," + s.garageGpuBytes + "\n");
                 for (Phase p : Phase.values()) {
                     int i = p.ordinal();
                     fw.write("phase_" + p.name().toLowerCase() + "_avg_ns," + s.phaseAvgNanos[i] + "\n");

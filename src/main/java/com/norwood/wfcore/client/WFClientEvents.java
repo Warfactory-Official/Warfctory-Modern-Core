@@ -12,6 +12,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 import com.norwood.wfcore.client.render.kmodo.KmodoDebug;
 import com.norwood.wfcore.client.render.kmodo.KmodoFlywheelModelCache;
+import com.norwood.wfcore.client.render.kmodo.KmodoGarage;
 import com.norwood.wfcore.client.render.kmodo.KmodoMeshCache;
 
 import com.modularmods.mcgltf.MCglTF;
@@ -90,6 +91,7 @@ public class WFClientEvents {
         event.registerReloadListener((ResourceManagerReloadListener) resourceManager -> {
             KmodoMeshCache.invalidateAll();
             KmodoFlywheelModelCache.invalidateAll();
+            KmodoGarage.invalidateAll();
             KmodoDebug.invalidateAll();
         });
     }

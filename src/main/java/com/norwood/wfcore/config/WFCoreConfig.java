@@ -8,9 +8,11 @@ import net.minecraftforge.registries.ForgeRegistries;
 import com.norwood.wfcore.SuperbOverrides;
 import com.norwood.wfcore.WFCore;
 
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public final class WFCoreConfig {
 
@@ -28,6 +30,7 @@ public final class WFCoreConfig {
     private static final boolean DEFAULT_DEPOSIT_SCATTER = true;
     private static final int DEFAULT_DEPOSIT_WORLDGEN_RARITY = 24;
     private static final boolean DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED = false;
+    private static final boolean DEFAULT_PROBE_ALL_VEHICLES = false;
 
     // -------------------------------------------------------------------------
     // Volatile cache fields — pre-initialised to defaults so getters are safe
@@ -43,6 +46,9 @@ public final class WFCoreConfig {
     private static volatile boolean depositScatter = DEFAULT_DEPOSIT_SCATTER;
     private static volatile int depositWorldgenRarity = DEFAULT_DEPOSIT_WORLDGEN_RARITY;
     private static volatile boolean modelTransformDebugEnabled = DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED;
+    private static volatile boolean probeAllVehicles = DEFAULT_PROBE_ALL_VEHICLES;
+    private static volatile Set<String> probeVehicleIds = Set.of();
+    private static volatile int probeVehiclesGen;
 
     // -------------------------------------------------------------------------
     // ForgeConfigSpec handles
@@ -52,6 +58,8 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.BooleanValue CLEAR_STRUCTURE_LOOT;
     private static final ForgeConfigSpec.BooleanValue DISABLE_NETHER;
     private static final ForgeConfigSpec.BooleanValue MODEL_TRANSFORM_DEBUG_ENABLED;
+    private static final ForgeConfigSpec.BooleanValue PROBE_ALL_VEHICLES;
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> PROBE_VEHICLES;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> VEHICLES;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> FOLIAGE_BREAKERS;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MIN;
@@ -102,6 +110,31 @@ public final class WFCoreConfig {
                         "Vehicle ids that plough through and break cacti, wood logs and leaves as they drive.",
                         "Example: [\"superbwarfare:lav_150\", \"superbwarfare:truck\"]")
                 .defineList("foliageBreakers", List.of(), o -> o instanceof String);
+
+        builder.comment(
+                "Kmodo vehicle-render dormancy (Flywheel-instanced vehicles that stop animating are frozen to save CPU).",
+                "A dormant vehicle wakes the instant any tracked entity state changes (driver, movement, rotation,",
+                "turret/gun aim, recoil, AI target, fire) — that path is fully interrupt-driven and needs no list.",
+                "The optional PROBE below is only for vehicles that run an AUTONOMOUS looping/idle animation while",
+                "sitting completely still with no rider and no input — a change the interrupt path cannot observe.")
+                .push("kmodoRender");
+
+        PROBE_VEHICLES = builder
+                .comment(
+                        "Vehicle ids that keep animating on their own while fully idle and so must be periodically re-checked.",
+                        "Only list vehicles whose model visibly moves while parked, empty and untouched; every other vehicle",
+                        "stays frozen until a real state change wakes it (cheaper, no per-frame probe).",
+                        "Example: [\"superbwarfare:some_idle_animated_vehicle\"]")
+                .defineList("probeVehicles", List.of(), o -> o instanceof String);
+
+        PROBE_ALL_VEHICLES = builder
+                .comment(
+                        "Safety/diagnostic switch: when true, EVERY vehicle is probed regardless of the list above.",
+                        "Turn this on if a parked vehicle looks frozen mid-animation and you are not sure which id to add;",
+                        "leave it off for normal play so idle vehicles cost nothing.")
+                .define("probeAllVehicles", DEFAULT_PROBE_ALL_VEHICLES);
+
+        builder.pop();
 
         builder.comment(
                 "Drillable bedrock deposits. defaultYield is the per-block yield range used when a deposit type (built-in or KubeJS) does not specify its own.")
@@ -183,6 +216,21 @@ public final class WFCoreConfig {
         return modelTransformDebugEnabled;
     }
 
+    /**
+     * Whether the given entity id should get the dormancy safety-net probe. Vehicles that are not listed (and are
+     * not covered by {@code probeAllVehicles}) rely purely on the interrupt-driven wake path once frozen.
+     *
+     * @param entityId the namespaced entity type id, e.g. {@code "superbwarfare:lav_150"}
+     */
+    public static boolean shouldProbeVehicle(String entityId) {
+        return probeAllVehicles || probeVehicleIds.contains(entityId);
+    }
+
+    /** Bumped on every config bake so per-entity dormancy caches know to re-resolve their probe policy. */
+    public static int probeVehiclesGeneration() {
+        return probeVehiclesGen;
+    }
+
     // -------------------------------------------------------------------------
     // Bake — called by WFCore on ModConfigEvent
     // -------------------------------------------------------------------------
@@ -193,6 +241,9 @@ public final class WFCoreConfig {
         clearStructureLoot = CLEAR_STRUCTURE_LOOT.get();
         disableNether = DISABLE_NETHER.get();
         modelTransformDebugEnabled = MODEL_TRANSFORM_DEBUG_ENABLED.get();
+        probeAllVehicles = PROBE_ALL_VEHICLES.get();
+        probeVehicleIds = parseProbeVehicleIds(PROBE_VEHICLES.get());
+        probeVehiclesGen++;
         depositYieldMin = DEPOSIT_YIELD_MIN.get();
         depositYieldMax = Math.max(DEPOSIT_YIELD_MAX.get(), depositYieldMin);
         depositWorldgenEnabled = DEPOSIT_WORLDGEN_ENABLED.get();
@@ -201,8 +252,10 @@ public final class WFCoreConfig {
         SuperbOverrides.setOverrideDataMap(parseVehicleOverrides(VEHICLES.get()));
         SuperbOverrides.setFoliageBreakers(FOLIAGE_BREAKERS.get());
         WFCore.LOGGER.info(
-                "Loaded WFCore TOML config: {} vehicle overrides, energy ratio {}, refuel interval {} ticks",
-                SuperbOverrides.overrideDataMap.size(), energyToFluidRatio, refuelIntervalTicks);
+                "Loaded WFCore TOML config: {} vehicle overrides, energy ratio {}, refuel interval {} ticks, "
+                        + "dormancy probe: {} ({} listed)",
+                SuperbOverrides.overrideDataMap.size(), energyToFluidRatio, refuelIntervalTicks,
+                probeAllVehicles ? "ALL" : "listed-only", probeVehicleIds.size());
     }
 
     // -------------------------------------------------------------------------
@@ -314,6 +367,22 @@ public final class WFCoreConfig {
         }
 
         return fluidMap;
+    }
+
+    /** Normalise the probe-vehicle list into a trimmed, non-blank id set for O(1) lookup during rendering. */
+    private static Set<String> parseProbeVehicleIds(List<? extends String> lines) {
+        if (lines == null || lines.isEmpty()) {
+            return Set.of();
+        }
+        Set<String> ids = new HashSet<>();
+        for (String raw : lines) {
+            if (raw == null) continue;
+            String id = raw.trim();
+            if (!id.isEmpty()) {
+                ids.add(id);
+            }
+        }
+        return ids.isEmpty() ? Set.of() : ids;
     }
 
     // -------------------------------------------------------------------------

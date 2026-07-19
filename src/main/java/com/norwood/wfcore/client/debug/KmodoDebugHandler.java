@@ -187,23 +187,30 @@ public final class KmodoDebugHandler {
         y += lineH;
 
         gg.drawString(mc.font, String.format(
-                "§7veh CPU agg §f%.2f§7/p95 §f%.2f§7ms/frame  ~%.1f%% frame",
-                s.aggCpuMsPerFrameAvg, s.aggCpuMsPerFrameP95, s.pctOfFrame),
+                "§7rt-cpu §f%.2f§7ms  other §f%.2f§7ms  gpu-garage §f%.2f§7ms  wrk-agg §f%.2f§7ms",
+                s.renderThreadMsPerFrame, s.unaccountedMsPerFrame, s.gpuMsPerFrame, s.aggCpuMsPerFrameAvg),
                 x, y, 0xFFDD55);
         y += lineH;
 
         gg.drawString(mc.font, String.format(
-                "§7per-veh §f%.1f§7us  upd/frame §f%.1f§7  bake/frame §f%.2f",
-                s.perVehicleCpuUs, s.updatedPerFrame, s.bakesPerFrame),
-                x, y, 0xFFDD55);
+                "§c▲ TOP §f%s §c%.2f§7ms  §7per-veh §f%.1f§7us  upd/frame §f%.1f",
+                s.topPhase, s.topPhaseMs, s.perVehicleCpuUs, s.updatedPerFrame),
+                x, y, 0xFF6666);
         y += lineH;
 
         gg.drawString(mc.font, String.format(
-                "§7ph(us) bake §f%.0f§7 anim §f%.0f§7 walk §f%.0f§7 relit §f%.0f§7 dorm §f%.0f§7 lock §f%.0f",
-                ns(s, KmodoProfiler.Phase.BAKE), ns(s, KmodoProfiler.Phase.ANIMATE),
-                ns(s, KmodoProfiler.Phase.WALK), ns(s, KmodoProfiler.Phase.RELIGHT),
-                ns(s, KmodoProfiler.Phase.DORMANCY), ns(s, KmodoProfiler.Phase.LOCK_WAIT)),
+                "§7ph(us) anim §f%.0f§7 walk §f%.0f§7 dorm §f%.0f§7 | bake §f%.0f§7 relit §f%.0f",
+                ns(s, KmodoProfiler.Phase.ANIMATE), ns(s, KmodoProfiler.Phase.WALK),
+                ns(s, KmodoProfiler.Phase.DORMANCY), ns(s, KmodoProfiler.Phase.BAKE),
+                ns(s, KmodoProfiler.Phase.RELIGHT)),
                 x, y, 0xAAAAAA);
+        y += lineH;
+
+        gg.drawString(mc.font, String.format(
+                "§7garage(us) gbake §f%.0f§7 gdraw §f%.0f§7 gcomp §f%.0f",
+                ns(s, KmodoProfiler.Phase.GARAGE_BAKE), ns(s, KmodoProfiler.Phase.GARAGE_DRAW),
+                ns(s, KmodoProfiler.Phase.GARAGE_COMPACT)),
+                x, y, 0x55FF55);
         y += lineH;
 
         gg.drawString(mc.font, String.format(
@@ -213,8 +220,8 @@ public final class KmodoDebugHandler {
         y += lineH;
 
         gg.drawString(mc.font, String.format(
-                "§7megabuffer: inst/frame §f%.0f§7 live §f%d§7 verts §f%d§7 gpu §f%d§7kB",
-                s.instancesPerFrame, s.liveInstances, s.totalVertices, s.gpuBytes / 1024),
+                "§7garage: pools §f%d§7 slices §f%d§7 holes §f%d§7 gpu §f%d§7kB  §8| fly inst/f §f%.0f",
+                s.garagePools, s.garageSlices, s.garageHoles, s.garageGpuBytes / 1024, s.instancesPerFrame),
                 x, y, 0x55FF55);
     }
 

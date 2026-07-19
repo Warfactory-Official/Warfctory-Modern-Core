@@ -110,16 +110,15 @@ public final class KmodoDebug {
         }
     }
 
+    // Counted UNCONDITIONALLY (not gated by ENABLED)
     public static void onFlywheelInstanceCreated(ResourceLocation res, int dynamicBoneCount) {
-        if (!ENABLED) return;
         statsFor(res).flywheelLiveInstances.incrementAndGet();
     }
 
     public static void onFlywheelInstanceDeleted(ResourceLocation res) {
-        if (!ENABLED) return;
         ModelStats s = MODELS.get(res);
         if (s != null) {
-            s.flywheelLiveInstances.decrementAndGet();
+            s.flywheelLiveInstances.updateAndGet(v -> v > 0 ? v - 1 : 0);
         }
     }
 

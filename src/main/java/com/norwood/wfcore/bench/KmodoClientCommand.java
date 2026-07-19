@@ -16,6 +16,7 @@ import net.minecraftforge.fml.common.Mod;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.render.kmodo.KmodoConfig;
 import com.norwood.wfcore.client.render.kmodo.KmodoDebug;
+import com.norwood.wfcore.client.render.kmodo.KmodoGarage;
 import com.norwood.wfcore.client.render.kmodo.KmodoProfiler;
 
 /**
@@ -60,6 +61,10 @@ public final class KmodoClientCommand {
                 .then(Commands.literal("on").executes(ctx -> flywheel(ctx.getSource(), true)))
                 .then(Commands.literal("off").executes(ctx -> flywheel(ctx.getSource(), false))));
 
+        root.then(Commands.literal("garage")
+                .then(Commands.literal("on").executes(ctx -> garage(ctx.getSource(), true)))
+                .then(Commands.literal("off").executes(ctx -> garage(ctx.getSource(), false))));
+
         event.getDispatcher().register(root);
     }
 
@@ -94,6 +99,11 @@ public final class KmodoClientCommand {
         line(source, ChatFormatting.GREEN, String.format(
                 "megabuffer: instances/frame %.0f  live %d  meshes %d  verts %d  gpu %dkB",
                 s.instancesPerFrame, s.liveInstances, s.meshCount, s.totalVertices, s.gpuBytes / 1024));
+        line(source, ChatFormatting.DARK_GREEN, String.format(
+                "garage: %s  pools %d  live %d  holes %d  gpu %dkB",
+                KmodoConfig.garageEnabled() ? "ON" : "OFF",
+                KmodoGarage.poolCount(), KmodoGarage.liveSlices(), KmodoGarage.holes(),
+                KmodoGarage.gpuBytes() / 1024));
         if (s.updatedPerFrame < 1.0) {
             line(source, ChatFormatting.YELLOW,
                     "warning: ~0 vehicles updated — point the camera at the fleet (frustum culling).");
@@ -129,6 +139,12 @@ public final class KmodoClientCommand {
     private static int flywheel(CommandSourceStack source, boolean on) {
         KmodoConfig.setFlywheel(on);
         ok(source, "flywheel " + (on ? "ON" : "OFF"));
+        return 1;
+    }
+
+    private static int garage(CommandSourceStack source, boolean on) {
+        KmodoConfig.setGarage(on);
+        ok(source, "garage " + (on ? "ON" : "OFF"));
         return 1;
     }
 
