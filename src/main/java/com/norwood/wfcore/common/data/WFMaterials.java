@@ -24,6 +24,8 @@ public class WFMaterials {
 
     public static Material FireClay;
 
+    public static Material UnfiredFireClay;
+
     public static void init() {
         GalvanizedSteel = new Material.Builder(WFCore.id("galvanized_steel"))
                 .ingot()
@@ -38,6 +40,13 @@ public class WFMaterials {
                 .fluidPipeProperties(5000, 20, false)
                 .color(0xB0704A).secondaryColor(0x6E4A32)
                 .iconSet(MaterialIconSet.DULL)
+                .buildAndRegister();
+
+
+        UnfiredFireClay = new Material.Builder(WFCore.id("unfired_fire_clay"))
+                .fluidPipeProperties(340, 3, false)
+                .color(0xA79B86).secondaryColor(0x6E655A)
+                .iconSet(MaterialIconSet.ROUGH)
                 .buildAndRegister();
     }
 

@@ -123,9 +123,14 @@ public class WFRecipeTypes {
                 .addCondition(new DepositRecipeCondition(WFCore.id("iron_deposit").toString()))
                 .save(provider);
 
-        VanillaRecipeHelper.addShapedRecipe(provider, WFCore.id("fire_clay_fluid_pipe"),
-                ChemicalHelper.get(TagPrefix.pipeNormalFluid, WFMaterials.FireClay, 4),
-                "CCC", 'C', Items.CLAY_BALL);
+
+        VanillaRecipeHelper.addShapedRecipe(provider, WFCore.id("unfired_fire_clay_fluid_pipe"),
+                ChemicalHelper.get(TagPrefix.pipeNormalFluid, WFMaterials.UnfiredFireClay, 4),
+                "CCC", "w r", 'C', Items.CLAY_BALL);
+
+        VanillaRecipeHelper.addSmeltingRecipe(provider, WFCore.id("fire_clay_fluid_pipe"),
+                ChemicalHelper.get(TagPrefix.pipeNormalFluid, WFMaterials.UnfiredFireClay),
+                ChemicalHelper.get(TagPrefix.pipeNormalFluid, WFMaterials.FireClay));
 
         addFoundryRecipes(provider);
         addMoldRecipes(provider);
@@ -221,38 +226,33 @@ public class WFRecipeTypes {
                 .save(provider);
     }
 
-    /**
-     * Primitive Alloyer melt-and-alloy recipes. Fuel (lava or solid) is the machine's business, so it never
-     * appears here. Steel is deliberately absent — that is the Large Blast Furnace's job.
-     */
+    private static final int ALLOY_BATCH = 16;
+
+
     private static void addPrimitiveAlloyerRecipes(Consumer<FinishedRecipe> provider) {
         PRIMITIVE_ALLOYER.recipeBuilder(WFCore.id("brass"))
-                .inputItems(TagPrefix.ingot, GTMaterials.Copper, 3)
-                .inputItems(TagPrefix.ingot, GTMaterials.Zinc, 1)
-                .outputFluids(GTMaterials.Brass.getFluid(576))
+                .inputItems(TagPrefix.ingot, GTMaterials.Copper, 3 * ALLOY_BATCH)
+                .inputItems(TagPrefix.ingot, GTMaterials.Zinc, 1 * ALLOY_BATCH)
+                .outputFluids(GTMaterials.Brass.getFluid(576 * ALLOY_BATCH))
                 .duration(80)
                 .save(provider);
 
         PRIMITIVE_ALLOYER.recipeBuilder(WFCore.id("bronze"))
-                .inputItems(TagPrefix.ingot, GTMaterials.Tin, 3)
-                .inputItems(TagPrefix.ingot, GTMaterials.Copper, 1)
-                .outputFluids(GTMaterials.Bronze.getFluid(576))
+                .inputItems(TagPrefix.ingot, GTMaterials.Tin, 3 * ALLOY_BATCH)
+                .inputItems(TagPrefix.ingot, GTMaterials.Copper, 1 * ALLOY_BATCH)
+                .outputFluids(GTMaterials.Bronze.getFluid(576 * ALLOY_BATCH))
                 .duration(80)
                 .save(provider);
 
         PRIMITIVE_ALLOYER.recipeBuilder(WFCore.id("red_alloy"))
-                .inputItems(TagPrefix.ingot, GTMaterials.Copper, 1)
-                .inputItems(TagPrefix.dust, GTMaterials.Redstone, 4)
-                .outputFluids(GTMaterials.RedAlloy.getFluid(144))
+                .inputItems(TagPrefix.ingot, GTMaterials.Copper, 1 * ALLOY_BATCH)
+                .inputItems(TagPrefix.dust, GTMaterials.Redstone, 4 * ALLOY_BATCH)
+                .outputFluids(GTMaterials.RedAlloy.getFluid(144 * ALLOY_BATCH))
                 .duration(20)
                 .save(provider);
     }
 
-    /**
-     * Strandcaster casting recipes: 144 mb molten alloy in, 1 ingot out, 120-tick base duration. Supplying
-     * water to a coolant hatch halves this to 60 ticks at runtime (see {@code StrandcasterMachine}). Steel is
-     * kept here so the caster can solidify the Large Blast Furnace's liquid steel into ingots.
-     */
+
     private static void addStrandcasterRecipes(Consumer<FinishedRecipe> provider) {
         cast(provider, "steel_ingot", GTMaterials.Steel);
         cast(provider, "brass_ingot", GTMaterials.Brass);
@@ -263,8 +263,8 @@ public class WFRecipeTypes {
     private static void cast(Consumer<FinishedRecipe> provider, String id,
                              com.gregtechceu.gtceu.api.data.chemical.material.Material alloy) {
         STRANDCASTER.recipeBuilder(WFCore.id(id))
-                .inputFluids(alloy.getFluid(144))
-                .outputItems(TagPrefix.ingot, alloy)
+                .inputFluids(alloy.getFluid(144 * ALLOY_BATCH))
+                .outputItems(TagPrefix.ingot, alloy, ALLOY_BATCH)
                 .duration(120)
                 .save(provider);
     }

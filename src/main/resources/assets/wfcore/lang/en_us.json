@@ -362,11 +362,12 @@
   "itemGroup.wfcore.wfcore": "Warfactory Modern Core",
   "material.wfcore.galvanized_steel": "Galvanized Steel",
   "material.wfcore.fire_clay": "Fire Clay",
+  "material.wfcore.unfired_fire_clay": "Unfired Fire Clay",
   "wfcore.machine.primitive_alloyer.tooltip1": "A primitive melting furnace: burns fuel to melt and alloy metals. Consumes no power.",
   "wfcore.machine.primitive_alloyer.tooltip2": "Fuel: Lava (10 mb/t from a fluid input hatch) or any burnable solid fuel (coal, charcoal, coke...) from the input bus — not wood or planks.",
   "wfcore.machine.primitive_alloyer.tooltip3": "Runs out of fuel? The recipe pauses until fuel is supplied again.",
   "wfcore.machine.primitive_alloyer.no_fuel": "Out of fuel (needs Lava or solid fuel)",
   "wfcore.machine.strandcaster.tooltip1": "Casts molten alloys into solid ingots. Consumes no power or fuel.",
-  "wfcore.machine.strandcaster.tooltip2": "144 mb of molten alloy makes one ingot in 6s.",
+  "wfcore.machine.strandcaster.tooltip2": "Casts a batch of 16 ingots from 2304 mb of molten alloy in 6s.",
   "wfcore.machine.strandcaster.tooltip3": "Supply Water (20 mb/t) to a coolant hatch to cast twice as fast (3s)."
 }

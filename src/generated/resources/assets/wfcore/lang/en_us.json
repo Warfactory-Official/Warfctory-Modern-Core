@@ -83,5 +83,6 @@
   "item.wfcore.siege_defense_tester": "Siege Difficulty Probe",
   "itemGroup.wfcore.wfcore": "Warfactory Modern Core",
   "material.wfcore.fire_clay": "Fire Clay",
-  "material.wfcore.galvanized_steel": "Galvanized Steel"
+  "material.wfcore.galvanized_steel": "Galvanized Steel",
+  "material.wfcore.unfired_fire_clay": "Unfired Fire Clay"
 }
