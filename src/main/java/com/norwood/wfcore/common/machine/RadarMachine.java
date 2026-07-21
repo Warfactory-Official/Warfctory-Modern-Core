@@ -263,8 +263,19 @@ public class RadarMachine extends MultiblockControllerMachine
                 }))
                 .exceptionally(ex -> {
                     WFCore.LOGGER.error("Radar DBSCAN failed", ex);
+                    serverLevel.getServer().execute(this::stopScan);
                     return null;
                 });
+    }
+
+    /** Cancel a running scan and return the radar to idle without writing anything to the data stick. */
+    public void stopScan() {
+        WFCore.LOGGER.info("[Radar@{}] stopScan: isActive {}->false, progress {}", getPos(), isActive, scanProgress);
+        isActive = false;
+        scanProgress = 0;
+        finished = false;
+        lastScan = null;
+        animAdvancing = true;
     }
 
     protected void completeScan() {
@@ -503,8 +514,14 @@ public class RadarMachine extends MultiblockControllerMachine
         group.addWidget(new SlotWidget(dataStickInv, 0, 142, 86).setBackgroundTexture(GuiTextures.SLOT));
         group.addWidget(new ButtonWidget(8, 86, 80, 18, GuiTextures.BUTTON, this::onScanClick)
                 .setHoverTooltips("wfcore.gui.radar.start_scan"));
-        group.addWidget(new LabelWidget(14, 91, "wfcore.gui.radar.start_scan"));
+        group.addWidget(new LabelWidget(14, 91, this::getScanButtonText));
         return group;
+    }
+
+    /** Button caption: reflects the toggle so a running scan shows "Stop Scan". */
+    private String getScanButtonText() {
+        return Component.translatable(isActive ? "wfcore.gui.radar.stop_scan" : "wfcore.gui.radar.start_scan")
+                .getString();
     }
 
     private void onScanClick(ClickData data) {
@@ -513,8 +530,14 @@ public class RadarMachine extends MultiblockControllerMachine
         if (isRemote()) {
             return;
         }
+        // Toggle: a running scan is cancelled, an idle radar starts one (gates permitting).
+        if (isActive) {
+            WFCore.LOGGER.info("[Radar@{}] gates passed -> stopScan()", getPos());
+            stopScan();
+            return;
+        }
         logScanGates();
-        if (!isActive && canScan()) {
+        if (canScan()) {
             WFCore.LOGGER.info("[Radar@{}] gates passed -> startScan()", getPos());
             startScan();
         } else {

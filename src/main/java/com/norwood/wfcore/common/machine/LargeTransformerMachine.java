@@ -8,6 +8,7 @@ import com.gregtechceu.gtceu.api.capability.recipe.IO;
 import com.gregtechceu.gtceu.api.gui.GuiTextures;
 import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
+import com.gregtechceu.gtceu.api.machine.trait.NotifiableFluidTank;
 import com.gregtechceu.gtceu.api.machine.feature.IFancyUIMachine;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
@@ -35,9 +36,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Large Transformer: a 3x3x3 coolant-cooled power converter, like the Active Transformer but without laser
- * tech. It converts normal (DC) EU to/from WFCore "AC EU" through a single AC output (DC-&gt;AC) and a single
- * AC input (AC-&gt;DC) converter hatch. Every EU converted must be cooled by draining coolant - cooler coolants
+ * Large Transformer: a 3x3x3 power distributor, like the Active Transformer but without laser tech. Its core
+ * job is to take DC EU from its input energy hatches and redistribute it through its output energy hatches
+ * (dynamos), which re-emit at their own voltage - a plain voltage transformer that needs no coolant.
+ * <p>
+ * On top of that it can optionally convert to/from WFCore "AC EU" for lossless long-distance transmission,
+ * through a single AC output (DC-&gt;AC) and/or AC input (AC-&gt;DC) converter hatch. That AC conversion is the
+ * coolant-cooled part: every EU converted to/from AC must be cooled by draining coolant - cooler coolants
  * (helium, liquid nitrogen) carry more EU per millibucket than water.
  */
 public class LargeTransformerMachine extends MultiblockControllerMachine
@@ -52,11 +57,18 @@ public class LargeTransformerMachine extends MultiblockControllerMachine
     private IEnergyContainer powerInput = new EnergyContainerList(new ArrayList<>());
     private IEnergyContainer powerOutput = new EnergyContainerList(new ArrayList<>());
     @Nullable
-    private IFluidHandler coolantInput;
+    private FluidHandlerList coolantInput;
     @Nullable
     private ACHatchPartMachine acInputHatch;
     @Nullable
     private ACHatchPartMachine acOutputHatch;
+
+    // Why the machine isn't converting, for the display. Synced because onStructureFormed and the tick run
+    // server-only, so the client can't derive it (acInputHatch/acOutputHatch are always null client-side).
+    public static final byte STATUS_OK = 0;          // converting, or nothing to do
+    public static final byte STATUS_NO_COOLANT = 1;  // has energy to move but no/too little coolant
+    public static final byte STATUS_NO_SINK = 2;     // AC output cable routes to no AC input hatch at all
+    public static final byte STATUS_AC_FULL = 3;     // AC destination found, but its buffer is full (backed up)
 
     @Persisted
     @DescSynced
@@ -64,6 +76,10 @@ public class LargeTransformerMachine extends MultiblockControllerMachine
     @Persisted
     @DescSynced
     private boolean isActive;
+    @DescSynced
+    private long convertedEUt;
+    @DescSynced
+    private byte status = STATUS_OK;
     @Nullable
     private TickableSubscription tickSub;
 
@@ -143,55 +159,96 @@ public class LargeTransformerMachine extends MultiblockControllerMachine
     protected void tickTransformer() {
         if (isRemote() || !isFormed() || !isWorkingEnabled) {
             setActive(false);
+            setStatus(STATUS_OK, 0);
             return;
         }
-        boolean worked = false;
+        long converted = 0;
+        byte reason = STATUS_OK;
 
-        // DC -> AC: pull DC, cool it, push AC out through the cable
+        // DC -> DC: the core transformer function. Move input-hatch energy into the output dynamos, which
+        // then re-emit it onto their cables at their OWN voltage/amperage. No coolant - this is a plain
+        // voltage transformer (like GT's Active Transformer). changeEnergy() bounds this by the dynamos'
+        // free buffer space, and removeEnergy() only drains what the dynamos actually took.
+        long redistributed = powerOutput.changeEnergy(powerInput.getEnergyStored());
+        if (redistributed > 0) {
+            powerInput.removeEnergy(redistributed);
+            converted += redistributed;
+        }
+
+        // DC -> AC: push any leftover input energy onto an AC cable for lossless long-distance transmission.
+        // Coolant-costed; only cool what the AC network will actually carry this tick (a simulated push tells
+        // us) - otherwise coolant is spent converting the whole input buffer while the cable carries only its
+        // throughput, draining coolant in a single tick and leaving the machine stuck waiting for coolant.
         if (acOutputHatch != null) {
-            long want = Math.min(powerInput.getEnergyStored(), MAX_TRANSFER_PER_TICK);
-            long cooled = coolEnergy(want);
+            long available = Math.min(powerInput.getEnergyStored(), MAX_TRANSFER_PER_TICK);
+            long transferable = acOutputHatch.pushAC(available, true);
+            if (available > 0 && transferable <= 0 && converted == 0) {
+                // Distinguish "nothing connected" from "connected but the receiver's buffer is full", since
+                // a simulated push returns 0 for both. hasDestination() walks the cable to a live AC input.
+                reason = acOutputHatch.hasDestination() ? STATUS_AC_FULL : STATUS_NO_SINK;
+            }
+            long cooled = coolEnergy(transferable);
+            if (transferable > 0 && cooled < transferable) reason = STATUS_NO_COOLANT;
             if (cooled > 0) {
-                long pushed = acOutputHatch.pushAC(cooled);
+                long pushed = acOutputHatch.pushAC(cooled, false);
                 if (pushed > 0) {
                     powerInput.removeEnergy(pushed);
-                    worked = true;
+                    converted += pushed;
                 }
             }
         }
 
-        // AC -> DC: pull buffered AC, cool it, output DC
+        // AC -> DC: pull buffered AC, cool it, output DC. Bound by the DC output's free buffer space so we
+        // don't cool more than the output can accept (same coolant-waste trap as above).
         if (acInputHatch != null) {
-            long want = Math.min(acInputHatch.getStored(), MAX_TRANSFER_PER_TICK);
-            long cooled = coolEnergy(want);
+            long available = Math.min(acInputHatch.getStored(), MAX_TRANSFER_PER_TICK);
+            long space = Math.max(0, powerOutput.getEnergyCapacity() - powerOutput.getEnergyStored());
+            long transferable = Math.min(available, space);
+            long cooled = coolEnergy(transferable);
+            if (transferable > 0 && cooled < transferable) reason = STATUS_NO_COOLANT;
             if (cooled > 0) {
-                acInputHatch.drainBuffer(cooled);
-                powerOutput.changeEnergy(cooled);
-                worked = true;
+                long accepted = powerOutput.changeEnergy(cooled);
+                if (accepted > 0) {
+                    acInputHatch.drainBuffer(accepted);
+                    converted += accepted;
+                }
             }
         }
 
-        setActive(worked);
+        setActive(converted > 0);
+        setStatus(converted > 0 ? STATUS_OK : reason, converted);
+    }
+
+    private void setStatus(byte reason, long converted) {
+        if (this.status != reason) this.status = reason;
+        if (this.convertedEUt != converted) this.convertedEUt = converted;
     }
 
     /** Drains coolant to cover up to {@code desiredEU}; returns the EU successfully cooled. */
     private long coolEnergy(long desiredEU) {
         if (desiredEU <= 0 || coolantInput == null) return 0;
         long cooled = 0;
-        for (int i = 0; i < coolantInput.getTanks(); i++) {
-            if (cooled >= desiredEU) break;
-            FluidStack stack = coolantInput.getFluidInTank(i);
-            if (stack.isEmpty()) continue;
-            CoolantRegistry.CoolantSettings settings = CoolantRegistry.get(stack.getFluid());
-            if (settings == null) continue;
-            long euPerMb = Math.max(1, (long) (settings.heatCapacity() * EU_PER_MB_FACTOR));
-            long remaining = desiredEU - cooled;
-            int mbNeeded = (int) Math.min(stack.getAmount(), (remaining + euPerMb - 1) / euPerMb);
-            if (mbNeeded <= 0) continue;
-            FluidStack drained = coolantInput.drain(new FluidStack(stack.getFluid(), mbNeeded),
-                    IFluidHandler.FluidAction.EXECUTE);
-            if (!drained.isEmpty() && drained.getAmount() > 0) {
-                cooled += (long) drained.getAmount() * euPerMb;
+        // Iterate the raw hatch tanks: these are INPUT (IO.IN) NotifiableFluidTanks, whose public drain() is
+        // gated by canCapOutput() and always returns EMPTY - so we must call drainInternal() (what recipe
+        // logic uses) to actually pull coolant out. Draining the aggregate handler would silently no-op.
+        for (IFluidHandler handler : coolantInput.handlers) {
+            for (int i = 0; i < handler.getTanks(); i++) {
+                if (cooled >= desiredEU) return desiredEU;
+                FluidStack stack = handler.getFluidInTank(i);
+                if (stack.isEmpty()) continue;
+                CoolantRegistry.CoolantSettings settings = CoolantRegistry.get(stack.getFluid());
+                if (settings == null) continue;
+                long euPerMb = Math.max(1, (long) (settings.heatCapacity() * EU_PER_MB_FACTOR));
+                long remaining = desiredEU - cooled;
+                int mbNeeded = (int) Math.min(stack.getAmount(), (remaining + euPerMb - 1) / euPerMb);
+                if (mbNeeded <= 0) continue;
+                FluidStack request = new FluidStack(stack.getFluid(), mbNeeded);
+                FluidStack drained = handler instanceof NotifiableFluidTank tank
+                        ? tank.drainInternal(request, IFluidHandler.FluidAction.EXECUTE)
+                        : handler.drain(request, IFluidHandler.FluidAction.EXECUTE);
+                if (!drained.isEmpty() && drained.getAmount() > 0) {
+                    cooled += (long) drained.getAmount() * euPerMb;
+                }
             }
         }
         return Math.min(cooled, desiredEU);
@@ -223,10 +280,15 @@ public class LargeTransformerMachine extends MultiblockControllerMachine
                 .addEnergyUsageLine(powerInput)
                 .addCustom(tl -> {
                     if (isFormed()) {
-                        tl.add(Component.translatable(acOutputHatch != null ? "wfcore.gui.transformer.dc_to_ac" :
-                                "wfcore.gui.transformer.no_ac_out"));
-                        tl.add(Component.translatable(acInputHatch != null ? "wfcore.gui.transformer.ac_to_dc" :
-                                "wfcore.gui.transformer.no_ac_in"));
+                        if (isActive) {
+                            tl.add(Component.translatable("wfcore.gui.transformer.converting", convertedEUt));
+                        } else if (status == STATUS_NO_COOLANT) {
+                            tl.add(Component.translatable("wfcore.gui.transformer.no_coolant"));
+                        } else if (status == STATUS_NO_SINK) {
+                            tl.add(Component.translatable("wfcore.gui.transformer.no_sink"));
+                        } else if (status == STATUS_AC_FULL) {
+                            tl.add(Component.translatable("wfcore.gui.transformer.ac_full"));
+                        }
                     }
                 })
                 .addWorkingStatusLine();

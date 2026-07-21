@@ -12,7 +12,7 @@ public interface IACEnergyContainer {
     IACEnergyContainer DEFAULT = new IACEnergyContainer() {
 
         @Override
-        public long acceptEnergy(Direction side, long amount) {
+        public long acceptEnergy(Direction side, long amount, boolean simulate) {
             return 0;
         }
 
@@ -22,11 +22,29 @@ public interface IACEnergyContainer {
         }
     };
 
-    /** Push AC EU into this container/network from the given side. Returns the amount actually accepted. */
-    long acceptEnergy(Direction side, long amount);
+    /**
+     * Push AC EU into this container/network from the given side. Returns the amount actually accepted. When
+     * {@code simulate} is true no state changes - used to size how much to convert (and therefore how much
+     * coolant to spend) before committing, so coolant is never spent on energy the network can't carry.
+     */
+    long acceptEnergy(Direction side, long amount, boolean simulate);
+
+    /** Convenience: commit a push (non-simulated). */
+    default long acceptEnergy(Direction side, long amount) {
+        return acceptEnergy(side, amount, false);
+    }
 
     /** Flat EU/t this endpoint (or cable run) can carry. */
     long getThroughput();
+
+    /**
+     * Whether pushing AC from this side currently reaches a live AC input endpoint, <b>regardless of whether
+     * that endpoint has any free space right now</b>. Lets a pusher tell "nothing is connected" apart from
+     * "connected but the receiver's buffer is full" (which {@link #acceptEnergy} can't, since both give 0).
+     */
+    default boolean hasDestination(Direction side) {
+        return false;
+    }
 
     default boolean inputsAC(Direction side) {
         return false;

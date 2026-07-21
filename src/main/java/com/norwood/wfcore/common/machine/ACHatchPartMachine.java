@@ -54,25 +54,35 @@ public class ACHatchPartMachine extends TieredPartMachine implements IACEnergyCo
         return drained;
     }
 
-    /** OUTPUT side: the transformer pushes converted AC, which is forwarded onto the connected cable. */
-    public long pushAC(long amount) {
+
+    public long pushAC(long amount, boolean simulate) {
         if (!isOutput || amount <= 0) return 0;
         BlockEntity te = getLevel().getBlockEntity(getPos().relative(getFrontFacing()));
         if (te == null) return 0;
         IACEnergyContainer cable = te.getCapability(WFCapabilities.CAPABILITY_AC_ENERGY,
                 getFrontFacing().getOpposite()).orElse(null);
         if (cable == null) return 0;
-        return cable.acceptEnergy(getFrontFacing().getOpposite(), amount);
+        return cable.acceptEnergy(getFrontFacing().getOpposite(), amount, simulate);
+    }
+
+
+    public boolean hasDestination() {
+        if (!isOutput) return false;
+        BlockEntity te = getLevel().getBlockEntity(getPos().relative(getFrontFacing()));
+        if (te == null) return false;
+        IACEnergyContainer cable = te.getCapability(WFCapabilities.CAPABILITY_AC_ENERGY,
+                getFrontFacing().getOpposite()).orElse(null);
+        return cable != null && cable.hasDestination(getFrontFacing().getOpposite());
     }
 
     // ------------------------------------------------------------------ IACEnergyContainer
 
     @Override
-    public long acceptEnergy(Direction side, long amount) {
+    public long acceptEnergy(Direction side, long amount, boolean simulate) {
         if (isOutput || amount <= 0) return 0;
         long accept = Math.min(amount, capacity - stored);
         if (accept <= 0) return 0;
-        stored += accept;
+        if (!simulate) stored += accept;
         return accept;
     }
 

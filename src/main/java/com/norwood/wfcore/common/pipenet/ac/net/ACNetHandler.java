@@ -50,16 +50,22 @@ public class ACNetHandler implements IACEnergyContainer {
     }
 
     @Override
-    public long acceptEnergy(Direction side, long amount) {
+    public long acceptEnergy(Direction side, long amount, boolean simulate) {
         ACRoutePath route = getRoute();
         if (route == null) return 0;
         IACEnergyContainer handler = route.getHandler(world);
         if (handler == null) return 0;
         long limit = Math.min(amount, Math.min(getThroughput(), route.getMinThroughput()));
         if (limit <= 0) return 0;
-        long accepted = handler.acceptEnergy(route.getTargetFacing().getOpposite(), limit);
-        if (accepted > 0) setPipesActive();
+        long accepted = handler.acceptEnergy(route.getTargetFacing().getOpposite(), limit, simulate);
+        if (accepted > 0 && !simulate) setPipesActive();
         return accepted;
+    }
+
+    @Override
+    public boolean hasDestination(Direction side) {
+        ACRoutePath route = getRoute();
+        return route != null && route.getHandler(world) != null;
     }
 
     @Override
