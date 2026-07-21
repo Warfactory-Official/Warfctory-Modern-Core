@@ -15,8 +15,8 @@ import net.minecraft.core.Direction;
 
 import com.modularmods.mcgltf.MCglTF;
 import com.modularmods.mcgltf.RenderedGltfModel;
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.platform.NativeImage;
-import com.mojang.blaze3d.vertex.BufferUploader;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.norwood.wfcore.WFCore;
@@ -37,12 +37,6 @@ import java.util.WeakHashMap;
  * Renders a machine's animated GLTF model with McGLTF, replacing the 1.12.2 coremod's
  * {@code MteRenderer}/{@code GenericGLTF}/{@code AnimatedRenderQueue} pipeline with a standard 1.20.1
  * {@link BlockEntityRenderer}.
- * <p>
- * Each block entity keeps its own {@link AnimationController} (freezable clock; finishes the current
- * loop before switching states), advanced from world time + partial ticks. The model is drawn with raw
- * GL through McGLTF's vanilla render path, so the pose is composed as
- * {@code modelView * poseStack} and the GL bindings the library leaves dirty (VAO, buffers, active
- * texture unit) are reset afterwards to avoid leaking state into the rest of the frame.
  */
 public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements BlockEntityRenderer<T> {
 
@@ -76,7 +70,7 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         }
 
         if (!formed || !realLevel || model.scene == null || model.animations == null) {
-            return; // not formed, off-world preview, or model not loaded on the client yet
+            return;
         }
 
         AnimationController controller = controllers.computeIfAbsent(be, k -> new AnimationController());
@@ -84,8 +78,7 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         controller.advance(animated, model.animations, now);
         AnimationLoop loop = model.animations.get(controller.getCurrent());
         if (loop != null) {
-            // A machine may drive the pose directly (deploy/retract) by a [0,1] fraction of the duration;
-            // otherwise fall back to the free-running clock the controller advanced above.
+
             float override = animated.getAnimationOverride();
             float time = override >= 0f ? Math.min(override, 1f) * loop.getDuration() : controller.getTime();
             loop.update(time);
@@ -98,27 +91,30 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         poseStack.scale((float) scale.x, (float) scale.y, (float) scale.z);
         applyOrientation(poseStack, machine);
 
-        // McGLTF's vanilla path uploads CURRENT_POSE as the shader ModelViewMat, so it must already
-        // include the camera view rotation that vanilla bakes into RenderSystem's model-view matrix.
+
         Matrix4f pose = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(poseStack.last().pose());
         poseStack.popPose();
 
-        RenderSystem.enableDepthTest();
-        RenderSystem.depthMask(true);
-        RenderSystem.enableCull();
 
-        // mcgltf draws immediately with the vanilla entity shader but never binds the lightmap, and the
-        // model's per-vertex TEXCOORD_1 lightmap UVs are a fixed-but-dim second UV set, so the dish would be
-        // either black (unbound) or stuck at ~half light. Mirror the 1.12.2 path
-        // (setLightmapTextureCoords(getCombinedLight(pos.up(15)))): bind a 1x1 texture holding the real
-        // lightmap colour sampled at the dish's open-sky position, so it tracks day/night world light.
+        final int prevVao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
+        final int prevArrayBuffer = GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING);
+        final int prevElementArrayBuffer = GL11.glGetInteger(GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING);
+        final boolean prevCullFace = GL11.glGetBoolean(GL11.GL_CULL_FACE);
+        final boolean prevDepthTest = GL11.glGetBoolean(GL11.GL_DEPTH_TEST);
+        final boolean prevBlend = GL11.glGetBoolean(GL11.GL_BLEND);
+
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GL11.glEnable(GL11.GL_BLEND);
+        GlStateManager._blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        RenderSystem.depthMask(true);
+
+
         GL13.glActiveTexture(GL13.GL_TEXTURE2);
+        final int prevTexture2 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, worldLightLightmap(be));
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
 
-        // mcgltf's vanilla path folds each node's normal into the static CURRENT_NORMAL for lighting, but
-        // the library never initialises it — pair it with the pose (inverse-transpose of the model-view's
-        // 3x3) or it NPEs in applyTransformVanilla on the first node.
+
         RenderedGltfModel.setCurrentPose(pose);
         RenderedGltfModel.setCurrentNormal(new Matrix3f(pose).invert().transpose());
         try {
@@ -130,17 +126,14 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         } catch (RuntimeException e) {
             WFCore.LOGGER.error("Failed to render GLTF model {}", model.getModelLocation(), e);
         } finally {
-            restoreGlState();
+            restoreGlState(prevVao, prevArrayBuffer, prevElementArrayBuffer,
+                    prevCullFace, prevDepthTest, prevBlend, prevTexture2);
         }
     }
 
     private static DynamicTexture worldLightTexture;
 
-    /**
-     * A 1x1 texture holding the vanilla lightmap colour at the dish's open-sky position (controller + 15,
-     * mirroring the 1.12.2 {@code getCombinedLight(pos.up(15))}). Re-sampled each frame so the model is lit
-     * by real world light — bright at noon, dim at night — instead of its dim per-vertex {@code TEXCOORD_1}.
-     */
+
     private static int worldLightLightmap(MetaMachineBlockEntity be) {
         if (worldLightTexture == null) {
             worldLightTexture = new DynamicTexture(new NativeImage(1, 1, false));
@@ -160,26 +153,22 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         return worldLightTexture.getId();
     }
 
-    /**
-     * McGLTF draws with its own VAO/buffers/shader and only restores the shader program. Reset the
-     * remaining bindings so vanilla's batched draws later in the frame are not corrupted. The library
-     * bypasses {@link RenderSystem}, so the raw GL state is reset directly and {@link RenderSystem}'s
-     * cached active texture is resynced to match.
-     */
-    private static void restoreGlState() {
-        GL30.glBindVertexArray(0);
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
-        // Binding VAO 0 above unbinds whatever vertex array BufferUploader's immediate-draw path still holds
-        // in its lastImmediateBuffer cache. That cache skips re-binding the VAO when the same immediate
-        // buffer is reused, so without this the next endBatch() draw of a matching format runs glDrawElements
-        // with VAO 0 bound — GL_INVALID_OPERATION in a core profile, once per frame while a model is on
-        // screen. Invalidate the cache so BufferUploader re-binds its VAO on the next draw.
-        BufferUploader.invalidate();
+
+    private static void restoreGlState(int prevVao, int prevArrayBuffer, int prevElementArrayBuffer,
+                                       boolean prevCullFace, boolean prevDepthTest, boolean prevBlend,
+                                       int prevTexture2) {
         GL13.glActiveTexture(GL13.GL_TEXTURE2);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture2);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
-        RenderSystem.activeTexture(GL13.GL_TEXTURE0);
+
+        if (!prevDepthTest) GL11.glDisable(GL11.GL_DEPTH_TEST);
+        if (!prevBlend) GL11.glDisable(GL11.GL_BLEND);
+        if (prevCullFace) GL11.glEnable(GL11.GL_CULL_FACE);
+        else GL11.glDisable(GL11.GL_CULL_FACE);
+
+        GL30.glBindVertexArray(prevVao);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, prevArrayBuffer);
+        GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevElementArrayBuffer);
     }
 
     /** Orients the model for a multiblock controller, ported from the 1.12.2 {@code MteRenderer}. */
