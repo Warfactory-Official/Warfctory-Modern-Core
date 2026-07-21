@@ -62,7 +62,7 @@ import java.util.UUID;
 public class RadarMachine extends MultiblockControllerMachine
                           implements IFancyUIMachine, IOpticalComputationReceiver, IAnimatedMachine {
 
-    private static final int BASE_CWUT = 4;
+    private static final int BASE_CWUT = 128;
     /** Lowest energy-hatch tier the radar will run at. Below this it forms but refuses to scan. */
     private static final int MIN_TIER = GTValues.HV;
 
@@ -72,15 +72,20 @@ public class RadarMachine extends MultiblockControllerMachine
     @Persisted
     protected final NotifiableItemStackHandler dataStickInv;
     @Persisted
+    @DescSynced
     protected int scanProgress;
     @Persisted
     @DescSynced
     protected boolean isActive;
     @Persisted
+    @DescSynced
     protected boolean finished;
-    /** Client-synced: whether the dish should be spinning (false = stalled for power, freeze in place). */
     @DescSynced
     protected boolean animAdvancing = true;
+    @DescSynced
+    protected boolean computationReady;
+    @DescSynced
+    protected int availableCWUt;
 
     @Nullable
     protected EnergyContainerList energyContainer;
@@ -90,7 +95,9 @@ public class RadarMachine extends MultiblockControllerMachine
     protected TickableSubscription tickSub;
     @Nullable
     protected volatile UUID lastScan;
+    @DescSynced
     protected int voltageTier = -1;
+    private transient String lastTickLog = "";
 
     public RadarMachine(IMachineBlockEntity holder) {
         super(holder);
@@ -141,6 +148,8 @@ public class RadarMachine extends MultiblockControllerMachine
         this.computationProvider = null;
         this.isActive = false;
         this.scanProgress = 0;
+        this.computationReady = false;
+        this.availableCWUt = 0;
         if (tickSub != null) {
             tickSub.unsubscribe();
             tickSub = null;
@@ -153,6 +162,11 @@ public class RadarMachine extends MultiblockControllerMachine
         if (isRemote() || !isFormed()) {
             return;
         }
+        if (getOffsetTimer() % 10 == 0) {
+            int avail = requestCWU(true);
+            this.availableCWUt = avail;
+            this.computationReady = avail >= getRequiredCWUt();
+        }
         if (!isActive) {
             animAdvancing = true; // idle loops freely
             return;
@@ -160,15 +174,19 @@ public class RadarMachine extends MultiblockControllerMachine
         int targetTicks = getScanDurationTicks();
         if (!drainEnergy(true)) {
             animAdvancing = false; // power loss mid-scan: freeze the dish where it is
+            tickLog("STALLED: not enough energy (need " + GTValues.VA[Math.max(MIN_TIER, voltageTier)]
+                    + ", stored " + (energyContainer == null ? "n/a" : energyContainer.getEnergyStored()) + ")");
             return;
         }
         if (!hasComputation()) {
             animAdvancing = false; // not enough CWU: stall without burning energy
+            tickLog("STALLED: not enough CWU (need " + getRequiredCWUt() + ", avail " + requestCWU(true) + ")");
             return;
         }
         drainEnergy(false);
         requestCWU(false);
         animAdvancing = true; // powered and scanning: keep spinning
+        tickLog("scanning");
 
         if (scanProgress <= targetTicks) {
             scanProgress++;
@@ -179,6 +197,14 @@ public class RadarMachine extends MultiblockControllerMachine
             } else {
                 scanProgress = targetTicks - 1; // wait for the async clustering to finish
             }
+        }
+    }
+
+    private void tickLog(String msg) {
+        if (!msg.equals(lastTickLog)) {
+            lastTickLog = msg;
+            WFCore.LOGGER.info("[Radar@{}] tick: {} (progress {}/{})", getPos(), msg, scanProgress,
+                    getScanDurationTicks());
         }
     }
 
@@ -197,10 +223,10 @@ public class RadarMachine extends MultiblockControllerMachine
         return false;
     }
 
-    /** Required CWU/t rises with voltage tier (EV=4, IV=8, LuV=16, ...). */
+    /** Required CWU/t quadruples per tier above EV (EV=16, IV=64, LuV=256, ZPM=1024, UV=4096). */
     public int getRequiredCWUt() {
         int tier = Math.max(GTValues.EV, voltageTier);
-        return BASE_CWUT << (tier - GTValues.EV);
+        return BASE_CWUT << (2 * (tier - GTValues.EV));
     }
 
     private int requestCWU(boolean simulate) {
@@ -218,12 +244,16 @@ public class RadarMachine extends MultiblockControllerMachine
 
     public void startScan() {
         if (!canScan() || !(getLevel() instanceof ServerLevel serverLevel)) {
+            WFCore.LOGGER.info("[Radar@{}] startScan aborted: canScan={} isServerLevel={}",
+                    getPos(), canScan(), getLevel() instanceof ServerLevel);
             return;
         }
         isActive = true;
         finished = false;
         scanProgress = 0;
         lastScan = null;
+        WFCore.LOGGER.info("[Radar@{}] startScan OK: isActive=true, scanDuration={} ticks, kicking off DBSCAN",
+                getPos(), getScanDurationTicks());
 
         RadarClustering.scan(serverLevel, RadarClustering.EPS, RadarClustering.MIN_PTS)
                 .thenAccept(clusters -> serverLevel.getServer().execute(() -> {
@@ -406,29 +436,101 @@ public class RadarMachine extends MultiblockControllerMachine
         return target <= 0 ? 0 : ((double) scanProgress / target) * 100.0;
     }
 
+
+    public long getEnergyDrawPerTick() {
+        return voltageTier < MIN_TIER ? 0 : GTValues.VA[Math.max(MIN_TIER, voltageTier)];
+    }
+
+
+    public long getTotalEnergyCost() {
+        return getEnergyDrawPerTick() * getScanDurationTicks();
+    }
+
+    public long getTotalComputationCost() {
+        return (long) getRequiredCWUt() * getScanDurationTicks();
+    }
+
+    private boolean canPreviewCost() {
+        return isFormed() && voltageTier >= MIN_TIER && getScanDurationTicks() != Integer.MAX_VALUE;
+    }
+    private static String compact(long v) {
+        if (v < 1_000L) {
+            return Long.toString(v);
+        }
+        if (v < 1_000_000L) {
+            return String.format("%.1fk", v / 1_000.0);
+        }
+        if (v < 1_000_000_000L) {
+            return String.format("%.1fM", v / 1_000_000.0);
+        }
+        return String.format("%.1fG", v / 1_000_000_000.0);
+    }
+
+    private String getScanHeaderText() {
+        if (!canPreviewCost()) {
+            return "";
+        }
+        int secs = getScanDurationTicks() / 20;
+        return String.format("§8Full scan ~%dm %02ds:", secs / 60, secs % 60);
+    }
+
+    private String getPowerText() {
+        if (!canPreviewCost()) {
+            return "";
+        }
+        return String.format("§7Power: §f%,d EU/t §8(%s)", getEnergyDrawPerTick(), compact(getTotalEnergyCost()));
+    }
+
+    private String getComputeText() {
+        if (!canPreviewCost()) {
+            return "";
+        }
+        return String.format("§7Compute: §f%d CWU/t §8(%s)", getRequiredCWUt(), compact(getTotalComputationCost()));
+    }
+
     //////////////////// UI ////////////////////
 
     @Override
     public Widget createUIWidget() {
-        WidgetGroup group = new WidgetGroup(0, 0, 170, 86);
-        group.addWidget(new ImageWidget(4, 4, 162, 56, GuiTextures.DISPLAY));
+        WidgetGroup group = new WidgetGroup(0, 0, 170, 108);
+        group.addWidget(new ImageWidget(4, 4, 162, 80, GuiTextures.DISPLAY));
         group.addWidget(new LabelWidget(8, 8, "wfcore.machine.radar.name"));
-        group.addWidget(new LabelWidget(8, 22, this::getStatusText).setTextColor(-1).setDropShadow(true));
-        group.addWidget(new LabelWidget(8, 34, this::getProgressText).setTextColor(-1).setDropShadow(true));
-        group.addWidget(new SlotWidget(dataStickInv, 0, 142, 62).setBackgroundTexture(GuiTextures.SLOT));
-        group.addWidget(new ButtonWidget(8, 62, 80, 18, GuiTextures.BUTTON, this::onScanClick)
+        group.addWidget(new LabelWidget(8, 20, this::getStatusText).setTextColor(-1).setDropShadow(true));
+        group.addWidget(new LabelWidget(8, 31, this::getProgressText).setTextColor(-1).setDropShadow(true));
+        group.addWidget(new LabelWidget(8, 46, this::getScanHeaderText).setTextColor(-1).setDropShadow(true));
+        group.addWidget(new LabelWidget(8, 57, this::getPowerText).setTextColor(-1).setDropShadow(true));
+        group.addWidget(new LabelWidget(8, 68, this::getComputeText).setTextColor(-1).setDropShadow(true));
+        group.addWidget(new SlotWidget(dataStickInv, 0, 142, 86).setBackgroundTexture(GuiTextures.SLOT));
+        group.addWidget(new ButtonWidget(8, 86, 80, 18, GuiTextures.BUTTON, this::onScanClick)
                 .setHoverTooltips("wfcore.gui.radar.start_scan"));
-        group.addWidget(new LabelWidget(14, 67, "wfcore.gui.radar.start_scan"));
+        group.addWidget(new LabelWidget(14, 91, "wfcore.gui.radar.start_scan"));
         return group;
     }
 
     private void onScanClick(ClickData data) {
+        WFCore.LOGGER.info("[Radar@{}] onScanClick fired: machineRemote={} clickData.isRemote={} isActive={}",
+                getPos(), isRemote(), data == null ? "?" : data.isRemote, isActive);
         if (isRemote()) {
             return;
         }
+        logScanGates();
         if (!isActive && canScan()) {
+            WFCore.LOGGER.info("[Radar@{}] gates passed -> startScan()", getPos());
             startScan();
+        } else {
+            WFCore.LOGGER.info("[Radar@{}] NOT scanning (isActive={}, canScan={})", getPos(), isActive, canScan());
         }
+    }
+
+    private void logScanGates() {
+        WFCore.LOGGER.info("[Radar@{}] gates: formed={} !active={} tier={}(min {})->{} dataStick={} y>=100={}({}) "
+                        + "skylight={} energyOK={} computationOK={}",
+                getPos(), isFormed(), !isActive, voltageTier, MIN_TIER, voltageTier >= MIN_TIER, hasDataStick(),
+                isCorrectY(), getPos().getY(), hasSkylightAccess(), drainEnergy(true), hasComputation());
+        WFCore.LOGGER.info("[Radar@{}]   detail: energyContainer={} computationProvider={} requiredCWUt={} availCWUt={}",
+                getPos(), energyContainer == null ? "null" : "present",
+                computationProvider == null ? "null" : computationProvider.getClass().getSimpleName(),
+                getRequiredCWUt(), requestCWU(true));
     }
 
     private String getStatusText() {
@@ -445,12 +547,18 @@ public class RadarMachine extends MultiblockControllerMachine
             return "§cRequires an HV+ energy hatch";
         }
         if (isActive) {
-            return "§eScanning...";
+            return animAdvancing ? "§eScanning..." : "§6Stalled - no power/computation";
         }
         if (finished) {
             return "§bScan saved to data stick";
         }
-        return hasDataStick() ? "§aReady" : "§eInsert a data stick";
+        if (!hasDataStick()) {
+            return "§eInsert a data stick";
+        }
+        if (!computationReady) {
+            return String.format("§cNo computation (needs %d CWU/t)", getRequiredCWUt());
+        }
+        return "§aReady";
     }
 
     private String getProgressText() {
