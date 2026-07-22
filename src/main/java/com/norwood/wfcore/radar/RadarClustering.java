@@ -25,9 +25,8 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class RadarClustering {
 
-    // TODO: make these adjustable in the GUI, as in the 1.12.2 version.
-    public static final int MIN_PTS = 10;
-    public static final int EPS = 200;
+    // DBSCAN eps/minPts live in RadarConfig (wfcore-radar.toml) and can be overridden per scan via the
+    // /wfcore_radar command; callers pass the values they want into scan()/calculateDBSCAN().
 
     /** Radars scanning within this many ticks of each other share a single DBSCAN result (~2s). */
     public static final int CACHE_TICKS = 40;
@@ -48,12 +47,18 @@ public final class RadarClustering {
     /** Players carry no richness value. */
     public record DataPoint(TargetType type, int value) {}
 
-    public static Map<IntCoord2, DataPoint> collectTargets(ServerLevel level) {
+    /** Online players in {@code level} as {@link TargetType#PLAYER} datapoints. Server-thread only. */
+    public static Map<IntCoord2, DataPoint> collectPlayers(ServerLevel level) {
         Map<IntCoord2, DataPoint> map = new HashMap<>();
-
         for (ServerPlayer player : level.players()) {
             map.put(new IntCoord2(player.blockPosition()), new DataPoint(TargetType.PLAYER, 0));
         }
+        return map;
+    }
+
+    /** Players plus the whitelisted machines the real radar sees (from the persistent registry). */
+    public static Map<IntCoord2, DataPoint> collectTargets(ServerLevel level) {
+        Map<IntCoord2, DataPoint> map = collectPlayers(level);
 
         Long2IntMap machineMap = RadarRegistryData.get(level).getMachineMap();
         for (Long2IntMap.Entry entry : machineMap.long2IntEntrySet()) {

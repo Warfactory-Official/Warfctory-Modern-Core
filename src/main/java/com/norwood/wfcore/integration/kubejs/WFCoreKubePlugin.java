@@ -18,6 +18,7 @@ public class WFCoreKubePlugin extends KubeJSPlugin {
             event.add("WFBlocks", new WFBlockBindings());
             event.add("WFVehicles", new WFVehicleBindings());
             event.add("WFCompute", new WFComputeBindings());
+            event.add("WFRadar", new WFRadarBindings());
         }
     }
 }

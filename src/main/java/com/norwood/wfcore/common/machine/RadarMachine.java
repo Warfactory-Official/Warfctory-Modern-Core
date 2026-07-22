@@ -33,8 +33,6 @@ import com.lowdragmc.lowdraglib.syncdata.field.ManagedFieldHolder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
@@ -45,6 +43,8 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.render.gltf.AnimTransition;
 import com.norwood.wfcore.client.render.gltf.IAnimatedMachine;
 import com.norwood.wfcore.radar.RadarClustering;
+import com.norwood.wfcore.radar.RadarConfig;
+import com.norwood.wfcore.radar.RadarDataStick;
 import com.norwood.wfcore.radar.data.RadarScanData;
 import org.jetbrains.annotations.Nullable;
 
@@ -255,7 +255,7 @@ public class RadarMachine extends MultiblockControllerMachine
         WFCore.LOGGER.info("[Radar@{}] startScan OK: isActive=true, scanDuration={} ticks, kicking off DBSCAN",
                 getPos(), getScanDurationTicks());
 
-        RadarClustering.scan(serverLevel, RadarClustering.EPS, RadarClustering.MIN_PTS)
+        RadarClustering.scan(serverLevel, RadarConfig.getEps(), RadarConfig.getMinPts())
                 .thenAccept(clusters -> serverLevel.getServer().execute(() -> {
                     UUID id = UUID.randomUUID();
                     RadarScanData.get(serverLevel).addScan(id, clusters);
@@ -283,22 +283,11 @@ public class RadarMachine extends MultiblockControllerMachine
         scanProgress = 0;
         ItemStack stick = dataStickInv.getStackInSlot(0);
         if (!stick.isEmpty() && lastScan != null && getLevel() instanceof ServerLevel serverLevel) {
-            CompoundTag tag = stick.getOrCreateTag();
-            if (tag.hasUUID("TargetUUID")) {
-                RadarScanData.get(serverLevel).removeScan(tag.getUUID("TargetUUID"));
+            CompoundTag tag = stick.getTag();
+            if (tag != null && tag.hasUUID(RadarDataStick.KEY_TARGET_UUID)) {
+                RadarScanData.get(serverLevel).removeScan(tag.getUUID(RadarDataStick.KEY_TARGET_UUID));
             }
-            tag.putUUID("TargetUUID", lastScan);
-            tag.putBoolean("is_analyzed", true);
-
-            CompoundTag display = tag.getCompound("display");
-            display.putString("Name", Component.Serializer.toJson(Component.literal("§bRecorded Radar Data")));
-            ListTag lore = new ListTag();
-            lore.add(StringTag.valueOf(Component.Serializer.toJson(
-                    Component.literal("§7Contains structure density coordinates."))));
-            lore.add(StringTag.valueOf(Component.Serializer.toJson(
-                    Component.literal("§5Ready for Printer analysis."))));
-            display.put("Lore", lore);
-            tag.put("display", display);
+            RadarDataStick.writeScan(stick, lastScan);
         }
         finished = true;
         lastScan = null;

@@ -75,6 +75,7 @@ public class WFCore {
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.radar.RadarRegistryHandler());
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.radar.Retrofitter.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.radar.RadarCommands.INSTANCE);
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.compute.WFComputeTooltips());
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.block.WFBlockResistanceTooltip());
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.loot.WFLootEvents());
@@ -123,6 +124,8 @@ public class WFCore {
             LOGGER.info("Compute registries: {} CPU item(s), {} RAM item(s)",
                     com.norwood.wfcore.common.compute.CPURegistry.size(),
                     com.norwood.wfcore.common.compute.RAMRegistry.size());
+            // Flush WFRadar KubeJS ops now that the block registry is frozen (machine enumeration is safe here).
+            com.norwood.wfcore.radar.WFRadarScripts.apply();
             // com.norwood.wfcore.common.research.WFResearches.registerTest();
             com.norwood.wfcore.common.recipe.condition.WFRecipeConditions.init();
             UIFactory.register(VehicleUIFactory.INSTANCE);
