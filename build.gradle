@@ -201,6 +201,18 @@ dependencies {
     // SBW's compiled classes need at runtime. The modpack must ship KFF too. Not shaded into the WFCore jar.
     implementation("thedarkcolour:kotlinforforge:4.11.0")
     modRuntimeOnly("curse.maven:geckolib-388172:8285794")
+    // GeckoLib on the COMPILE classpath: CubedFpvDroneRendererMixin targets SBW Drone Warfare's
+    // CubedFpvDroneRenderer, whose superclass is geckolib's GeoEntityRenderer, so the mixin AP must be able
+    // to resolve that hierarchy at compile time.
+    modCompileOnly("curse.maven:geckolib-388172:8285794") { transitive = false }
+
+    // SBW Drone Warfare (addon jar in libs/). A plain file dependency, NOT modCompileOnly: the mixin only needs
+    // the CubedFpvDroneRenderer class SYMBOL (class names are identical between the prod SRG jar and the deobf
+    // workspace) and never references any of its remapped members, so ModDevGradle deobf is unnecessary — and
+    // avoiding it keeps the build off the flaky third-party maven that has no POM for this jar. Compile-only, so
+    // like embeddium/mcgltf it is absent from the dev runtime classpath: CubedFpvDroneRendererMixin is silently
+    // skipped in dev runs and only applies in the packaged modpack where the drone mod is present.
+    compileOnly files("libs/sbwdroneconfig-1.0.2.jar")
 
     modImplementation("curse.maven:${warforge_version}") { transitive = false }
 

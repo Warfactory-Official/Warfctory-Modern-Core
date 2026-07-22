@@ -10,14 +10,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.storage.loot.LootParams;
-import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.Tags;
@@ -51,12 +47,6 @@ public final class MiningExplosion {
 
     public static void explode(ServerLevel level, BlockPos center, int radius, int fortune, int tier,
                                @Nullable Player player) {
-        ItemStack plainTool = new ItemStack(Items.NETHERITE_PICKAXE);
-        ItemStack oreTool = new ItemStack(Items.NETHERITE_PICKAXE);
-        if (fortune > 0) {
-            oreTool.enchant(Enchantments.BLOCK_FORTUNE, fortune);
-        }
-
         List<ItemStack> drops = new ArrayList<>();
         List<BlockState> debris = new ArrayList<>();
         Set<Block> debrisSeen = new HashSet<>();
@@ -74,13 +64,11 @@ public final class MiningExplosion {
                     if (state.isAir()) {
                         continue;
                     }
-                    // Another explosive caught in the blast: chain it instead of treating it as terrain.
                     if (IDetonatable.isExplosive(state)) {
                         chain.add(pos.immutable());
                         continue;
                     }
-                    // Sample every solid block in the volume for the block-break particle burst, even ones
-                    // the charge can't break — those particles don't depend on anything actually breaking.
+
                     if (nearby.size() < DEBRIS_TYPES && nearbySeen.add(state.getBlock())) {
                         nearby.add(state);
                     }
@@ -93,13 +81,14 @@ public final class MiningExplosion {
                     if (WarforgeIntegration.isLoaded() && !WarforgeChunkUtil.canDestroyIn(player, level, pos))
                         continue; // Warforge integration
 
+
                     boolean ore = state.is(Tags.Blocks.ORES);
                     BlockEntity be = state.hasBlockEntity() ? level.getBlockEntity(pos) : null;
-                    LootParams.Builder params = new LootParams.Builder(level)
-                            .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(pos))
-                            .withParameter(LootContextParams.TOOL, ore ? oreTool : plainTool)
-                            .withOptionalParameter(LootContextParams.BLOCK_ENTITY, be);
-                    drops.addAll(state.getDrops(params));
+                    List<ItemStack> blockDrops = Block.getDrops(state, level, pos, be);
+                    if (ore && fortune > 0) {
+                        applyFortune(blockDrops, fortune, level.random);
+                    }
+                    drops.addAll(blockDrops);
 
                     if (debris.size() < DEBRIS_TYPES && debrisSeen.add(state.getBlock())) {
                         debris.add(state);
@@ -134,6 +123,19 @@ public final class MiningExplosion {
             return tier >= 2;
         }
         return state.is(WFTags.NATURAL_BLAST_BREAKABLE) || state.is(Tags.Blocks.ORES);
+    }
+
+
+    private static void applyFortune(List<ItemStack> drops, int fortune, RandomSource rng) {
+        for (ItemStack drop : drops) {
+            if (drop.isEmpty()) {
+                continue;
+            }
+            int bonus = Math.max(0, rng.nextInt(fortune + 2) - 1);
+            if (bonus > 0) {
+                drop.grow(drop.getCount() * bonus);
+            }
+        }
     }
 
     /** Merge same-item drops into full stacks so we spawn as few item entities as possible. */

@@ -31,7 +31,8 @@
     "LightTextureAccessor",
     "EditBoxAccessor",
     "EditBoxCursorRecursionMixin",
-    "GuiTextFieldGenericCursorMixin"
+    "GuiTextFieldGenericCursorMixin",
+    "CubedFpvDroneRendererMixin"
   ],
   "injectors": {
     "defaultRequire": 1
