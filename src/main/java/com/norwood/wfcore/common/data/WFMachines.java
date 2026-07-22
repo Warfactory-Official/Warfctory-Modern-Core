@@ -21,6 +21,7 @@ import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
 import com.gregtechceu.gtceu.common.data.*;
 import com.gregtechceu.gtceu.common.data.models.GTMachineModels;
 import com.gregtechceu.gtceu.common.machine.multiblock.steam.SteamParallelMultiblockMachine;
+import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
 import com.norwood.wfcore.common.machine.*;
@@ -135,6 +136,8 @@ public class WFMachines {
                 .langValue("Data Printer")
                 .rotationState(RotationState.NON_Y_AXIS)
                 .tier(GTValues.LV)
+                .tooltips(Component.translatable("gtceu.universal.tooltip.voltage_in",
+                        FormattingUtil.formatNumbers(GTValues.V[GTValues.LV]), GTValues.VNF[GTValues.LV]))
                 .workableTieredHullModel(WFCore.id("block/multiblock/printer"))
                 .register();
 

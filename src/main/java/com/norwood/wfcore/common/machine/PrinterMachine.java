@@ -16,7 +16,10 @@ import com.gregtechceu.gtceu.api.machine.trait.RecipeLogic;
 import com.gregtechceu.gtceu.common.data.GTItems;
 
 import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
+import com.lowdragmc.lowdraglib.gui.texture.GuiTextureGroup;
 import com.lowdragmc.lowdraglib.gui.widget.LabelWidget;
+import com.lowdragmc.lowdraglib.gui.widget.ProgressWidget;
+import com.lowdragmc.lowdraglib.syncdata.annotation.DescSynced;
 import com.lowdragmc.lowdraglib.syncdata.annotation.Persisted;
 import com.lowdragmc.lowdraglib.syncdata.field.ManagedFieldHolder;
 
@@ -27,6 +30,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 import com.norwood.wfcore.radar.RadarBook;
+import com.norwood.wfcore.radar.RadarDataStick;
 import com.norwood.wfcore.radar.data.RadarScanData;
 import com.norwood.wfcore.radar.math.ClusterData;
 import org.jetbrains.annotations.Nullable;
@@ -34,17 +38,14 @@ import org.jetbrains.annotations.Nullable;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Single-block printer: consumes paper + a radar data stick and EU, printing a written book that
- * lists the bases recorded on the data stick (ranked by richness and player count, with estimated
- * center coordinates).
- */
+
 public class PrinterMachine extends TieredEnergyMachine implements IUIMachine, IMachineLife {
 
     protected static final ManagedFieldHolder MANAGED_FIELD_HOLDER = new ManagedFieldHolder(PrinterMachine.class,
             TieredEnergyMachine.MANAGED_FIELD_HOLDER);
 
     public static final int MAX_PROGRESS = 200;
+    public static final int PAPER_PER_BOOK = 16;
 
     @Persisted
     protected final NotifiableItemStackHandler paperInv;
@@ -53,8 +54,10 @@ public class PrinterMachine extends TieredEnergyMachine implements IUIMachine, I
     @Persisted
     protected final NotifiableItemStackHandler bookOut;
     @Persisted
+    @DescSynced
     protected int progress;
-    /** Server-side working flag; drives the animated front overlay via the recipe-logic-status render state. */
+    @Persisted
+    @DescSynced
     protected boolean working;
 
     @Nullable
@@ -118,9 +121,17 @@ public class PrinterMachine extends TieredEnergyMachine implements IUIMachine, I
         if (isRemote()) {
             return;
         }
-        ItemStack paper = paperInv.getStackInSlot(0);
         ItemStack data = dataInv.getStackInSlot(0);
-        if (paper.isEmpty() || !isDataItem(data) || !hasScan(data) || !bookOut.getStackInSlot(0).isEmpty()) {
+        if (isDataItem(data) && isStaleScan(data)) {
+            RadarDataStick.wipeScan(data);
+            dataInv.storage.setStackInSlot(0, data);
+            progress = 0;
+            setWorking(false);
+            return;
+        }
+        ItemStack paper = paperInv.getStackInSlot(0);
+        if (!isDataItem(data) || paper.getCount() < PAPER_PER_BOOK || !hasScanData(data)
+                || !bookOut.getStackInSlot(0).isEmpty()) {
             progress = 0;
             setWorking(false);
             return;
@@ -137,9 +148,20 @@ public class PrinterMachine extends TieredEnergyMachine implements IUIMachine, I
             ItemStack book = buildBook(data);
             if (book != null) {
                 bookOut.insertItemInternal(0, book, false);
-                paper.shrink(1);
+                paper.shrink(PAPER_PER_BOOK);
+                consumeScan(data);
             }
+            setWorking(false);
         }
+    }
+
+    private void consumeScan(ItemStack data) {
+        CompoundTag tag = data.getTag();
+        if (tag != null && tag.hasUUID("TargetUUID") && getLevel() instanceof ServerLevel serverLevel) {
+            RadarScanData.get(serverLevel).removeScan(tag.getUUID("TargetUUID"));
+        }
+        RadarDataStick.wipeScan(data);
+        dataInv.storage.setStackInSlot(0, data);
     }
 
     protected boolean drainEnergy(boolean simulate) {
@@ -154,9 +176,22 @@ public class PrinterMachine extends TieredEnergyMachine implements IUIMachine, I
         return false;
     }
 
-    private boolean hasScan(ItemStack data) {
+    private boolean hasScanData(ItemStack data) {
         CompoundTag tag = data.getTag();
-        return tag != null && tag.hasUUID("TargetUUID");
+        if (tag == null || !tag.hasUUID("TargetUUID")) {
+            return false;
+        }
+        return getLevel() instanceof ServerLevel serverLevel &&
+                RadarScanData.get(serverLevel).hasScan(tag.getUUID("TargetUUID"));
+    }
+
+    private boolean isStaleScan(ItemStack data) {
+        CompoundTag tag = data.getTag();
+        if (tag == null || !tag.hasUUID("TargetUUID")) {
+            return false;
+        }
+        return getLevel() instanceof ServerLevel serverLevel &&
+                !RadarScanData.get(serverLevel).hasScan(tag.getUUID("TargetUUID"));
     }
 
     @Nullable
@@ -176,15 +211,29 @@ public class PrinterMachine extends TieredEnergyMachine implements IUIMachine, I
         return RadarBook.createReport(clusters);
     }
 
+    private double getProgressPercent() {
+        return MAX_PROGRESS == 0 ? 0.0 : progress / (double) MAX_PROGRESS;
+    }
+
     @Override
     public ModularUI createUI(Player entityPlayer) {
         return new ModularUI(176, 166, this, entityPlayer)
                 .background(GuiTextures.BACKGROUND)
                 .widget(new LabelWidget(5, 5, getBlockState().getBlock().getDescriptionId()))
-                .widget(new SlotWidget(paperInv, 0, 34, 30).setBackgroundTexture(GuiTextures.SLOT))
-                .widget(new SlotWidget(dataInv, 0, 34, 52).setBackgroundTexture(GuiTextures.SLOT))
-                .widget(new SlotWidget(bookOut, 0, 120, 40).setBackgroundTexture(GuiTextures.SLOT))
-                .widget(UITemplate.bindPlayerInventory(entityPlayer.getInventory(), GuiTextures.SLOT, 7, 82, true));
+
+                .widget(new SlotWidget(paperInv.storage, 0, 52, 25, true, true)
+                        .setBackgroundTexture(new GuiTextureGroup(GuiTextures.SLOT, GuiTextures.PAPER_OVERLAY)))
+                .widget(new SlotWidget(dataInv.storage, 0, 52, 47, true, true) {
+
+                    @Override
+                    public boolean canTakeStack(Player player) {
+                        return super.canTakeStack(player) && !working;
+                    }
+                }.setBackgroundTexture(new GuiTextureGroup(GuiTextures.SLOT, GuiTextures.DATA_ORB_OVERLAY)))
+                .widget(new ProgressWidget(this::getProgressPercent, 79, 36, 20, 20, GuiTextures.PROGRESS_BAR_ARROW))
+                .widget(new SlotWidget(bookOut.storage, 0, 107, 36, true, false)
+                        .setBackgroundTexture(new GuiTextureGroup(GuiTextures.SLOT, GuiTextures.PRINTED_PAPER_OVERLAY)))
+                .widget(UITemplate.bindPlayerInventory(entityPlayer.getInventory(), GuiTextures.SLOT, 7, 84, true));
     }
 
     @Override

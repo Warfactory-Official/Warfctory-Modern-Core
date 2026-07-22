@@ -61,6 +61,10 @@ public class RadarScanData extends SavedData {
         }
     }
 
+    public boolean hasScan(UUID id) {
+        return database.containsKey(id);
+    }
+
     public List<ClusterData> getScan(UUID id) {
         ScanRecord record = database.get(id);
         if (record == null) {

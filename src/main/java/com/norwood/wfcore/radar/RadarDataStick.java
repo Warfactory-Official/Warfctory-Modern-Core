@@ -37,6 +37,27 @@ public final class RadarDataStick {
         tag.put("display", display);
     }
 
+
+    public static void wipeScan(ItemStack stick) {
+        CompoundTag tag = stick.getTag();
+        if (tag == null) {
+            return;
+        }
+        tag.remove(KEY_TARGET_UUID);
+        tag.remove(KEY_ANALYZED);
+        if (tag.contains("display")) {
+            CompoundTag display = tag.getCompound("display");
+            display.remove("Name");
+            display.remove("Lore");
+            if (display.isEmpty()) {
+                tag.remove("display");
+            }
+        }
+        if (tag.isEmpty()) {
+            stick.setTag(null);
+        }
+    }
+
     /** A fresh data stick already carrying {@code scanId}, ready to drop into a printer. */
     public static ItemStack createDataStick(UUID scanId) {
         ItemStack stick = GTItems.TOOL_DATA_STICK.asStack();
