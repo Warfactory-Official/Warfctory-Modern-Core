@@ -175,7 +175,7 @@ public class WFBlocks {
                 .register();
 
         SANDBAGS = createArmorBlock("sandbags", Blocks.SAND, SoundType.SAND, 0.5F, 9.0F,
-                ResourceLocation.fromNamespaceAndPath("minecraft", "block/sand"), BlockTags.MINEABLE_WITH_SHOVEL);
+                ResourceLocation.fromNamespaceAndPath("wfcore", "block/sandbags"), BlockTags.MINEABLE_WITH_SHOVEL);
         HESCO_BASTION = createSidedArmorBlock("hesco_bastion", Blocks.GRAVEL, SoundType.GRAVEL, 1.0F, 17.0F,
                 WFCore.id("block/hesco_barrier_side"), WFCore.id("block/hesco_barrier_bottom"),
                 WFCore.id("block/hesco_barrier_top"), BlockTags.MINEABLE_WITH_SHOVEL);
