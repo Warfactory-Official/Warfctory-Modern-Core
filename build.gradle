@@ -54,6 +54,10 @@ repositories {
     maven {
         name = "TerraformersMC"
         url = "https://maven.terraformersmc.com/"
+        content {
+            includeGroup "dev.emi"
+            includeGroup "com.terraformersmc"
+        }
     }
     maven {
         url = "https://thedarkcolour.github.io/KotlinForForge/"
