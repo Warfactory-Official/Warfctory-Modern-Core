@@ -673,7 +673,10 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     @Override
     public InteractionResult onUse(BlockState blockState, Level level, BlockPos pos, Player player,
                                    InteractionHand hand, BlockHitResult hit) {
-        if (player.isShiftKeyDown()) return InteractionResult.PASS;
+        // Shift-click is reserved for the multiblock structure preview (empty hand + unformed), so hand it
+        // back to the MultiblockControllerMachine/IMultiController default instead of swallowing it — that
+        // default is what renders the in-world hologram. Returning PASS here (as before) short-circuited it.
+        if (player.isShiftKeyDown()) return super.onUse(blockState, level, pos, player, hand, hit);
         if (!isRemote() && getHolder().self() instanceof MissileLauncherBlockEntity) {
             // open(player, BlockPos) — NOT open(player, blockEntity): the latter verifies against the
             // client player (MCHelper.getPlayer()) and throws a dimension mismatch when called server-side.

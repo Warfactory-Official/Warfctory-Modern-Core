@@ -88,16 +88,20 @@ java {
 
 configurations {
     shade
-    implementation.extendsFrom(shade)
+    // commons-math3 is COMPILE-ONLY for us + shaded (relocated to wfcore.shadow.commons.math3) into the packaged
+    // jar by shadowJar. It must NOT sit on the dev RUNTIME module path as a raw `commons.math3` automatic module:
+    // TACZ jar-in-jars its own commons-math3-3.6.1, and two modules named commons.math3 make modlauncher fail
+    // ("modularui reads more than one module named commons.math3"). At dev runtime TACZ's copy supplies the
+    // classes; the packaged jar uses our relocated copy — so neither environment sees a duplicate module.
+    compileOnly.extendsFrom(shade)
 }
 legacyForge {
     version = project.minecraft_version + '-' + project.forge_version
 
-    configurations.named("additionalRuntimeClasspath").configure {
-        extendsFrom(configurations.shade)
-    }
-
-
+    // NOTE: we deliberately do NOT do `additionalRuntimeClasspath.extendsFrom(shade)` here. That used to force
+    // our raw commons-math3 onto the dev runtime module path; it now duplicates TACZ's jar-in-jar
+    // commons-math3-3.6.1 and breaks module resolution. commons-math3 is compileOnly + shaded (see the
+    // configurations block); TACZ provides it at dev runtime.
 
     parchment {
         mappingsVersion = project.mapping_version
@@ -200,6 +204,13 @@ dependencies {
     modImplementation("curse.maven:superb-warfare-1218165:8104849") {
         exclude group: "org.spongepowered", module: "mixin"
     }
+    // TACZ (Timeless and Classics Zero). Provides com.tacz.guns.entity.EntityKineticBullet, which the
+    // off-thread ballistics TACZ adapter demotes/promotes across unloaded chunks. CurseMaven; exclude its
+    // bundled mixin like the SBW line. transitive=false keeps TACZ's own deep dep tree out of our runtime.
+    modImplementation("curse.maven:${tacz_version}") {
+        exclude group: "org.spongepowered", module: "mixin"
+        transitive = false
+    }
     // Superb Warfare 0.8.9 was rewritten in Kotlin and now requires the Kotlin For Forge language provider
     // (>= 4.11.0 on 1.20.1). Provides the `kotlinforforge` FML language provider and the Kotlin stdlib that
     // SBW's compiled classes need at runtime. The modpack must ship KFF too. Not shaded into the WFCore jar.
@@ -217,6 +228,12 @@ dependencies {
     // like embeddium/mcgltf it is absent from the dev runtime classpath: CubedFpvDroneRendererMixin is silently
     // skipped in dev runs and only applies in the packaged modpack where the drone mod is present.
     compileOnly files("libs/sbwdroneconfig-1.0.2.jar")
+
+    // ReForgedPlay (Replay Mod on Forge). COMPILE-ONLY: GuiHandlerMainMenuStabilityMixin targets its
+    // com.replaymod.replay.handler.GuiHandler to keep FancyMenu title-screen layouts stable (see that
+    // mixin). Only the GuiHandler / MainMenuButtonPosition symbols are needed at compile time; the mixin
+    // is skipped in dev (mod absent at runtime) and applies in the packaged modpack where it ships.
+    modCompileOnly("curse.maven:reforgedplay-mod-1018692:5637596") { transitive = false }
 
     modImplementation("curse.maven:${warforge_version}") { transitive = false }
 

@@ -79,6 +79,7 @@ public class WFCore {
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.compute.WFComputeTooltips());
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.block.WFBlockResistanceTooltip());
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.loot.WFLootEvents());
+        MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.ballistics.BallisticsEvents());
 
         WF_MACHINES.registerRegistrate();
 
@@ -128,6 +129,8 @@ public class WFCore {
             com.norwood.wfcore.radar.WFRadarScripts.apply();
             // com.norwood.wfcore.common.research.WFResearches.registerTest();
             com.norwood.wfcore.common.recipe.condition.WFRecipeConditions.init();
+            com.norwood.wfcore.integration.tacz.TaczBallisticsIntegration.register();
+            com.norwood.wfcore.integration.superbwarfare.SbwBallisticsIntegration.register();
             UIFactory.register(VehicleUIFactory.INSTANCE);
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");
             LOGGER.info("Look, I found a {}!", Items.DIAMOND);

@@ -12,7 +12,7 @@ package com.norwood.wfcore.common.machine;
  * <li>B = Industrial Steam Casing (GCYM)</li>
  * <li>C = Galvanized Steel frame</li>
  * <li>D = Atomic Casing (GCYM)</li>
- * <li>E = HSSE Sturdy Machine Casing</li>
+ * <li>E = Reinforced Stainless Casing</li>
  * <li>F = Steel Firebox Casing (unlit)</li>
  * <li>G = Black Steel frame</li>
  * </ul>

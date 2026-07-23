@@ -28,6 +28,8 @@ public final class WFCoreConfig {
     private static final boolean DEFAULT_DEPOSIT_SCATTER = true;
     private static final int DEFAULT_DEPOSIT_WORLDGEN_RARITY = 24;
     private static final boolean DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED = false;
+    private static final boolean DEFAULT_BALLISTICS_ENABLED = true;
+    private static final boolean DEFAULT_BALLISTICS_DEBUG_LOGGING = false;
 
     // -------------------------------------------------------------------------
     // Volatile cache fields — pre-initialised to defaults so getters are safe
@@ -43,6 +45,8 @@ public final class WFCoreConfig {
     private static volatile boolean depositScatter = DEFAULT_DEPOSIT_SCATTER;
     private static volatile int depositWorldgenRarity = DEFAULT_DEPOSIT_WORLDGEN_RARITY;
     private static volatile boolean modelTransformDebugEnabled = DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED;
+    private static volatile boolean ballisticsEnabled = DEFAULT_BALLISTICS_ENABLED;
+    private static volatile boolean ballisticsDebugLogging = DEFAULT_BALLISTICS_DEBUG_LOGGING;
 
     // -------------------------------------------------------------------------
     // ForgeConfigSpec handles
@@ -52,6 +56,8 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.BooleanValue CLEAR_STRUCTURE_LOOT;
     private static final ForgeConfigSpec.BooleanValue DISABLE_NETHER;
     private static final ForgeConfigSpec.BooleanValue MODEL_TRANSFORM_DEBUG_ENABLED;
+    private static final ForgeConfigSpec.BooleanValue BALLISTICS_ENABLED;
+    private static final ForgeConfigSpec.BooleanValue BALLISTICS_DEBUG_LOGGING;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> VEHICLES;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> FOLIAGE_BREAKERS;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MIN;
@@ -128,6 +134,21 @@ public final class WFCoreConfig {
 
         builder.pop(2);
 
+        builder.comment("Off-thread long-range ballistics for TACZ bullets and Superb Warfare projectiles.")
+                .push("ballistics");
+
+        BALLISTICS_ENABLED = builder
+                .comment(
+                        "Master switch. When off, projectiles are never handed to the off-thread ballistics engine and behave exactly as their own mod ships them.")
+                .define("enabled", DEFAULT_BALLISTICS_ENABLED);
+
+        BALLISTICS_DEBUG_LOGGING = builder
+                .comment(
+                        "Log each virtual shell's lifecycle to the server log: leaving loaded chunks, impact position (and whether that chunk was loaded), deferred detonations, and expiries.")
+                .define("debugLogging", DEFAULT_BALLISTICS_DEBUG_LOGGING);
+
+        builder.pop();
+
         SPEC = builder.build();
     }
 
@@ -183,6 +204,16 @@ public final class WFCoreConfig {
         return modelTransformDebugEnabled;
     }
 
+    /** Master switch for the off-thread long-range ballistics engine (TACZ bullets + SBW projectiles). */
+    public static boolean isBallisticsEnabled() {
+        return ballisticsEnabled;
+    }
+
+    /** When true, the ballistics engine logs each virtual shell's lifecycle (demote / impact / defer / expiry). */
+    public static boolean isBallisticsDebugLogging() {
+        return ballisticsDebugLogging;
+    }
+
     // -------------------------------------------------------------------------
     // Bake — called by WFCore on ModConfigEvent
     // -------------------------------------------------------------------------
@@ -193,6 +224,8 @@ public final class WFCoreConfig {
         clearStructureLoot = CLEAR_STRUCTURE_LOOT.get();
         disableNether = DISABLE_NETHER.get();
         modelTransformDebugEnabled = MODEL_TRANSFORM_DEBUG_ENABLED.get();
+        ballisticsEnabled = BALLISTICS_ENABLED.get();
+        ballisticsDebugLogging = BALLISTICS_DEBUG_LOGGING.get();
         depositYieldMin = DEPOSIT_YIELD_MIN.get();
         depositYieldMax = Math.max(DEPOSIT_YIELD_MAX.get(), depositYieldMin);
         depositWorldgenEnabled = DEPOSIT_WORLDGEN_ENABLED.get();

@@ -1,0 +1,6 @@
+{
+  "parent": "minecraft:block/cube_all",
+  "textures": {
+    "all": "wfcore:block/casings/reinforced_stainless_casing"
+  }
+}

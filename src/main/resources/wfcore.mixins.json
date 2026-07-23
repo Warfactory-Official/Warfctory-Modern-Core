@@ -16,7 +16,8 @@
     "ServerLifecycleHooksMixin",
     "FireClayFluidPipeMixin",
     "ConsumableUseMixin",
-    "SplashPotionMixin"
+    "SplashPotionMixin",
+    "ProjectileBallisticsMixin"
   ],
   "client": [
     "NamePlateMixin",
@@ -32,7 +33,9 @@
     "EditBoxAccessor",
     "EditBoxCursorRecursionMixin",
     "GuiTextFieldGenericCursorMixin",
-    "CubedFpvDroneRendererMixin"
+    "CubedFpvDroneRendererMixin",
+    "GuiHandlerMainMenuStabilityMixin",
+    "ForceFirstPersonCameraMixin"
   ],
   "injectors": {
     "defaultRequire": 1

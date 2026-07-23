@@ -678,7 +678,10 @@ public class InterceptorMachine extends MultiblockControllerMachine
     @Override
     public InteractionResult onUse(BlockState blockState, Level level, BlockPos pos, Player player,
                                    InteractionHand hand, BlockHitResult hit) {
-        if (player.isShiftKeyDown()) return InteractionResult.PASS;
+        // Shift-click is reserved for the multiblock structure preview (empty hand + unformed), so hand it
+        // back to the MultiblockControllerMachine/IMultiController default instead of swallowing it — that
+        // default is what renders the in-world hologram. Returning PASS here (as before) short-circuited it.
+        if (player.isShiftKeyDown()) return super.onUse(blockState, level, pos, player, hand, hit);
         if (!isRemote() && getHolder().self() instanceof InterceptorBlockEntity) {
             BlockEntityUIFactory.INSTANCE.open(player, pos);
         }

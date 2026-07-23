@@ -871,15 +871,9 @@ public class WFMachines {
         MISSILE_LAUNCHER = WF_MACHINES.multiblock("missile_launcher", MissileLauncherMachine::new,
                 MetaMachineBlock::new, MetaMachineItem::new, MissileLauncherBlockEntity::new)
                 .langValue("Missile Launch Silo")
-                // Auto-added from the "...machine.missile_launcher.tooltip" lang key (see missile_factory).
-                // The loaded-missile model is drawn by our own MissileLauncherRenderer (registered in
-                // WFClientEvents); disable GTM's default BER so it doesn't clobber our renderer for this BE
-                // type. The casing still renders from the chunk-mesh baked model. (See the radar.)
                 .hasBER(false)
                 .rotationState(RotationState.NON_Y_AXIS)
                 .appearanceBlock(GCYMBlocks.CASING_INDUSTRIAL_STEAM)
-                // The controller 'S' sits off-centre on the silo's ground ring; a flipped match would
-                // mirror the structure across it (same reasoning as the radar).
                 .allowFlip(false)
                 .pattern(definition -> {
                     var pattern = FactoryBlockPattern.start(
@@ -889,20 +883,20 @@ public class WFMachines {
                     }
                     return pattern
                             .where('S', controller(blocks(definition.getBlock())))
-                            .where('A', blocks(GTBlocks.CASING_STEEL_SOLID.get()) // gtceu:solid_machine_casing x47
+                            .where('A', blocks(WFBlocks.REINFORCED_STAINLESS_CASING.get()) // gtceu:solid_machine_casing x47
                                     .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
                                             .setMaxGlobalLimited(2, 1)))
-                            .where('B', blocks(GCYMBlocks.CASING_INDUSTRIAL_STEAM.get())) // x36
+                            .where('B', blocks(WFBlocks.CONCRETE_BASE.get())) // x36
                             .where('C', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x125
-                            .where('D', blocks(GCYMBlocks.CASING_ATOMIC.get())) // gtceu:atomic_casing x122
-                            .where('E', blocks(GTBlocks.CASING_HSSE_STURDY.get())) // gtceu:sturdy_machine_casing x159
+                            .where('D', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get())) // gtceu:atomic_casing x122
+                            .where('E', blocks(WFBlocks.REINFORCED_STAINLESS_CASING.get())) // wfcore:reinforced_stainless_casing x159
                             .where('F', blocks(GTBlocks.FIREBOX_STEEL.get())) // gtceu:steel_firebox_casing x64
                             .where('G', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x28
                             .where(' ', any())
                             .build();
                 })
-                // Same casing + assembler front as the Missile Factory, so the silo reads as its sibling.
-                .workableCasingModel(GTCEu.id("block/casings/gcym/industrial_steam_casing"),
+                // Reinforced Stainless casing hull with the assembler front, matching the silo's E-casing.
+                .workableCasingModel(WFCore.id("block/casings/reinforced_stainless_casing"),
                         GTCEu.id("block/machines/assembler"))
                 .register();
 
@@ -926,7 +920,7 @@ public class WFMachines {
                                     .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
                                             .setMaxGlobalLimited(2, 1)))
                             .where('B', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x4
-                            .where('C', blocks(GCYMBlocks.CASING_ATOMIC.get())) // gtceu:atomic_casing x30
+                            .where('C', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get()))
                             .where('D', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x4
                             .where(' ', any())
                             .build();
