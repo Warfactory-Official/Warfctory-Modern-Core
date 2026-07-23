@@ -167,6 +167,7 @@ public final class SbwBallisticsAdapter implements BallisticsAdapter {
             }
 
             shell.causeExplode(impact);
+            shell.discard();
         };
     }
 
