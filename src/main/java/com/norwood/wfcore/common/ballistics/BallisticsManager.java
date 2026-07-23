@@ -176,26 +176,32 @@ public final class BallisticsManager {
                 curCz = ccz;
             }
             if (columnEntityTicking) {
-                promote(v, pointAt(from, dx, dy, dz, tEntry), enteredFace);
-                return StepResult.PROMOTED;
-            }
+                // Only hand back to vanilla once the shell has actually flown through unloaded space and is now
+                // RE-ENTERING the live frontier. On the cells it was demoted from (still loaded), step straight
+                // through without promoting, otherwise a shell sitting on the boundary ping-pongs demote<->promote
+                // forever and never advances.
+                if (v.enteredUnloaded) {
+                    promote(v, pointAt(from, dx, dy, dz, tEntry), enteredFace);
+                    return StepResult.PROMOTED;
+                }
+            } else {
+                v.enteredUnloaded = true;
 
-            final int sy = by >> 4;
-            if (ccx != curSx || sy != curSy || ccz != curSz) {
-                section = terrain.get(ccx, sy, ccz);
-                curSx = ccx;
-                curSy = sy;
-                curSz = ccz;
-            }
-            if (section == null) {
-
-                return StepResult.PENDING;
-            }
-            if (section.isSolid(bx & 15, by & 15, bz & 15)) {
-
-                Direction face = enteredFace != null ? enteredFace : Direction.UP;
-                scheduleImpact(v, cursor.set(bx, by, bz).immutable(), face, serverTick);
-                return StepResult.IMPACTED;
+                final int sy = by >> 4;
+                if (ccx != curSx || sy != curSy || ccz != curSz) {
+                    section = terrain.get(ccx, sy, ccz);
+                    curSx = ccx;
+                    curSy = sy;
+                    curSz = ccz;
+                }
+                if (section == null) {
+                    return StepResult.PENDING;
+                }
+                if (section.isSolid(bx & 15, by & 15, bz & 15)) {
+                    Direction face = enteredFace != null ? enteredFace : Direction.UP;
+                    scheduleImpact(v, cursor.set(bx, by, bz).immutable(), face, serverTick);
+                    return StepResult.IMPACTED;
+                }
             }
 
             if (tMaxX <= tMaxY && tMaxX <= tMaxZ) {
@@ -223,6 +229,14 @@ public final class BallisticsManager {
                 tMaxZ += tDeltaZ;
                 enteredFace = stepZ > 0 ? Direction.NORTH : Direction.SOUTH;
             }
+        }
+
+        if (!v.enteredUnloaded) {
+            // The whole segment stayed inside the entity-ticking frontier (e.g. chunks streamed in since this
+            // shell was demoted). It belongs to vanilla here -> hand it straight back rather than flying it
+            // invisibly through loaded terrain.
+            promote(v, new Vec3(fx + dx, fy + dy, fz + dz), enteredFace);
+            return StepResult.PROMOTED;
         }
 
         v.pos = new Vec3(fx + dx, fy + dy, fz + dz);
@@ -277,6 +291,7 @@ public final class BallisticsManager {
             return;
         }
 
+        v.pos = entry;
         if (adapter.spawnLive(level, v) != null) {
             if (WFCoreConfig.isBallisticsDebugLogging()) {
                 WFCore.LOGGER.debug("Ballistics: promoted virtual {} back to a live entity at {}", v.id, entry);

@@ -19,6 +19,7 @@ public final class VirtualProjectile {
     public final double drag;
     public final int launchTick;
     public int age;
+    public boolean enteredUnloaded = false;
 
     public long impactTick = -1L;
 
@@ -65,6 +66,7 @@ public final class VirtualProjectile {
         tag.putDouble("Drag", drag);
         tag.putInt("LaunchTick", launchTick);
         tag.putInt("Age", age);
+        tag.putBoolean("EnteredUnloaded", enteredUnloaded);
         tag.putLong("ImpactTick", impactTick);
         tag.putString("AdapterId", adapterId.toString());
         tag.put("TypeToken", typeToken);
@@ -94,6 +96,7 @@ public final class VirtualProjectile {
         VirtualProjectile v = new VirtualProjectile(id, pos, vel, gravity, drag, launchTick,
                 adapterId, typeToken, shooter);
         v.age = tag.getInt("Age");
+        v.enteredUnloaded = tag.getBoolean("EnteredUnloaded");
         v.impactTick = tag.getLong("ImpactTick");
         if (tag.contains("ImpactPos", Tag.TAG_LIST)) {
             v.impactPos = listToVec3(tag.getList("ImpactPos", Tag.TAG_DOUBLE));
