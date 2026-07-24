@@ -4,6 +4,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 
+import com.gregtechceu.gtceu.api.data.chemical.material.Material;
+import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.norwood.wfcore.config.WFCoreConfig;
 
 import java.util.LinkedHashSet;
@@ -80,6 +82,24 @@ public final class DepositType {
      */
     public int overlayColor() {
         return overlayColor;
+    }
+
+    /**
+     * The RGB tint (0xRRGGBB) for this deposit's ore overlay AND the drill's working particles: the explicit
+     * {@link #overlayColor} if set, else the {@link #prospectorMaterial}'s GregTech colour, else white. Shared by
+     * {@code DepositBlockEntityRenderer} and {@code DrillParticleHandler} so both read the same ore colour.
+     */
+    public int effectiveColor() {
+        if (overlayColor >= 0) {
+            return overlayColor & 0xFFFFFF;
+        }
+        if (prospectorMaterial != null) {
+            Material material = GTMaterials.get(prospectorMaterial);
+            if (material != null && !material.isNull()) {
+                return material.getMaterialRGB() & 0xFFFFFF;
+            }
+        }
+        return 0xFFFFFF;
     }
 
     public int weight() {

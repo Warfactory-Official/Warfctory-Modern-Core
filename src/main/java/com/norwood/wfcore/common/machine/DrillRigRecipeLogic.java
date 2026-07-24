@@ -1,11 +1,11 @@
 package com.norwood.wfcore.common.machine;
 
 import com.gregtechceu.gtceu.api.machine.trait.RecipeLogic;
+import com.gregtechceu.gtceu.api.recipe.GTRecipe;
 
-/**
- * Recipe logic for the drilling rig. Each completed cycle drains one yield from the deposit cluster beneath the
- * drill (outer blocks first); the recipe's item output is handled by the stock {@link RecipeLogic} pipeline.
- */
+import java.util.Iterator;
+
+
 public class DrillRigRecipeLogic extends RecipeLogic {
 
     public DrillRigRecipeLogic(DrillRigMachine machine) {
@@ -18,5 +18,21 @@ public class DrillRigRecipeLogic extends RecipeLogic {
         if (machine.self() instanceof DrillRigMachine drill) {
             drill.onDrillCycleFinished();
         }
+    }
+
+
+    @Override
+    public Iterator<GTRecipe> searchRecipe() {
+      Iterator<GTRecipe> stock = super.searchRecipe();
+        if (stock.hasNext()) {
+            return stock;
+        }
+        if (machine.self() instanceof DrillRigMachine drill) {
+            var base = drill.findBaseDrillingRecipe();
+            if (base != null) {
+                return java.util.List.of(base).iterator();
+            }
+        }
+        return stock;
     }
 }

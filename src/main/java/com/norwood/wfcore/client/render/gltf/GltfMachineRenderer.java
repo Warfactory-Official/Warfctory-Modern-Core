@@ -115,6 +115,8 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
 
 
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+
         RenderedGltfModel.setCurrentPose(pose);
         RenderedGltfModel.setCurrentNormal(new Matrix3f(pose).invert().transpose());
         try {
@@ -169,6 +171,8 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         GL30.glBindVertexArray(prevVao);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, prevArrayBuffer);
         GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevElementArrayBuffer);
+
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
     }
 
     /** Orients the model for a multiblock controller, ported from the 1.12.2 {@code MteRenderer}. */

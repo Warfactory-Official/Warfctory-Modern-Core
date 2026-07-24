@@ -32,6 +32,9 @@ public class WFDebugKeyMappings {
     public static final KeyMapping MODE = key("mode", GLFW.GLFW_KEY_KP_1);
     public static final KeyMapping EXPORT = key("export", GLFW.GLFW_KEY_KP_ENTER);
     public static final KeyMapping RESET = key("reset", GLFW.GLFW_KEY_KP_DECIMAL);
+    /** Toggles {@code DrillScanDebugRenderer} - draws boxes on the ore the drill's scan sees. Numpad 3 is
+     *  free (not part of the transform-debug D-pad above). */
+    public static final KeyMapping TOGGLE_DRILL_SCAN = key("toggle_drill_scan", GLFW.GLFW_KEY_KP_3);
 
     private static KeyMapping key(String id, int glfwKey) {
         return new KeyMapping("key.wfcore.debug." + id, InputConstants.Type.KEYSYM, glfwKey, CATEGORY);
@@ -50,5 +53,6 @@ public class WFDebugKeyMappings {
         event.register(MODE);
         event.register(EXPORT);
         event.register(RESET);
+        event.register(TOGGLE_DRILL_SCAN);
     }
 }

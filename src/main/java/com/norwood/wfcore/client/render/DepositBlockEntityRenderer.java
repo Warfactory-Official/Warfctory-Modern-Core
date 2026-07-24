@@ -8,8 +8,6 @@ import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 
-import com.gregtechceu.gtceu.api.data.chemical.material.Material;
-import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.norwood.wfcore.common.deposit.DepositType;
@@ -44,7 +42,7 @@ public class DepositBlockEntityRenderer implements BlockEntityRenderer<DepositBl
         drawCube(buffers.getBuffer(RenderType.entityCutoutNoCull(BEDROCK)), poseStack,
                 light, packedOverlay, 255, 255, 255);
 
-        int rgb = overlayTint(type);
+        int rgb = type.effectiveColor();
         poseStack.pushPose();
         poseStack.translate(0.5, 0.5, 0.5);
         poseStack.scale(OVERLAY_SCALE, OVERLAY_SCALE, OVERLAY_SCALE);
@@ -53,21 +51,6 @@ public class DepositBlockEntityRenderer implements BlockEntityRenderer<DepositBl
         drawCube(buffers.getBuffer(RenderType.entityTranslucent(expand(overlay))), poseStack,
                 light, packedOverlay, (rgb >> 16) & 0xFF, (rgb >> 8) & 0xFF, rgb & 0xFF);
         poseStack.popPose();
-    }
-
-    /** Overlay tint: the explicit {@code overlayColor}, else the prospector material's colour, else white. */
-    private static int overlayTint(DepositType type) {
-        if (type.overlayColor() >= 0) {
-            return type.overlayColor() & 0xFFFFFF;
-        }
-        String mat = type.prospectorMaterial();
-        if (mat != null) {
-            Material material = GTMaterials.get(mat);
-            if (material != null && !material.isNull()) {
-                return material.getMaterialRGB() & 0xFFFFFF;
-            }
-        }
-        return 0xFFFFFF;
     }
 
     private static ResourceLocation resolveTexture(DepositType type) {
