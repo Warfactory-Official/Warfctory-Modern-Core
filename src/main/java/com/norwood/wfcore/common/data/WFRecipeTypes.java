@@ -40,6 +40,7 @@ public class WFRecipeTypes {
     public static GTRecipeType MISSILE_FACTORY;
     public static GTRecipeType PRIMITIVE_ALLOYER;
     public static GTRecipeType STRANDCASTER;
+    public static GTRecipeType GAS_EXTRACTOR;
 
     public static void init() {
         var id = WFCore.id("large_blast_furnace");
@@ -95,6 +96,20 @@ public class WFRecipeTypes {
                 .setProgressBar(GuiTextures.PROGRESS_BAR_ARROW, ProgressTexture.FillDirection.LEFT_TO_RIGHT)
                 .setMaxTooltips(1)
                 .setSound(GTSoundEntries.COOLING);
+
+        // Gas Extractor: an air/gas collector. Which gas to collect is selected with a Programmed Circuit in
+        // the Item Input Bus (recipes gate on it via `.circuit(n)`), which is a not-consumed item input — so
+        // item inputs are sized for the circuit plus a couple of real inputs. It can also process items+fluids
+        // and outputs both. Recipes are authored entirely in KubeJS on `wfcore:gas_extractor`.
+        var gasId = WFCore.id("gas_extractor");
+        GAS_EXTRACTOR = new GTRecipeType(gasId, "multiblock");
+        GTRegistries.register(BuiltInRegistries.RECIPE_TYPE, gasId, GAS_EXTRACTOR);
+        GTRegistries.register(BuiltInRegistries.RECIPE_SERIALIZER, gasId, new GTRecipeSerializer());
+        GTRegistries.RECIPE_TYPES.register(gasId, GAS_EXTRACTOR);
+        GAS_EXTRACTOR.setMaxIOSize(3, 3, 3, 3)
+                .setProgressBar(GuiTextures.PROGRESS_BAR_ARROW, ProgressTexture.FillDirection.LEFT_TO_RIGHT)
+                .setMaxTooltips(1)
+                .setSound(GTSoundEntries.COMPRESSOR);
     }
 
     /**

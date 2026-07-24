@@ -13,6 +13,7 @@ import com.gregtechceu.gtceu.api.item.MetaMachineItem;
 import com.gregtechceu.gtceu.api.machine.MachineDefinition;
 import com.gregtechceu.gtceu.api.machine.MultiblockMachineDefinition;
 import com.gregtechceu.gtceu.api.machine.multiblock.PartAbility;
+import com.gregtechceu.gtceu.api.machine.multiblock.WorkableElectricMultiblockMachine;
 import com.gregtechceu.gtceu.api.pattern.FactoryBlockPattern;
 import com.gregtechceu.gtceu.api.pattern.MultiblockShapeInfo;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
@@ -56,6 +57,7 @@ public class WFMachines {
     public static MultiblockMachineDefinition LARGE_BLAST_FURNACE;
     public static MultiblockMachineDefinition PRIMITIVE_ALLOYER;
     public static MultiblockMachineDefinition STRANDCASTER;
+    public static MultiblockMachineDefinition GAS_EXTRACTOR;
     public static MultiblockMachineDefinition MAINFRAME;
     public static MultiblockMachineDefinition RESEARCH_UNIT;
     public static MultiblockMachineDefinition RADAR;
@@ -442,6 +444,40 @@ public class WFMachines {
                         GTCEu.id("block/machines/fluid_solidifier"))
                         .andThen(b -> b.addDynamicRenderer(DynamicRenderHelper::makeRecipeFluidAreaRender)))
                 .hasBER(true)
+                .register();
+
+        GAS_EXTRACTOR = WF_MACHINES.multiblock("gas_extractor", WorkableElectricMultiblockMachine::new)
+                .langValue("Large Gas Extractor")
+                .rotationState(RotationState.NON_Y_AXIS)
+                .recipeType(WFRecipeTypes.GAS_EXTRACTOR)
+                .recipeModifier(GTRecipeModifiers.OC_NON_PERFECT)
+                .appearanceBlock(GTBlocks.CASING_STAINLESS_CLEAN)
+                .pattern(definition -> {
+                    var pattern = FactoryBlockPattern.start(
+                            RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT);
+                    for (String[] aisle : GasExtractorStructure.AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(GTBlocks.STEEL_HULL.get())) // gtceu:steel_machine_casing x40
+                            .where('B', blocks(GTBlocks.CASING_STEEL_PIPE.get())) // gtceu:steel_pipe_casing x34
+                            .where('C', blocks(GTBlocks.CASING_STEEL_SOLID.get()) // gtceu:solid_machine_casing x44
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
+                                            .setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.EXPORT_ITEMS).setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMaxGlobalLimited(3))
+                                    .or(abilities(PartAbility.EXPORT_FLUIDS).setMaxGlobalLimited(3)))
+                            .where('D', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x16
+                            .where('E', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get())) // gtceu:atomic_casing x42
+                            .where('F', blocks(GTBlocks.CASING_STAINLESS_CLEAN.get())) // gtceu:clean_machine_casing x80
+                            .where('G', frames(GTMaterials.StainlessSteel)) // gtceu:stainless_steel_frame x16
+                            .where(' ', any())
+                            .build();
+                })
+                .workableCasingModel(GTCEu.id("block/casings/solid/machine_casing_clean_stainless_steel"),
+                        GTCEu.id("block/machines/air_scrubber"))
                 .register();
 
         RADAR = WF_MACHINES.multiblock("radar", RadarMachine::new,
