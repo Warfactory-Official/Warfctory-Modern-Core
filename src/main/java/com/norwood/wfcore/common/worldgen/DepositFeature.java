@@ -116,6 +116,10 @@ public class DepositFeature extends Feature<NoneFeatureConfiguration> {
                 }
             }
         }
+        if (placedAny && WFCoreConfig.isDepositLogPlacements()) {
+            com.norwood.wfcore.WFCore.LOGGER.info("[deposit] placed {} cluster size {} at x={} z={}",
+                    type.id(), size, originX, originZ);
+        }
         return placedAny;
     }
 

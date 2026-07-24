@@ -14,6 +14,7 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.ballistics.BallisticsAdapter;
 import com.norwood.wfcore.common.ballistics.DeferredImpact;
 import com.norwood.wfcore.common.ballistics.VirtualProjectile;
+import com.norwood.wfcore.mixin.EntityKineticBulletAccessor;
 import com.tacz.guns.entity.EntityKineticBullet;
 
 import io.netty.buffer.Unpooled;
@@ -29,6 +30,10 @@ public final class TaczBallisticsAdapter implements BallisticsAdapter {
     private static final String KEY_GRAVITY = "Gravity";
     private static final String KEY_FRICTION = "Friction";
     private static final String KEY_LIFE = "Life";
+    // TACZ's firing origin (getDamage falloff). Not in writeSpawnData, so we carry it through the virtual phase.
+    private static final String KEY_START_X = "StartX";
+    private static final String KEY_START_Y = "StartY";
+    private static final String KEY_START_Z = "StartZ";
 
     @Override
     public ResourceLocation id() {
@@ -94,6 +99,16 @@ public final class TaczBallisticsAdapter implements BallisticsAdapter {
         typeToken.putDouble(KEY_FRICTION, friction);
         typeToken.putInt(KEY_LIFE, life);
 
+        // Preserve the firing origin so damage falloff stays correct after re-materialisation (falling back to
+        // the current position rather than leaving it null, which would NPE getDamage the moment it re-spawns).
+        Vec3 startPos = ((EntityKineticBulletAccessor) (Object) bullet).wfcore$getStartPos();
+        if (startPos == null) {
+            startPos = pos;
+        }
+        typeToken.putDouble(KEY_START_X, startPos.x);
+        typeToken.putDouble(KEY_START_Y, startPos.y);
+        typeToken.putDouble(KEY_START_Z, startPos.z);
+
         Entity owner = bullet.getOwner();
         UUID shooter = owner != null ? owner.getUUID() : null;
 
@@ -133,6 +148,14 @@ public final class TaczBallisticsAdapter implements BallisticsAdapter {
             bullet.setPos(v.pos.x, v.pos.y, v.pos.z);
             bullet.setDeltaMovement(v.vel);
             bullet.hasImpulse = true;
+
+            // Restore the firing origin (readSpawnData doesn't carry it) before the entity can tick, so
+            // getDamage's distanceTo(startPos) never sees null.
+            Vec3 startPos = v.typeToken.contains(KEY_START_X)
+                    ? new Vec3(v.typeToken.getDouble(KEY_START_X), v.typeToken.getDouble(KEY_START_Y),
+                            v.typeToken.getDouble(KEY_START_Z))
+                    : v.pos;
+            ((EntityKineticBulletAccessor) (Object) bullet).wfcore$setStartPos(startPos);
         } catch (Throwable t) {
             WFCore.LOGGER.warn("Ballistics: failed to re-spawn TACZ bullet {}", v.id, t);
             return null;

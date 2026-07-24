@@ -27,12 +27,18 @@ public final class DepositType {
     private final Set<ResourceLocation> dimensions;
     private final int clusterMin;
     private final int clusterMax;
+    private final String prospectorMaterial;
+    private final ResourceLocation overlayTexture;
+    private final int overlayColor;
 
     private DepositType(Builder b) {
         this.id = b.id;
         this.nameKey = b.nameKey != null ? b.nameKey : "wfcore.deposit." + b.id.getNamespace() + "." + b.id.getPath();
         this.texture = b.texture != null ? b.texture :
                 new ResourceLocation(id.getNamespace(), "block/deposit/" + id.getPath());
+        this.prospectorMaterial = b.prospectorMaterial;
+        this.overlayTexture = b.overlayTexture;
+        this.overlayColor = b.overlayColor;
         int defMin = WFCoreConfig.getDefaultYieldMin();
         int defMax = WFCoreConfig.getDefaultYieldMax();
         this.yieldMin = b.yieldMin >= 0 ? b.yieldMin : defMin;
@@ -57,6 +63,25 @@ public final class DepositType {
         return texture;
     }
 
+    /**
+     * Optional ore-overlay texture id ({@code ns:block/...}). When set, the BER draws the deposit as a bedrock
+     * cube with this (transparent) overlay layered on top and tinted — mirroring how GregTech ore blocks
+     * composite a material overlay over stone — instead of the flat single {@link #texture()}. {@code null}
+     * keeps the single-texture look.
+     */
+    @javax.annotation.Nullable
+    public ResourceLocation overlayTexture() {
+        return overlayTexture;
+    }
+
+    /**
+     * Tint applied to {@link #overlayTexture()} as {@code 0xRRGGBB}, or {@code -1} to derive it from the
+     * {@link #prospectorMaterial()}'s GregTech colour (white if there is none).
+     */
+    public int overlayColor() {
+        return overlayColor;
+    }
+
     public int weight() {
         return weight;
     }
@@ -75,6 +100,16 @@ public final class DepositType {
 
     public int clusterMax() {
         return clusterMax;
+    }
+
+    /**
+     * GregTech material name (the path of its id, e.g. {@code pitchblende}) used to label this deposit on the
+     * GregTech Ore Prospector, or {@code null} to show as the plain deposit block. Read by
+     * {@link WFDepositProspector} from the prospector-scan mixin.
+     */
+    @javax.annotation.Nullable
+    public String prospectorMaterial() {
+        return prospectorMaterial;
     }
 
     /** A random starting yield within {@code [yieldMin, yieldMax]} (inclusive). */
@@ -100,6 +135,9 @@ public final class DepositType {
         private final Set<ResourceLocation> dimensions = new LinkedHashSet<>();
         private int clusterMin = 2;
         private int clusterMax = 6;
+        private String prospectorMaterial;
+        private ResourceLocation overlayTexture;
+        private int overlayColor = -1;
 
         private Builder(ResourceLocation id) {
             this.id = id;
@@ -110,13 +148,21 @@ public final class DepositType {
             return this;
         }
 
-        public Builder texture(ResourceLocation texture) {
-            this.texture = texture;
+
+        public Builder texture(String texture) {
+            this.texture = new ResourceLocation(texture);
             return this;
         }
 
-        public Builder texture(String texture) {
-            return texture(new ResourceLocation(texture));
+
+        public Builder overlay(String overlayTexture) {
+            this.overlayTexture = new ResourceLocation(overlayTexture);
+            return this;
+        }
+
+        public Builder overlayColor(int rgb) {
+            this.overlayColor = rgb;
+            return this;
         }
 
         public Builder yield(int min, int max) {
@@ -143,6 +189,18 @@ public final class DepositType {
         public Builder clusterSize(int min, int max) {
             this.clusterMin = min;
             this.clusterMax = max;
+            return this;
+        }
+
+
+        public Builder prospectorMaterial(String material) {
+            if (material == null || material.isEmpty()) {
+                this.prospectorMaterial = null;
+                return this;
+            }
+            int colon = material.indexOf(':');
+            this.prospectorMaterial = (colon >= 0 ? material.substring(colon + 1) : material)
+                    .toLowerCase(java.util.Locale.ROOT);
             return this;
         }
 

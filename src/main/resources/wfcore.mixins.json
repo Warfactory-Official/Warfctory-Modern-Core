@@ -17,7 +17,9 @@
     "FireClayFluidPipeMixin",
     "ConsumableUseMixin",
     "SplashPotionMixin",
-    "ProjectileBallisticsMixin"
+    "ProjectileBallisticsMixin",
+    "ProspectorOreDepositMixin",
+    "EntityKineticBulletAccessor"
   ],
   "client": [
     "NamePlateMixin",
