@@ -30,7 +30,6 @@
     "BlockRenderDispatcherMixin",
     "BlockShouldRenderFaceMixin",
     "EmbeddiumBlockRendererMixin",
-    "McgltfHeadlessConstructMixin",
     "LightTextureAccessor",
     "EditBoxAccessor",
     "EditBoxCursorRecursionMixin",
