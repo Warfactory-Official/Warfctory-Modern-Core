@@ -119,6 +119,14 @@ legacyForge {
             programArguments.addAll('--refresh-dependencies')
             systemProperty('forge.enabledGameTestNamespaces', project.mod_id)
         }
+        client2 {
+            client()
+            ideName = 'runClient2'
+            sourceSet = sourceSets.main
+            systemProperty('forge.enabledGameTestNamespaces', project.mod_id)
+            programArguments.addAll('--username', 'Dev2')
+            gameDirectory = file('run/client2')
+        }
         server {
             server()
             sourceSet = sourceSets.main
@@ -169,7 +177,10 @@ dependencies {
     modCompileOnly("mezz.jei:jei-${minecraft_version}-forge-api:${jei_version}")
     modCompileOnly("mezz.jei:jei-${minecraft_version}-common-api:${jei_version}")
     modRuntimeOnly("mezz.jei:jei-${minecraft_version}-forge:${jei_version}")
-    modRuntimeOnly("dev.emi:emi-forge:${emi_version}+${minecraft_version}")
+
+//    if (!project.hasProperty('replayTest')) {
+//        modRuntimeOnly("dev.emi:emi-forge:${emi_version}+${minecraft_version}")
+//    }
     modRuntimeOnly("curse.maven:jade-324717:5390389")
 
     modImplementation("com.gregtechceu.gtceu:gtceu-${minecraft_version}:${gtceu_version}:slim") { transitive = false }
@@ -204,44 +215,21 @@ dependencies {
     modImplementation("curse.maven:superb-warfare-1218165:8104849") {
         exclude group: "org.spongepowered", module: "mixin"
     }
-    // TACZ (Timeless and Classics Zero). Provides com.tacz.guns.entity.EntityKineticBullet, which the
-    // off-thread ballistics TACZ adapter demotes/promotes across unloaded chunks. CurseMaven; exclude its
-    // bundled mixin like the SBW line. transitive=false keeps TACZ's own deep dep tree out of our runtime.
+
     modImplementation("curse.maven:${tacz_version}") {
         exclude group: "org.spongepowered", module: "mixin"
         transitive = false
     }
-    // Superb Warfare 0.8.9 was rewritten in Kotlin and now requires the Kotlin For Forge language provider
-    // (>= 4.11.0 on 1.20.1). Provides the `kotlinforforge` FML language provider and the Kotlin stdlib that
-    // SBW's compiled classes need at runtime. The modpack must ship KFF too. Not shaded into the WFCore jar.
     implementation("thedarkcolour:kotlinforforge:4.11.0")
     modRuntimeOnly("curse.maven:geckolib-388172:8285794")
-    // GeckoLib on the COMPILE classpath: CubedFpvDroneRendererMixin targets SBW Drone Warfare's
-    // CubedFpvDroneRenderer, whose superclass is geckolib's GeoEntityRenderer, so the mixin AP must be able
-    // to resolve that hierarchy at compile time.
     modCompileOnly("curse.maven:geckolib-388172:8285794") { transitive = false }
-
-    // SBW Drone Warfare (addon jar in libs/). A plain file dependency, NOT modCompileOnly: the mixin only needs
-    // the CubedFpvDroneRenderer class SYMBOL (class names are identical between the prod SRG jar and the deobf
-    // workspace) and never references any of its remapped members, so ModDevGradle deobf is unnecessary — and
-    // avoiding it keeps the build off the flaky third-party maven that has no POM for this jar. Compile-only, so
-    // like embeddium/mcgltf it is absent from the dev runtime classpath: CubedFpvDroneRendererMixin is silently
-    // skipped in dev runs and only applies in the packaged modpack where the drone mod is present.
     compileOnly files("libs/sbwdroneconfig-1.0.2.jar")
-
-    // ReForgedPlay (Replay Mod on Forge). COMPILE-ONLY: GuiHandlerMainMenuStabilityMixin targets its
-    // com.replaymod.replay.handler.GuiHandler to keep FancyMenu title-screen layouts stable (see that
-    // mixin). Only the GuiHandler / MainMenuButtonPosition symbols are needed at compile time; the mixin
-    // is skipped in dev (mod absent at runtime) and applies in the packaged modpack where it ships.
     modCompileOnly("curse.maven:reforgedplay-mod-1018692:5637596") { transitive = false }
-
+//    if (project.hasProperty('replayTest')) {
+        modRuntimeOnly("curse.maven:reforgedplay-mod-1018692:5637596") { transitive = false }
+//    }
     modImplementation("curse.maven:${warforge_version}") { transitive = false }
-
-    // WF-Ballistics: local jar in libs/ (flatDir resolves by filename, group is ignored - mcgltf pattern).
-    // Rebuild from the sibling WF-Ballistics clone and recopy when it changes.
     modImplementation("com.wf:wfballistics:${wfballistics_version}")
-    // wfballistics only jarJars flywheel; nested-jar extraction from a flatDir jar isn't reliable in dev,
-    // so resolve it explicitly for the dev runtime. Drop this if runClient ever reports a duplicate.
     modRuntimeOnly("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}")
 }
 

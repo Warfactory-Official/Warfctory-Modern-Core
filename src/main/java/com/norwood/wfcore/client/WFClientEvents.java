@@ -1,5 +1,6 @@
 package com.norwood.wfcore.client;
 
+import com.norwood.wfcore.common.rank.PlayerRankUtil;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
@@ -43,6 +44,8 @@ public class WFClientEvents {
 
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
+       PlayerRankUtil.init();
+
         // Register the model receivers so McGLTF loads them on (re)load and hands back the GPU scenes.
         event.enqueueWork(() -> {
             MCglTF.getInstance().addGltfModelReceiver(RADAR_MODEL);

@@ -37,6 +37,8 @@
     "GuiTextFieldGenericCursorMixin",
     "CubedFpvDroneRendererMixin",
     "GuiHandlerMainMenuStabilityMixin",
+    "ReplayPlaybackGateMixin",
+    "PlayerTabRankMixin",
     "ForceFirstPersonCameraMixin"
   ],
   "injectors": {

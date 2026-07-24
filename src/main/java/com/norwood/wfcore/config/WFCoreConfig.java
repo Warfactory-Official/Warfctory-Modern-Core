@@ -31,6 +31,12 @@ public final class WFCoreConfig {
     private static final boolean DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED = false;
     private static final boolean DEFAULT_BALLISTICS_ENABLED = true;
     private static final boolean DEFAULT_BALLISTICS_DEBUG_LOGGING = false;
+    private static final boolean DEFAULT_PLAYER_RANKS_ENABLED = true;
+    private static final String DEFAULT_RANK_MANIFEST_URL = "";
+    private static final int DEFAULT_RANK_REFRESH_INTERVAL_MINUTES = 4;
+    private static final boolean DEFAULT_REPLAY_RANK_REQUIRED = true;
+    private static final boolean DEFAULT_SHOW_CHAT_TAGS = true;
+    private static final boolean DEFAULT_SHOW_TAB_TAGS = true;
 
     // -------------------------------------------------------------------------
     // Volatile cache fields — pre-initialised to defaults so getters are safe
@@ -49,6 +55,12 @@ public final class WFCoreConfig {
     private static volatile boolean modelTransformDebugEnabled = DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED;
     private static volatile boolean ballisticsEnabled = DEFAULT_BALLISTICS_ENABLED;
     private static volatile boolean ballisticsDebugLogging = DEFAULT_BALLISTICS_DEBUG_LOGGING;
+    private static volatile boolean playerRanksEnabled = DEFAULT_PLAYER_RANKS_ENABLED;
+    private static volatile String rankManifestUrl = DEFAULT_RANK_MANIFEST_URL;
+    private static volatile int rankRefreshIntervalMinutes = DEFAULT_RANK_REFRESH_INTERVAL_MINUTES;
+    private static volatile boolean replayRankRequired = DEFAULT_REPLAY_RANK_REQUIRED;
+    private static volatile boolean showChatTags = DEFAULT_SHOW_CHAT_TAGS;
+    private static volatile boolean showTabTags = DEFAULT_SHOW_TAB_TAGS;
 
     // -------------------------------------------------------------------------
     // ForgeConfigSpec handles
@@ -60,6 +72,12 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.BooleanValue MODEL_TRANSFORM_DEBUG_ENABLED;
     private static final ForgeConfigSpec.BooleanValue BALLISTICS_ENABLED;
     private static final ForgeConfigSpec.BooleanValue BALLISTICS_DEBUG_LOGGING;
+    private static final ForgeConfigSpec.BooleanValue PLAYER_RANKS_ENABLED;
+    private static final ForgeConfigSpec.ConfigValue<String> RANK_MANIFEST_URL;
+    private static final ForgeConfigSpec.IntValue RANK_REFRESH_INTERVAL_MINUTES;
+    private static final ForgeConfigSpec.BooleanValue REPLAY_RANK_REQUIRED;
+    private static final ForgeConfigSpec.BooleanValue SHOW_CHAT_TAGS;
+    private static final ForgeConfigSpec.BooleanValue SHOW_TAB_TAGS;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> VEHICLES;
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> FOLIAGE_BREAKERS;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MIN;
@@ -156,6 +174,43 @@ public final class WFCoreConfig {
 
         builder.pop();
 
+        builder.comment(
+                "Client-side player ranks / vanity tags, downloaded from a remote JSON manifest (uuid -> rank).",
+                "Ranks: ARTIST, SCRIPTER (chat/tab tag), PRESS (may play back replays), MODERATOR, ADMIN (both",
+                "of the above), plus the fun tags MTNS and SUPEROBAMA (chat-text effects only).")
+                .push("playerRanks");
+
+        PLAYER_RANKS_ENABLED = builder
+                .comment("Master switch. When off, no manifest is downloaded and no tags or replay gate apply.")
+                .define("enabled", DEFAULT_PLAYER_RANKS_ENABLED);
+
+        RANK_MANIFEST_URL = builder
+                .comment(
+                        "URL of the JSON rank manifest. Leave blank to disable downloads (cached data, if any, still loads).",
+                        "Shape: { \"ranks\": { \"<uuid>\": \"ADMIN\", \"<uuid>\": [\"ARTIST\", \"SUPEROBAMA\"] } }.",
+                        "UUIDs may be dashed or undashed; a value may be one rank or an array of ranks.")
+                .define("manifestUrl", DEFAULT_RANK_MANIFEST_URL);
+
+        RANK_REFRESH_INTERVAL_MINUTES = builder
+                .comment("How often (minutes) the manifest is re-downloaded after the initial fetch. 3-5 recommended.")
+                .defineInRange("refreshIntervalMinutes", DEFAULT_RANK_REFRESH_INTERVAL_MINUTES, 1, 1440);
+
+        REPLAY_RANK_REQUIRED = builder
+                .comment(
+                        "When true, replay playback requires a replay-granting rank (Press/Moderator/Admin).",
+                        "Recording is never restricted. Fails open until a manifest has loaded at least once.")
+                .define("replayRequiresRank", DEFAULT_REPLAY_RANK_REQUIRED);
+
+        SHOW_CHAT_TAGS = builder
+                .comment("Show the vanity [Tag] before ranked players' chat messages.")
+                .define("showChatTags", DEFAULT_SHOW_CHAT_TAGS);
+
+        SHOW_TAB_TAGS = builder
+                .comment("Show the vanity [Tag] before ranked players' names in the tab list.")
+                .define("showTabTags", DEFAULT_SHOW_TAB_TAGS);
+
+        builder.pop();
+
         SPEC = builder.build();
     }
 
@@ -226,6 +281,36 @@ public final class WFCoreConfig {
         return ballisticsDebugLogging;
     }
 
+    /** Master switch for the client-side player-rank / vanity-tag system. */
+    public static boolean isPlayerRanksEnabled() {
+        return playerRanksEnabled;
+    }
+
+    /** URL of the JSON rank manifest, or blank to disable downloads. */
+    public static String getRankManifestUrl() {
+        return rankManifestUrl;
+    }
+
+    /** How often (minutes) the rank manifest is re-downloaded after the initial fetch. */
+    public static int getRankRefreshIntervalMinutes() {
+        return rankRefreshIntervalMinutes;
+    }
+
+    /** When true, replay playback requires a replay-granting rank (Press/Moderator/Admin). */
+    public static boolean isReplayRankRequired() {
+        return replayRankRequired;
+    }
+
+    /** When true, ranked players' chat messages are prefixed with their vanity {@code [Tag]}. */
+    public static boolean isShowChatTags() {
+        return showChatTags;
+    }
+
+    /** When true, ranked players' tab-list names are prefixed with their vanity {@code [Tag]}. */
+    public static boolean isShowTabTags() {
+        return showTabTags;
+    }
+
     // -------------------------------------------------------------------------
     // Bake — called by WFCore on ModConfigEvent
     // -------------------------------------------------------------------------
@@ -238,6 +323,12 @@ public final class WFCoreConfig {
         modelTransformDebugEnabled = MODEL_TRANSFORM_DEBUG_ENABLED.get();
         ballisticsEnabled = BALLISTICS_ENABLED.get();
         ballisticsDebugLogging = BALLISTICS_DEBUG_LOGGING.get();
+        playerRanksEnabled = PLAYER_RANKS_ENABLED.get();
+        rankManifestUrl = RANK_MANIFEST_URL.get();
+        rankRefreshIntervalMinutes = RANK_REFRESH_INTERVAL_MINUTES.get();
+        replayRankRequired = REPLAY_RANK_REQUIRED.get();
+        showChatTags = SHOW_CHAT_TAGS.get();
+        showTabTags = SHOW_TAB_TAGS.get();
         depositYieldMin = DEPOSIT_YIELD_MIN.get();
         depositYieldMax = Math.max(DEPOSIT_YIELD_MAX.get(), depositYieldMin);
         depositWorldgenEnabled = DEPOSIT_WORLDGEN_ENABLED.get();
