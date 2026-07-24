@@ -14,6 +14,8 @@ public final class TaczBallisticsIntegration {
     public static void register() {
         if (ModList.get() != null && ModList.get().isLoaded(MOD_ID)) {
             BallisticsRegistry.register(new TaczBallisticsAdapter());
+            // Cache the tacztweaks gun-stack field now (only safe once tacz is confirmed loaded).
+            TaczTweaksCompat.init();
             WFCore.LOGGER.info("Ballistics: TACZ integration active (registered tacz_kinetic_bullet adapter)");
         } else {
             WFCore.LOGGER.debug("Ballistics: TACZ not loaded, skipping TACZ ballistics adapter");

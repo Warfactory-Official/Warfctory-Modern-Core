@@ -226,9 +226,9 @@ dependencies {
     modCompileOnly("curse.maven:geckolib-388172:8285794") { transitive = false }
     compileOnly files("libs/sbwdroneconfig-1.0.2.jar")
     modCompileOnly("curse.maven:reforgedplay-mod-1018692:5637596") { transitive = false }
-//    if (project.hasProperty('replayTest')) {
+    if (project.hasProperty('replayTest')) {
         modRuntimeOnly("curse.maven:reforgedplay-mod-1018692:5637596") { transitive = false }
-//    }
+    }
     modImplementation("curse.maven:${warforge_version}") { transitive = false }
     modImplementation("com.wf:wfballistics:${wfballistics_version}")
     modRuntimeOnly("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}")

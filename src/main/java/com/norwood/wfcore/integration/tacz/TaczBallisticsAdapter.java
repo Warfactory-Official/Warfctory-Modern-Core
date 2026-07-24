@@ -3,6 +3,8 @@ package com.norwood.wfcore.integration.tacz;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -16,9 +18,11 @@ import com.norwood.wfcore.common.ballistics.DeferredImpact;
 import com.norwood.wfcore.common.ballistics.VirtualProjectile;
 import com.norwood.wfcore.mixin.EntityKineticBulletAccessor;
 import com.tacz.guns.entity.EntityKineticBullet;
+import com.tacz.guns.resource.pojo.data.gun.ExtraDamage;
 
 import io.netty.buffer.Unpooled;
 
+import java.util.LinkedList;
 import java.util.UUID;
 
 public final class TaczBallisticsAdapter implements BallisticsAdapter {
@@ -34,6 +38,25 @@ public final class TaczBallisticsAdapter implements BallisticsAdapter {
     private static final String KEY_START_X = "StartX";
     private static final String KEY_START_Y = "StartY";
     private static final String KEY_START_Z = "StartZ";
+    // TaCZ Tweaks' per-bullet state (gun stack, pierce counters, shot indices, damage modifiers). Set only by
+    // its shoot-constructor injector; bare-constructor re-spawn drops it (null gunStack crashes its ray-trace).
+    private static final String KEY_TT = "TaczTweaks";
+    // Combat fields TACZ sets in the firing constructor but omits from writeSpawnData (damage falloff table,
+    // multipliers, penetration, knockback, ignite, explosion flags). Dropped on re-spawn → 0-damage bullets.
+    private static final String KEY_COMBAT = "Combat";
+    private static final String KEY_DMG_TABLE = "DmgTable";
+    private static final String KEY_DMG_DIST = "d";
+    private static final String KEY_DMG_VAL = "g";
+    private static final String KEY_DISTANCE_AMOUNT = "DistanceAmount";
+    private static final String KEY_DAMAGE_MODIFIER = "DamageModifier";
+    private static final String KEY_SHOT_MULT = "ShotDamageMultiplier";
+    private static final String KEY_ARMOR_IGNORE = "ArmorIgnore";
+    private static final String KEY_HEADSHOT = "HeadShot";
+    private static final String KEY_KNOCKBACK = "Knockback";
+    private static final String KEY_IGNITE_TIME = "IgniteEntityTime";
+    private static final String KEY_EXP_KNOCKBACK = "ExplosionKnockback";
+    private static final String KEY_EXP_DESTROY = "ExplosionDestroyBlock";
+    private static final String KEY_EXP_DELAY = "ExplosionDelayCount";
 
     @Override
     public ResourceLocation id() {
@@ -109,6 +132,17 @@ public final class TaczBallisticsAdapter implements BallisticsAdapter {
         typeToken.putDouble(KEY_START_Y, startPos.y);
         typeToken.putDouble(KEY_START_Z, startPos.z);
 
+        // Carry TaCZ Tweaks' per-bullet state across the virtual phase; readSpawnData doesn't restore it.
+        if (TaczTweaksCompat.isAvailable()) {
+            CompoundTag tt = TaczTweaksCompat.saveState(bullet);
+            if (tt != null) {
+                typeToken.put(KEY_TT, tt);
+            }
+        }
+
+        // Carry the combat fields writeSpawnData omits, or the re-spawned bullet deals ~0 damage.
+        typeToken.put(KEY_COMBAT, saveCombat((EntityKineticBulletAccessor) (Object) bullet));
+
         Entity owner = bullet.getOwner();
         UUID shooter = owner != null ? owner.getUUID() : null;
 
@@ -156,6 +190,19 @@ public final class TaczBallisticsAdapter implements BallisticsAdapter {
                             v.typeToken.getDouble(KEY_START_Z))
                     : v.pos;
             ((EntityKineticBulletAccessor) (Object) bullet).wfcore$setStartPos(startPos);
+
+            // Put TaCZ Tweaks' per-bullet state back before the entity ticks. restoreState handles a missing
+            // tag by setting gunStack to EMPTY so its non-null block-interaction read never NPEs (e.g. bullets
+            // virtualised before this carry existed).
+            if (TaczTweaksCompat.isAvailable()) {
+                TaczTweaksCompat.restoreState(bullet,
+                        v.typeToken.contains(KEY_TT) ? v.typeToken.getCompound(KEY_TT) : null);
+            }
+
+            // Restore combat state (damage falloff table + multipliers) before the entity can hit anything.
+            if (v.typeToken.contains(KEY_COMBAT)) {
+                restoreCombat((EntityKineticBulletAccessor) (Object) bullet, v.typeToken.getCompound(KEY_COMBAT));
+            }
         } catch (Throwable t) {
             WFCore.LOGGER.warn("Ballistics: failed to re-spawn TACZ bullet {}", v.id, t);
             return null;
@@ -165,6 +212,57 @@ public final class TaczBallisticsAdapter implements BallisticsAdapter {
             return null;
         }
         return bullet;
+    }
+
+    /** Snapshot the combat fields TACZ's writeSpawnData drops (see {@link EntityKineticBulletAccessor}). */
+    private static CompoundTag saveCombat(EntityKineticBulletAccessor a) {
+        CompoundTag combat = new CompoundTag();
+
+        ListTag table = new ListTag();
+        LinkedList<ExtraDamage.DistanceDamagePair> pairs = a.wfcore$getDamageAmount();
+        if (pairs != null) {
+            for (ExtraDamage.DistanceDamagePair pair : pairs) {
+                CompoundTag e = new CompoundTag();
+                e.putFloat(KEY_DMG_DIST, pair.getDistance());
+                e.putFloat(KEY_DMG_VAL, pair.getDamage());
+                table.add(e);
+            }
+        }
+        combat.put(KEY_DMG_TABLE, table);
+
+        combat.putFloat(KEY_DISTANCE_AMOUNT, a.wfcore$getDistanceAmount());
+        combat.putFloat(KEY_DAMAGE_MODIFIER, a.wfcore$getDamageModifier());
+        combat.putFloat(KEY_SHOT_MULT, a.wfcore$getShotDamageMultiplier());
+        combat.putFloat(KEY_ARMOR_IGNORE, a.wfcore$getArmorIgnore());
+        combat.putFloat(KEY_HEADSHOT, a.wfcore$getHeadShot());
+        combat.putFloat(KEY_KNOCKBACK, a.wfcore$getKnockback());
+        combat.putInt(KEY_IGNITE_TIME, a.wfcore$getIgniteEntityTime());
+        combat.putBoolean(KEY_EXP_KNOCKBACK, a.wfcore$getExplosionKnockback());
+        combat.putBoolean(KEY_EXP_DESTROY, a.wfcore$getExplosionDestroyBlock());
+        combat.putInt(KEY_EXP_DELAY, a.wfcore$getExplosionDelayCount());
+        return combat;
+    }
+
+    /** Put the {@link #saveCombat} snapshot back before the re-spawned bullet can compute damage or hit. */
+    private static void restoreCombat(EntityKineticBulletAccessor a, CompoundTag combat) {
+        LinkedList<ExtraDamage.DistanceDamagePair> pairs = new LinkedList<>();
+        ListTag table = combat.getList(KEY_DMG_TABLE, Tag.TAG_COMPOUND);
+        for (int i = 0; i < table.size(); i++) {
+            CompoundTag e = table.getCompound(i);
+            pairs.add(new ExtraDamage.DistanceDamagePair(e.getFloat(KEY_DMG_DIST), e.getFloat(KEY_DMG_VAL)));
+        }
+        a.wfcore$setDamageAmount(pairs);
+
+        a.wfcore$setDistanceAmount(combat.getFloat(KEY_DISTANCE_AMOUNT));
+        a.wfcore$setDamageModifier(combat.getFloat(KEY_DAMAGE_MODIFIER));
+        a.wfcore$setShotDamageMultiplier(combat.getFloat(KEY_SHOT_MULT));
+        a.wfcore$setArmorIgnore(combat.getFloat(KEY_ARMOR_IGNORE));
+        a.wfcore$setHeadShot(combat.getFloat(KEY_HEADSHOT));
+        a.wfcore$setKnockback(combat.getFloat(KEY_KNOCKBACK));
+        a.wfcore$setIgniteEntityTime(combat.getInt(KEY_IGNITE_TIME));
+        a.wfcore$setExplosionKnockback(combat.getBoolean(KEY_EXP_KNOCKBACK));
+        a.wfcore$setExplosionDestroyBlock(combat.getBoolean(KEY_EXP_DESTROY));
+        a.wfcore$setExplosionDelayCount(combat.getInt(KEY_EXP_DELAY));
     }
 
     @Override
