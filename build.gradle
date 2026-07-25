@@ -229,7 +229,7 @@ dependencies {
     if (project.hasProperty('replayTest')) {
         modRuntimeOnly("curse.maven:reforgedplay-mod-1018692:5637596") { transitive = false }
     }
-    modImplementation("curse.maven:${warforge_version}") { transitive = false }
+    modImplementation("com.wf:warforge-remaintained:${warforge_version}") { transitive = false }
     modImplementation("com.wf:wfballistics:${wfballistics_version}")
     modRuntimeOnly("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}")
 }
