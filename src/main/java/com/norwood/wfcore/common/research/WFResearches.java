@@ -21,8 +21,10 @@ public final class WFResearches {
         registerCategories();
 
         // ---------------------------------------------------------------- Electronics: AUTO (branch + merge x2)
-        autoNode("basic_electronics", "electronics", Items.REDSTONE, 4, 64, 32, 40,
-                new ItemStack(Items.REDSTONE, 2), new ItemStack(Items.REPEATER));
+        // Root also demands 1000 mB of water per run, exercising the fluid-input path (import hatch -> drain).
+        build("basic_electronics", "electronics", Items.REDSTONE, 4, 64, 32, 40,
+                new ItemStack(Items.REDSTONE, 2), new ItemStack(Items.REPEATER))
+                .fluidPerRun("minecraft:water", 1000).register();
         autoNode("logic_gates", "electronics", Items.LEVER, 5, 96, 48, 50,
                 new ItemStack(Items.REDSTONE, 4), new ItemStack(Items.REDSTONE_TORCH), "basic_electronics");
         autoNode("power_systems", "electronics", Items.REDSTONE_BLOCK, 5, 96, 48, 50,

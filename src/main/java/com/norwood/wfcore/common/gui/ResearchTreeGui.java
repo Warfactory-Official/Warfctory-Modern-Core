@@ -5,12 +5,14 @@ import com.gregtechceu.gtceu.common.data.GTItems;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraftforge.fluids.FluidStack;
 
 import brachy.modularui.api.GuiAxis;
 import brachy.modularui.api.IPanelHandler;
 import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.api.drawable.Text;
 import brachy.modularui.api.widget.IWidget;
+import brachy.modularui.drawable.FluidDrawable;
 import brachy.modularui.drawable.GuiTextures;
 import brachy.modularui.drawable.ItemDrawable;
 import brachy.modularui.drawable.Rectangle;
@@ -19,6 +21,7 @@ import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.screen.RichTooltip;
 import brachy.modularui.screen.UISettings;
+import brachy.modularui.utils.Alignment;
 import brachy.modularui.utils.Color;
 import brachy.modularui.value.sync.InteractionSyncHandler;
 import brachy.modularui.value.sync.ItemSlotSyncHandler;
@@ -124,7 +127,6 @@ public final class ResearchTreeGui {
     private static final int GUTTER = (COL_SPACING - NODE) / 2;
     private static final int ROWGUT = (ROW_SPACING - NODE) / 2;
     private static final int MARGIN = 12;
-    private static final int MAX_ITEM_SLOTS = 6;
     private static final int BAR_SEGMENTS = 20;
     private static final int ARROW_LEN = 5;
 
@@ -142,6 +144,15 @@ public final class ResearchTreeGui {
     private static final int COLOR_BUTTON_SHADE = 0x55000000;
     private static final int COLOR_NODE_HOVER = 0x60FFFFFF;
 
+    // Floating library window: kept in the same dark family as the main GUI, with the two actions colour-coded -
+    // green "read" (import a stick's blueprints into the unit) vs. blue "write" (imprint the unit's onto a stick).
+    private static final int COLOR_LIB_WELL = 0xFF08080C;      // recessed list background
+    private static final int COLOR_LIB_ROW_HOVER = 0x33FFFFFF; // translucent brighten over an un-selected row
+    private static final int COLOR_LIB_READ = COLOR_COMPLETE;  // green: item -> unit
+    private static final int COLOR_LIB_WRITE = COLOR_AVAILABLE; // blue: unit -> item
+    private static final int COLOR_HEADER = 0xFFFFD37A;        // warm title text
+    private static final int COLOR_SUBTEXT = 0xFF9A9AA4;       // muted section-label / hint text
+
     // GTCEu's power on/off button texture (18x36 vertical atlas: top frame = off, bottom = on/lit)
     private static final UITexture POWER_TEX = UITexture.builder()
             .location("gtceu:gui/widget/button_power").imageSize(18, 36).build();
@@ -150,35 +161,88 @@ public final class ResearchTreeGui {
     private static final String[] SELECTED = { null };
     // client-side selection of the library window's write target (mirrors SELECTED's pattern)
     private static final String[] LIBRARY_SELECTED = { null };
+    // data-orb icon flagging a library row whose research is stored on a connected Data Bank
+    private static final ItemStack DATA_BANK_ICON = new ItemStack(GTItems.TOOL_DATA_ORB.asItem());
 
     private ResearchTreeGui() {}
 
     public static ModularPanel<?> build(ResearchUnitMachine mte, PosGuiData data,
                                         PanelSyncManager syncManager, UISettings settings) {
+        // Unformed (or a passive SLAVE) has no research tree to present; hand back a compact, self-explanatory
+        // panel instead of the full-size invisible one, which read as a giant empty square.
+        if (!mte.isFormed() || mte.getMode() != ResearchUnitMachine.Mode.CONTROL) {
+            return buildInfoPanel(mte);
+        }
+
         ModularPanel<?> panel = ModularPanel.defaultPanel("research_unit", PANEL_W, PANEL_H);
         panel.invisible();
-
-        boolean active = mte.isFormed() && mte.getMode() == ResearchUnitMachine.Mode.CONTROL;
         // Tree first so the title (added next) draws over the tree's top-left edge and merges into it.
-        if (active) {
-            buildTabsAndTree(panel, mte, syncManager);
-        }
+        buildTabsAndTree(panel, mte, syncManager);
         panel.child(buildTitle(mte));
-
-        if (active) {
-            panel.child(buildWorkingButton(mte, syncManager));
-            panel.child(buildLibraryButton(mte, syncManager));
-            panel.child(buildScreen(mte));
-            panel.child(buildDetail(mte, syncManager));
-            panel.child(buildQueue(mte, syncManager));
-        } else {
-            panel.child(notice(mte.isFormed() ? "wfcore.gui.research.slave_mode" : "wfcore.gui.research.not_formed"));
-        }
+        panel.child(buildWorkingButton(mte, syncManager));
+        panel.child(buildLibraryButton(mte, syncManager));
+        panel.child(buildScreen(mte));
+        panel.child(buildDetail(mte, syncManager));
+        panel.child(buildQueue(mte, syncManager));
         return panel;
     }
 
-    private static TextWidget<?> notice(String langKey) {
-        return new TextWidget<>(Text.lang(langKey)).pos(TREE_X + 8, TREE_Y + 8).name("notice");
+    /**
+     * The screen shown when the controller can't present its research tree: either the 3x3x3 multiblock isn't
+     * assembled — in which case it names the special parts the pattern needs and tells the player how to
+     * preview it in-world — or the unit is a passive SLAVE lending a slot to a nearby Control. Replaces the old
+     * one-line notice that floated in the corner of a full-size blank panel.
+     */
+    private static ModularPanel<?> buildInfoPanel(ResearchUnitMachine mte) {
+        boolean slave = mte.isFormed(); // only reached formed when the unit is a SLAVE
+        int w = 198;
+        int h = slave ? 104 : 186;
+        ModularPanel<?> panel = ModularPanel.defaultPanel("research_unit", w, h);
+
+        // header: the controller's own block icon + display name, with a hairline divider beneath
+        ItemStack block = mte.getDefinition().asStack();
+        panel.child(itemIcon(() -> block, 16).pos(8, 7).name("info_icon"));
+        panel.child(new TextWidget<>(Text.of(block.getHoverName())).pos(28, 10).name("info_title"));
+        panel.child(new ParentWidget<>().background(new Rectangle().color(COLOR_BORDER))
+                .pos(7, 27).size(w - 14, 1).name("info_divider"));
+
+        // status heading — red "structure incomplete", or gold "slave mode"
+        panel.child(new TextWidget<>(Text.of(Component.translatable(slave ?
+                "wfcore.gui.research.info_slave_title" : "wfcore.gui.research.info_unformed_title")
+                .withStyle(slave ? net.minecraft.ChatFormatting.GOLD : net.minecraft.ChatFormatting.RED)))
+                .pos(8, 33).name("info_heading"));
+
+        // wrapped body: why the tree is unavailable and what to do about it
+        RichTextWidget body = new RichTextWidget();
+        body.name("info_body");
+        body.pos(8, 45).size(w - 16, h - 51);
+        body.autoUpdate(true);
+        body.textBuilder(rt -> {
+            if (slave) {
+                rt.addLine(gray("wfcore.gui.research.info_slave_desc"));
+                rt.newLine();
+                rt.addLine(Component.translatable("wfcore.gui.research.info_slave_hint")
+                        .withStyle(net.minecraft.ChatFormatting.YELLOW));
+            } else {
+                rt.addLine(gray("wfcore.gui.research.info_unformed_desc"));
+                rt.newLine();
+                rt.addLine(Component.translatable("wfcore.gui.research.info_needs")
+                        .withStyle(net.minecraft.ChatFormatting.WHITE));
+                rt.addLine(gray("wfcore.gui.research.info_part_energy"));
+                rt.addLine(gray("wfcore.gui.research.info_part_items"));
+                rt.addLine(gray("wfcore.gui.research.info_part_computation"));
+                rt.addLine(gray("wfcore.gui.research.info_part_data"));
+                rt.newLine();
+                rt.addLine(Component.translatable("wfcore.gui.research.info_hint_preview")
+                        .withStyle(net.minecraft.ChatFormatting.YELLOW));
+            }
+        });
+        panel.child(body);
+        return panel;
+    }
+
+    private static Component gray(String langKey) {
+        return Component.translatable(langKey).withStyle(net.minecraft.ChatFormatting.GRAY);
     }
 
     //////////////////// title nameplate (attached tab) ////////////////////
@@ -241,11 +305,12 @@ public final class ResearchTreeGui {
         return button;
     }
 
-    //////////////////// library window (write obtained blueprints onto a data item) ////////////////////
+    //////////////////// library window (read/write blueprints between the unit and a data item) ////////////////////
 
     /**
      * The button below the working toggle that opens the draggable library window: a list of every research the
-     * player has obtained, a slot for a data item/paper, and a Write button that imprints the picked blueprint.
+     * player has obtained, a slot for a data item/paper, and two actions on that item - Read imports the item's
+     * blueprints into this unit's database, Write imprints the picked blueprint onto the item.
      */
     private static ButtonWidget<?> buildLibraryButton(ResearchUnitMachine mte, PanelSyncManager sync) {
         IPanelHandler library = sync.syncedPanel("research_library", true,
@@ -265,50 +330,87 @@ public final class ResearchTreeGui {
     }
 
     private static ModularPanel<?> buildLibraryPanel(ResearchUnitMachine mte, PanelSyncManager sync) {
-        int w = 210;
-        int h = 200;
+        int w = 214;
+        int h = 210;
+        int pad = 6;
         ModularPanel<?> panel = ModularPanel.defaultPanel("research_library", w, h);
         panel.draggable(true);
-        panel.child(new TextWidget<>(Text.lang("wfcore.gui.research.library")).pos(8, 6).name("library_title"));
-        panel.child(new ButtonWidget<>().background(GuiTextures.BUTTON_CLEAN).overlay(GuiTextures.CLOSE).size(10)
-                .pos(195, 6));
 
-        int slotY = h - 26;
-        int listH = slotY - 22 - INSET;
+        // header: warm title, a working close button (panelCloseButton closes its own panel), hairline divider
+        panel.child(new TextWidget<>(Text.lang("wfcore.gui.research.library")).color(COLOR_HEADER)
+                .pos(8, 7).name("library_title"));
+        panel.child(ButtonWidget.panelCloseButton());
+        panel.child(hairline(pad, 19, w - 2 * pad).name("library_header_divider"));
+        panel.child(new TextWidget<>(Text.lang("wfcore.gui.research.library_obtained")).color(COLOR_SUBTEXT)
+                .scale(0.9f).pos(8, 24).name("library_subheader"));
+
+        // recessed well: one row per obtained (fully-unlocked) blueprint, or a centred hint when there are none
+        int wellY = 35;
+        int footerY = h - 34;
+        int wellH = footerY - wellY - 4;
+        ParentWidget<?> well = new ParentWidget<>();
+        well.name("library_well");
+        well.pos(pad, wellY).size(w - 2 * pad, wellH);
+        well.background(framedBackground(COLOR_LIB_WELL, COLOR_BORDER));
+
         ListWidget<IWidget, ?> list = libraryList();
         list.name("library_list");
-        list.pos(8, 22);
-        list.size(w - 16, listH);
+        list.pos(2, 2).size(w - 2 * pad - 4, wellH - 4);
         list.scrollDirection(GuiAxis.Y);
         list.collapseDisabledChildren(true);
-
         List<IWidget> rows = new ArrayList<>();
         int index = 0;
         for (Research research : ResearchRegistry.all()) {
-            rows.add(buildLibraryRow(mte, research, index++, sync, w - 24));
+            rows.add(buildLibraryRow(mte, research, index++, sync, w - 2 * pad - 10));
         }
         list.children(rows);
-        panel.child(list);
+        well.child(list);
+        well.child(new TextWidget<>(Text.lang("wfcore.gui.research.library_empty")).color(COLOR_SUBTEXT)
+                .alignment(Alignment.Center).pos(2, 2).size(w - 2 * pad - 4, wellH - 4)
+                .name("library_empty").setEnabledIf(x -> !hasObtainedBlueprints(mte)));
+        panel.child(well);
+
+        // footer: divider, the data-item slot, then the colour-coded Read (import) / Write (export) actions
+        panel.child(hairline(pad, footerY, w - 2 * pad).name("library_footer_divider"));
 
         ModularSlot slot = new ModularSlot(mte.getLibraryInv().storage, 0)
                 .filter(ResearchDataItem::isDataItem).accessibility(true, true);
         sync.syncValue("library_slot", 0, new ItemSlotSyncHandler(slot));
         ItemSlot slotWidget = new ItemSlot();
-        slotWidget.pos(8, slotY).size(18, 18);
+        slotWidget.pos(8, footerY + 8).size(18, 18);
         slotWidget.syncHandler("library_slot", 0);
         panel.child(slotWidget);
 
-        InteractionSyncHandler write = new InteractionSyncHandler().setOnMousePressed(d -> mte.writeLibrary());
-        sync.syncValue("library_write", 0, write);
-        ButtonWidget<?> writeBtn = new ButtonWidget<>();
-        writeBtn.name("library_write");
-        writeBtn.pos(30, slotY).size(w - 30 - 8, 18).syncHandler("library_write", 0);
-        writeBtn.background(new Rectangle().color(COLOR_AVAILABLE));
-        writeBtn.backgroundOverlay(new Rectangle().color(COLOR_BORDER).hollow(1f));
-        writeBtn.child(new TextWidget<>(Text.lang("wfcore.gui.research.write")).pos(6, 5).name("library_write_label"));
-        writeBtn.tooltipDynamic(t -> t.addLine(Text.lang("wfcore.gui.research.write_hint"))).tooltipAutoUpdate(true);
-        panel.child(writeBtn);
+        int btnX = 30;
+        int btnW = (w - pad - btnX - 4) / 2;
+        panel.child(libraryActionButton(sync, "library_read", COLOR_LIB_READ, "wfcore.gui.research.read_label",
+                "wfcore.gui.research.read", "wfcore.gui.research.read_hint", () -> mte.readLibrary(),
+                btnX, footerY + 8, btnW));
+        panel.child(libraryActionButton(sync, "library_write", COLOR_LIB_WRITE, "wfcore.gui.research.write_label",
+                "wfcore.gui.research.write", "wfcore.gui.research.write_hint", () -> mte.writeLibrary(),
+                btnX + btnW + 4, footerY + 8, btnW));
         return panel;
+    }
+
+    /** A colour-coded, hover-lit footer action button that fires {@code action} server-side when pressed. */
+    private static ButtonWidget<?> libraryActionButton(PanelSyncManager sync, String syncKey, int baseColor,
+                                                       String labelKey, String titleKey, String hintKey,
+                                                       Runnable action, int x, int y, int bw) {
+        InteractionSyncHandler handler = new InteractionSyncHandler().setOnMousePressed(d -> action.run());
+        sync.syncValue(syncKey, 0, handler);
+
+        ButtonWidget<?> button = new ButtonWidget<>();
+        button.name(syncKey);
+        button.pos(x, y).size(bw, 18).syncHandler(syncKey, 0);
+        button.background(libraryButtonBackground(button, baseColor));
+        button.child(new TextWidget<>(Text.lang(labelKey)).alignment(Alignment.Center).color(0xFFFFFFFF)
+                .pos(0, 0).size(bw, 18).name(syncKey + "_label"));
+        button.tooltipDynamic(t -> {
+            t.titleMargin();
+            t.addLine(Text.lang(titleKey));
+            t.addLine(Text.of(Component.translatable(hintKey).withStyle(net.minecraft.ChatFormatting.GRAY)));
+        }).tooltipAutoUpdate(true);
+        return button;
     }
 
     /** Self-typed generics don't infer cleanly against a wildcard target, so build the list raw and widen here. */
@@ -328,10 +430,21 @@ public final class ResearchTreeGui {
         row.name("library_row_" + rid);
         row.size(rowW, 18);
         row.setEnabledIf(w -> mte.getResearchState().isPathComplete(rid));
-        row.background(libraryRowBackground(rid));
-        row.child(itemIcon(research::getIcon, 16).pos(2, 1).name("library_icon_" + rid));
-        row.child(new TextWidget<>(Text.of(Component.translatable(research.getNameKey()))).pos(20, 5)
-                .name("library_name_" + rid));
+        row.background(libraryRowBackground(row, rid));
+        // ButtonWidget is single-child (a second .child() disposes the first), so pack the icon + name into one
+        // content parent - otherwise only the name rendered and the research icon was silently dropped.
+        ParentWidget<?> content = new ParentWidget<>();
+        content.name("library_row_content_" + rid);
+        content.pos(0, 0).size(rowW, 18);
+        content.child(itemIcon(research::getIcon, 16).pos(3, 1).name("library_icon_" + rid));
+        content.child(new TextWidget<>(Text.of(Component.translatable(research.getNameKey()))).color(0xFFE8E8E8)
+                .pos(23, 5).name("library_name_" + rid));
+        // right-aligned data-orb badge: shown only while this research is stored on a wired Data Bank
+        ParentWidget<?> bankBadge = itemIcon(() -> DATA_BANK_ICON, 12).pos(rowW - 15, 3).name("library_bank_" + rid);
+        bankBadge.setEnabledIf(w -> mte.isInDataBank(rid));
+        bankBadge.tooltipDynamic(t -> t.addLine(Text.lang("wfcore.gui.research.in_data_bank"))).tooltipAutoUpdate(true);
+        content.child(bankBadge);
+        row.child(content);
         row.onMousePressed((context, btn) -> {
             LIBRARY_SELECTED[0] = rid;
             return false;
@@ -340,11 +453,59 @@ public final class ResearchTreeGui {
         return row;
     }
 
-    private static IDrawable libraryRowBackground(String rid) {
+    private static IDrawable libraryRowBackground(IWidget row, String rid) {
         Rectangle selected = new Rectangle().color(COLOR_AVAILABLE);
         Rectangle base = new Rectangle().color(COLOR_SLOT);
-        return (ctx, x, y, w, h, theme) -> (rid.equals(LIBRARY_SELECTED[0]) ? selected : base).draw(ctx, x, y, w, h,
-                theme);
+        Rectangle hover = new Rectangle().color(COLOR_LIB_ROW_HOVER);
+        return (ctx, x, y, w, h, theme) -> {
+            boolean sel = rid.equals(LIBRARY_SELECTED[0]);
+            (sel ? selected : base).draw(ctx, x, y, w, h, theme);
+            if (!sel && row.isHovering()) hover.draw(ctx, x, y, w, h, theme);
+        };
+    }
+
+    /** A 1px horizontal divider line in the panel's border colour. */
+    private static ParentWidget<?> hairline(int x, int y, int w) {
+        return new ParentWidget<>().background(new Rectangle().color(COLOR_BORDER)).pos(x, y).size(w, 1);
+    }
+
+    /** A flat fill with a 1px inner border, the library window's panel/well style. */
+    private static IDrawable framedBackground(int fill, int border) {
+        Rectangle bg = new Rectangle().color(fill);
+        Rectangle line = new Rectangle().color(border).hollow(1f);
+        return (ctx, x, y, w, h, theme) -> {
+            bg.draw(ctx, x, y, w, h, theme);
+            line.draw(ctx, x, y, w, h, theme);
+        };
+    }
+
+    /** A flat action-button fill that brightens on hover, with a hairline border. */
+    private static IDrawable libraryButtonBackground(IWidget widget, int base) {
+        Rectangle fill = new Rectangle().color(base);
+        Rectangle hover = new Rectangle().color(brighten(base, 28));
+        Rectangle border = new Rectangle().color(COLOR_BORDER).hollow(1f);
+        return (ctx, x, y, w, h, theme) -> {
+            (widget.isHovering() ? hover : fill).draw(ctx, x, y, w, h, theme);
+            border.draw(ctx, x, y, w, h, theme);
+        };
+    }
+
+    /** Lightens each RGB channel of an ARGB colour by {@code amount} (clamped), keeping alpha. */
+    private static int brighten(int argb, int amount) {
+        int a = (argb >>> 24) & 0xFF;
+        int r = Math.min(255, ((argb >> 16) & 0xFF) + amount);
+        int g = Math.min(255, ((argb >> 8) & 0xFF) + amount);
+        int b = Math.min(255, (argb & 0xFF) + amount);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
+    /** True if the player has at least one fully-unlocked blueprint to show in the library list. */
+    private static boolean hasObtainedBlueprints(ResearchUnitMachine mte) {
+        ResearchState state = mte.getResearchState();
+        for (Research research : ResearchRegistry.all()) {
+            if (state.isPathComplete(research.getId())) return true;
+        }
+        return false;
     }
 
     /// ///////////////// tabs + per-category trees ////////////////////
@@ -607,7 +768,9 @@ public final class ResearchTreeGui {
         });
         detail.child(description);
 
-        addItemRow(detail, INSET, 37, ResearchTreeGui::inputPerRunAt, "input_item");
+        // per-run inputs: up to 4 item costs, then up to 3 fluid costs on the same row (before the unlocks column)
+        addItemRow(detail, INSET, 37, ResearchTreeGui::inputPerRunAt, 4, "input_item");
+        addFluidRow(detail, INSET + 4 * 17, 37, 3);
 
         detail.child(new TextWidget<>(Text.dynamic(() -> {
             Research r = selected();
@@ -718,22 +881,33 @@ public final class ResearchTreeGui {
     }
 
     private static void addProgressBar(ParentWidget<?> detail, ResearchUnitMachine mte, int x, int y, int w, int h) {
+        addSegmentBar(detail, x, y, w, h, () -> barProgress(mte), "progress_bar");
+    }
+
+    /**
+     * A segmented achievement-style fill bar that lights segments up to {@code progress} (0..1) with a live "NN%"
+     * tooltip. Returns the bar widget so callers can gate its visibility.
+     */
+    private static ParentWidget<?> addSegmentBar(ParentWidget<?> parent, int x, int y, int w, int h,
+                                                 java.util.function.DoubleSupplier progress, String name) {
         ParentWidget<?> bar = new ParentWidget<>();
-        bar.name("progress_bar");
+        bar.name(name);
         bar.pos(x, y).size(w, h);
         bar.background(new Rectangle().color(COLOR_BAR_BG));
         int segW = Math.max(1, w / BAR_SEGMENTS);
         for (int i = 0; i < BAR_SEGMENTS; i++) {
             final float threshold = (i + 1) / (float) BAR_SEGMENTS;
             ParentWidget<?> seg = new ParentWidget<>();
-            seg.name("progress_seg_" + i);
+            seg.name(name + "_seg_" + i);
             seg.pos(i * segW, 0).size(Math.max(1, segW - 1), h);
             seg.background(new Rectangle().color(COLOR_BAR_FILL));
-            seg.setEnabledIf(s -> barProgress(mte) >= threshold);
+            seg.setEnabledIf(s -> progress.getAsDouble() >= threshold);
             bar.child(seg);
         }
-        bar.tooltipDynamic(t -> t.addLine(Text.str(Math.round(barProgress(mte) * 100f) + "%"))).tooltipAutoUpdate(true);
-        detail.child(bar);
+        bar.tooltipDynamic(t -> t.addLine(Text.str(Math.round(progress.getAsDouble() * 100f) + "%")))
+                .tooltipAutoUpdate(true);
+        parent.child(bar);
+        return bar;
     }
 
     /// ///////////////// bottom-right queue strip ////////////////////
@@ -795,7 +969,31 @@ public final class ResearchTreeGui {
         // status line carries its own colour, so it isn't forced white like the readout lines above
         screen.child(new TextWidget<>(Text.dynamic(() -> statusLine(mte)))
                 .pos(INSET, INSET + 3 * lh + 3).name("screen_status"));
+        // the research step ("recipe") currently in progress + a fill bar of its completion; hidden when idle
+        screen.child(new TextWidget<>(Text.dynamic(() -> currentStepText(mte))).color(0xFFFFFFFF)
+                .pos(INSET, INSET + 4 * lh + 6).name("screen_step"));
+        addSegmentBar(screen, INSET, INSET + 5 * lh + 4, SCREEN_W - 2 * INSET, 5,
+                () -> stepProgress(mte), "screen_step_bar")
+                .setEnabledIf(wid -> leadingActiveId(mte) != null);
         return screen;
+    }
+
+    /** The leading active research id (the "current recipe" running), or null when nothing is being worked on. */
+    private static String leadingActiveId(ResearchUnitMachine mte) {
+        List<String> q = mte.getClientQueue();
+        return q.isEmpty() ? null : q.get(0);
+    }
+
+    /** Current-step (per-run) completion 0..1 of the leading active research, for the status screen bar. */
+    private static float stepProgress(ResearchUnitMachine mte) {
+        String id = leadingActiveId(mte);
+        return id == null ? 0f : mte.getClientStepProgress(id);
+    }
+
+    private static Component currentStepText(ResearchUnitMachine mte) {
+        String id = leadingActiveId(mte);
+        if (id == null) return Component.empty();
+        return Component.translatable("wfcore.gui.research.screen_step", Math.round(stepProgress(mte) * 100f));
     }
 
     //////////////////// GT-style machine status screen ////////////////////
@@ -817,24 +1015,23 @@ public final class ResearchTreeGui {
     }
 
     private static Component statusLine(ResearchUnitMachine mte) {
-        if (!mte.isWorkingEnabled()) {
-            return Component.translatable("wfcore.gui.research.screen_paused")
+        return switch (mte.getRunStatus()) {
+            case PAUSED -> Component.translatable("wfcore.gui.research.screen_paused")
                     .withStyle(net.minecraft.ChatFormatting.RED);
-        }
-        if (activeJobs(mte) > 0) {
-            return Component.translatable("wfcore.gui.research.screen_working")
+            case WORKING -> Component.translatable("wfcore.gui.research.screen_working")
                     .withStyle(net.minecraft.ChatFormatting.GREEN);
-        }
-        return Component.translatable("wfcore.gui.research.screen_idling")
-                .withStyle(net.minecraft.ChatFormatting.YELLOW);
+            case WAITING_MATERIALS -> Component.translatable("wfcore.gui.research.screen_waiting_materials")
+                    .withStyle(net.minecraft.ChatFormatting.GOLD);
+            case WAITING_COMPUTE -> Component.translatable("wfcore.gui.research.screen_waiting_compute")
+                    .withStyle(net.minecraft.ChatFormatting.GOLD);
+            case WAITING_ENERGY -> Component.translatable("wfcore.gui.research.screen_waiting_energy")
+                    .withStyle(net.minecraft.ChatFormatting.GOLD);
+            case IDLE -> Component.translatable("wfcore.gui.research.screen_idling")
+                    .withStyle(net.minecraft.ChatFormatting.YELLOW);
+        };
     }
 
     /// ///////////////// item rows ////////////////////
-
-    private static void addItemRow(ParentWidget<?> detail, int x, int y, IntFunction<ItemStack> provider,
-                                   String nameTag) {
-        addItemRow(detail, x, y, provider, MAX_ITEM_SLOTS, nameTag);
-    }
 
     private static void addItemRow(ParentWidget<?> detail, int x, int y, IntFunction<ItemStack> provider, int count,
                                    String nameTag) {
@@ -845,6 +1042,23 @@ public final class ResearchTreeGui {
             sprite.tooltipDynamic(t -> {
                 ItemStack s = provider.apply(idx);
                 if (!s.isEmpty()) t.addLine(Text.of(s.getHoverName()));
+            }).tooltipAutoUpdate(true);
+            detail.child(sprite);
+        }
+    }
+
+    /** A row of {@code count} fluid-cost sprites for the selected research, each with a name + amount tooltip. */
+    private static void addFluidRow(ParentWidget<?> detail, int x, int y, int count) {
+        for (int i = 0; i < count; i++) {
+            final int idx = i;
+            ParentWidget<?> sprite = fluidIcon(() -> fluidPerRunAt(idx), 16);
+            sprite.name("input_fluid_" + idx).pos(x + i * 17, y);
+            sprite.tooltipDynamic(t -> {
+                FluidStack s = fluidPerRunAt(idx);
+                if (!s.isEmpty()) {
+                    t.addLine(Text.of(s.getDisplayName().copy().append(Component.literal(" " + s.getAmount() + " mB")
+                            .withStyle(net.minecraft.ChatFormatting.GRAY))));
+                }
             }).tooltipAutoUpdate(true);
             detail.child(sprite);
         }
@@ -894,6 +1108,13 @@ public final class ResearchTreeGui {
         return i < items.size() ? items.get(i) : ItemStack.EMPTY;
     }
 
+    private static FluidStack fluidPerRunAt(int i) {
+        Research r = selected();
+        if (r == null) return FluidStack.EMPTY;
+        List<FluidStack> fluids = r.getFluidsPerRun();
+        return i < fluids.size() ? fluids.get(i) : FluidStack.EMPTY;
+    }
+
     private static ItemStack unlockedAt(int i) {
         Research r = selected();
         if (r == null) return ItemStack.EMPTY;
@@ -916,6 +1137,24 @@ public final class ResearchTreeGui {
             ItemStack s = supplier.get();
             if (s != null && !s.isEmpty()) {
                 drawable.item(s);
+                drawable.draw(ctx, x, y, w, h, theme);
+            }
+        };
+    }
+
+    /** A plain icon widget that renders just the fluid via {@link FluidDrawable} (no slot background). */
+    private static ParentWidget<?> fluidIcon(Supplier<FluidStack> supplier, int size) {
+        ParentWidget<?> w = new ParentWidget<>();
+        w.size(size).background(fluidIconDrawable(supplier));
+        return w;
+    }
+
+    private static IDrawable fluidIconDrawable(Supplier<FluidStack> supplier) {
+        FluidDrawable drawable = new FluidDrawable();
+        return (ctx, x, y, w, h, theme) -> {
+            FluidStack s = supplier.get();
+            if (s != null && !s.isEmpty()) {
+                drawable.fluid(s);
                 drawable.draw(ctx, x, y, w, h, theme);
             }
         };

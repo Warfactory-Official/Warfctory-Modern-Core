@@ -30,9 +30,14 @@ import com.norwood.wfcore.common.recipe.condition.ResearchRecipeCondition;
  *     .category('logistics').pos(0, 0)
  *     .nodeColor(0xFF2F6BD8)                       // optional tile tint when the node is available
  *     .runs(4).cwuPerRun(64).itemPerRun(Item.of('minecraft:redstone', 2))
+ *     .fluidPerRun('minecraft:water', 1000)        // optional: mB of fluid drawn from an Import Fluid Hatch/run
  *     .unlocks(Item.of('minecraft:repeater'))
  *     .register()
  * }</pre>
+ *
+ * <p>
+ * Give {@code fluidPerRun} a fluid registry id and an amount in mB (not {@code Fluid.of(...)}, which yields a
+ * KubeJS fluid the Java builder can't take); call it several times for multiple fluids.
  *
  * <p>
  * All colours are {@code 0xAARRGGBB} (alpha first). Full-alpha literals such as {@code 0xFF60C060} are

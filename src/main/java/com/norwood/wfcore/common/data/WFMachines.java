@@ -263,25 +263,30 @@ public class WFMachines {
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .pattern(definition -> FactoryBlockPattern.start(
                                 RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
-                        .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
-                        .aisle(" BBBBB ", " DEEED ", " DEEED ", " DEEED ", " BBBBB ", "       ", "       ")
-                        .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
+                        .aisle(" XXXXX ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
+                        .aisle(" XXXXX ", " DEEED ", " DEEED ", " DEEED ", " BBBBB ", "       ", "       ")
+                        .aisle(" XXXXX ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
                         .aisle("AAAAAAA", "CCCCCCC", "CGGGGGC", "CGGGGGC", "CGGGGGC", "CCCCCCC", "AAAAAAA")
                         .aisle("AAAAAAA", "CCCCCCC", "CG   GS", "CG   GC", "CG   GC", "CCCCCCC", "AAAAAAA")
                         .aisle("AAAAAAA", "CCCCCCC", "CGGGGGC", "CGGGGGC", "CGGGGGC", "CCCCCCC", "AAAAAAA")
-                        .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
-                        .aisle(" BBBBB ", " D   F ", " D   F ", " D   F ", " BBBBB ", "       ", "       ")
-                        .aisle(" BBBBB ", " B   F ", " B   F ", " B   F ", " BBBBB ", "       ", "       ")
-                        .aisle(" BBBBB ", " D   F ", " D   F ", " D   F ", " BBBBB ", "       ", "       ")
-                        .aisle(" BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
+                        .aisle(" XXXXX ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
+                        .aisle(" XXXXX ", " D   F ", " D   F ", " D   F ", " BBBBB ", "       ", "       ")
+                        .aisle(" XXXXX ", " B   F ", " B   F ", " B   F ", " BBBBB ", "       ", "       ")
+                        .aisle(" XXXXX ", " D   F ", " D   F ", " D   F ", " BBBBB ", "       ", "       ")
+                        .aisle(" XXXXX ", " BBBBB ", " BBBBB ", " BBBBB ", " BBBBB ", "       ", "       ")
                         .where('S', controller(blocks(definition.getBlock())))
                         .where('A', blocks(GTBlocks.STEEL_HULL.get()))
-                        .where('B', blocks(GTBlocks.MACHINE_CASING_LV.get())
+                        .where('B', blocks(GTBlocks.MACHINE_CASING_LV.get()))
+                        .where('X', blocks(GTBlocks.MACHINE_CASING_LV.get())
                                 .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1).setMaxGlobalLimited(2,
                                         1))
                                 .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1).setMaxGlobalLimited(1,
                                         1))
+                                // Optional Import Fluid Hatch: only needed for researches that list a fluid cost.
                                 .or(abilities(PartAbility.IMPORT_FLUIDS).setMaxGlobalLimited(1, 1))
+                                // Optional Optical Data Transmission Hatch (Research Data Output): the unit is a
+                                // research producer, so it transmits; wire a Data Bank to it to two-way sync.
+                                .or(abilities(PartAbility.OPTICAL_DATA_TRANSMISSION).setMaxGlobalLimited(1, 1))
                                 .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMinGlobalLimited(1, 1)))
                         .where('C', blocks(GTBlocks.CASING_STEEL_SOLID.get()))
                         .where('D', frames(WFMaterials.GalvanizedSteel))
@@ -290,7 +295,7 @@ public class WFMachines {
                         .where('G', blocks(GTBlocks.COIL_CUPRONICKEL.get()))
                         .where(' ', any())
                         .build())
-                .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
+                .workableCasingModel(GTCEu.id("block/casings/voltage/lv/side"),
                         WFCore.id("block/multiblock/research_unit"))
                 .register();
 

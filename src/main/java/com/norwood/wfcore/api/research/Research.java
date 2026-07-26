@@ -1,6 +1,11 @@
 package com.norwood.wfcore.api.research;
 
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
+import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -34,6 +39,7 @@ public final class Research {
 
     private final int runsRequired;
     private final List<ItemStack> itemsPerRun;
+    private final List<FluidStack> fluidsPerRun;
     private final List<ItemStack> unlockedItems;
     private final long cwuPerRun;
     private final long eut;
@@ -53,6 +59,7 @@ public final class Research {
         this.prerequisites = Collections.unmodifiableList(new ArrayList<>(b.prerequisites));
         this.runsRequired = Math.max(1, b.runsRequired);
         this.itemsPerRun = Collections.unmodifiableList(new ArrayList<>(b.itemsPerRun));
+        this.fluidsPerRun = Collections.unmodifiableList(new ArrayList<>(b.fluidsPerRun));
         this.unlockedItems = Collections.unmodifiableList(new ArrayList<>(b.unlockedItems));
         this.cwuPerRun = Math.max(0, b.cwuPerRun);
         this.eut = Math.max(0, b.eut);
@@ -113,6 +120,11 @@ public final class Research {
         return itemsPerRun;
     }
 
+    /** Fluids consumed from an Import Fluid Hatch each run (empty if the research has no fluid cost). */
+    public List<FluidStack> getFluidsPerRun() {
+        return fluidsPerRun;
+    }
+
     public List<ItemStack> getUnlockedItems() {
         return unlockedItems;
     }
@@ -163,6 +175,7 @@ public final class Research {
         private final List<String> prerequisites = new ArrayList<>();
         private int runsRequired = 1;
         private List<ItemStack> itemsPerRun = new ArrayList<>();
+        private final List<FluidStack> fluidsPerRun = new ArrayList<>();
         private final List<ItemStack> unlockedItems = new ArrayList<>();
         private long cwuPerRun;
         private long eut = 32;
@@ -231,6 +244,31 @@ public final class Research {
 
         public Builder itemPerRun(ItemStack item) {
             this.itemsPerRun.add(item);
+            return this;
+        }
+
+        public Builder fluidsPerRun(@Nullable List<FluidStack> fluidsPerRun) {
+            this.fluidsPerRun.clear();
+            if (fluidsPerRun != null) this.fluidsPerRun.addAll(fluidsPerRun);
+            return this;
+        }
+
+        /** Adds a fluid consumed each run (Java / Forge {@link FluidStack} form). */
+        public Builder fluidPerRun(FluidStack fluid) {
+            if (fluid != null && !fluid.isEmpty()) this.fluidsPerRun.add(fluid);
+            return this;
+        }
+
+        /**
+         * Adds a fluid consumed each run by registry id + amount in mB. KubeJS-friendly overload (avoids passing a
+         * Forge {@code FluidStack}, which {@code Fluid.of(...)} in scripts does not produce): e.g.
+         * {@code .fluidPerRun('minecraft:water', 1000)}.
+         */
+        public Builder fluidPerRun(String fluidId, int amount) {
+            Fluid fluid = ForgeRegistries.FLUIDS.getValue(new ResourceLocation(fluidId));
+            if (fluid != null && fluid != Fluids.EMPTY && amount > 0) {
+                this.fluidsPerRun.add(new FluidStack(fluid, amount));
+            }
             return this;
         }
 
