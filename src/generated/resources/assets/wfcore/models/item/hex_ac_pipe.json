@@ -82,7 +82,7 @@
   ],
   "textures": {
     "end": "gtceu:block/pipe/pipe_laser_in",
-    "side": "gtceu:block/pipe/pipe_laser_side",
+    "side": "wfcore:block/pipe/ac_cable_side",
     "side_overlay": "gtceu:block/pipe/pipe_laser_side_overlay"
   }
 }

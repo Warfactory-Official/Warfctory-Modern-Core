@@ -22,6 +22,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.api.distmarker.OnlyIn;
 
+import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.capability.WFCapabilities;
 import com.norwood.wfcore.common.data.WFBlocks;
 import com.norwood.wfcore.common.pipenet.ac.net.LevelACPipeNet;
@@ -96,7 +97,7 @@ public class ACPipeBlock extends PipeBlock<ACPipeType, ACPipeProperties, LevelAC
     @Override
     public PipeModel createPipeModel(GTBlockstateProvider provider) {
         ActivablePipeModel model = new ActivablePipeModel(this, this.pipeType.getThickness(),
-                GTCEu.id("block/pipe/pipe_laser_side"), GTCEu.id("block/pipe/pipe_laser_in"), provider);
+                WFCore.id("block/pipe/ac_cable_side"), GTCEu.id("block/pipe/pipe_laser_in"), provider);
         model.setSideOverlay(GTCEu.id("block/pipe/pipe_laser_side_overlay"));
         model.setSideOverlayActive(GTCEu.id("block/pipe/pipe_laser_side_overlay_emissive"));
         return model;

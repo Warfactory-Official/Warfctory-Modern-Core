@@ -93,7 +93,7 @@
   "render_type": "minecraft:cutout_mipped",
   "textures": {
     "particle": "#side",
-    "side": "gtceu:block/pipe/pipe_laser_side",
+    "side": "wfcore:block/pipe/ac_cable_side",
     "side_overlay": "gtceu:block/pipe/pipe_laser_side_overlay"
   }
 }
