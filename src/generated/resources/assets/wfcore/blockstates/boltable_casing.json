@@ -1,10 +1,7 @@
 {
   "variants": {
-    "bolted=false": {
+    "": {
       "model": "wfcore:block/boltable_casing"
-    },
-    "bolted=true": {
-      "model": "wfcore:block/boltable_casing_bolted"
     }
   }
 }

@@ -17,6 +17,8 @@ public final class WFSounds {
             "mining_charge_blast_distant");
     public static final RegistryObject<SoundEvent> DETONATOR_ARM = register("detonator_arm");
     public static final RegistryObject<SoundEvent> DETONATOR_DETONATE = register("detonator_detonate");
+    /** The NTM CE boltgun report, played when the bolt gun bolts a casing. */
+    public static final RegistryObject<SoundEvent> BOLT_TOOL_FIRE = register("bolt_tool_fire");
 
     private WFSounds() {}
 

@@ -30,5 +30,12 @@
     "sounds": [
       "wfcore:detonator/detonate"
     ]
+  },
+  "bolt_tool_fire": {
+    "category": "players",
+    "subtitle": "wfcore.subtitle.bolt_tool_fire",
+    "sounds": [
+      "wfcore:tool/boltgun"
+    ]
   }
 }

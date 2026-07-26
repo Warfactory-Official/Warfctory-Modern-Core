@@ -12,7 +12,6 @@ import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.SoundType;
-import net.minecraftforge.client.model.generators.ConfiguredModel;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
@@ -45,6 +44,7 @@ public class WFBlocks {
 
     public static BlockEntry<Block> ALUMINIUM_SHEET_CASING;
     public static BlockEntry<BoltableCasingBlock> BOLTABLE_CASING;
+    public static BlockEntry<BoltableCasingBlock> BOLTABLE_CASING_BOLTED;
     public static BlockEntry<Block> GALVANIZED_STEEL_CASING;
     public static BlockEntry<Block> REINFORCED_STAINLESS_CASING;
     /** Custom titanium turbine casing (CTM); stands in for {@code gtceu:titanium_turbine_casing} in WF factories. */
@@ -214,18 +214,28 @@ public class WFBlocks {
                 GTCEu.id("block/casings/solid/machine_casing_robust_tungstensteel"),
                 CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WRENCH);
 
+        // Bolted and unbolted are separate blocks (post-flattening) so each has its own item and shows in the
+        // creative menu. The bolt gun swaps one for the other via the data-driven BoltGunConversions map.
         BOLTABLE_CASING = WF_MACHINES
                 .block("boltable_casing", BoltableCasingBlock::new)
                 .initialProperties(() -> Blocks.IRON_BLOCK)
                 .properties(p -> p.isValidSpawn((state, level, pos, ent) -> false))
                 .addLayer(() -> RenderType::solid)
-                .blockstate((ctx, prov) -> prov.getVariantBuilder(ctx.get()).forAllStates(state -> {
-                    String suffix = state.getValue(BoltableCasingBlock.BOLTED) ? "_bolted" : "";
-                    return ConfiguredModel.builder()
-                            .modelFile(prov.models().cubeAll("boltable_casing" + suffix,
-                                    WFCore.id("block/casings/boltable_casing" + suffix)))
-                            .build();
-                }))
+                .blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(),
+                        prov.models().cubeAll("boltable_casing", WFCore.id("block/casings/boltable_casing"))))
+                .tag(CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WRENCH)
+                .item(BlockItem::new)
+                .build()
+                .register();
+
+        BOLTABLE_CASING_BOLTED = WF_MACHINES
+                .block("boltable_casing_bolted", BoltableCasingBlock::new)
+                .initialProperties(() -> Blocks.IRON_BLOCK)
+                .properties(p -> p.isValidSpawn((state, level, pos, ent) -> false))
+                .addLayer(() -> RenderType::solid)
+                .blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(),
+                        prov.models().cubeAll("boltable_casing_bolted",
+                                WFCore.id("block/casings/boltable_casing_bolted"))))
                 .tag(CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WRENCH)
                 .item(BlockItem::new)
                 .build()

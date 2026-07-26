@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "wfcore:block/boltable_casing_bolted"
+    }
+  }
+}

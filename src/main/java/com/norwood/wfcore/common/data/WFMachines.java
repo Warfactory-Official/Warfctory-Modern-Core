@@ -26,7 +26,6 @@ import com.gregtechceu.gtceu.common.machine.multiblock.part.OpticalDataHatchMach
 import com.gregtechceu.gtceu.common.machine.multiblock.steam.SteamParallelMultiblockMachine;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.norwood.wfcore.WFCore;
-import com.norwood.wfcore.common.block.BoltableCasingBlock;
 import com.norwood.wfcore.common.machine.*;
 import com.norwood.wfcore.common.machine.compute.CPUSlotPartMachine;
 import com.norwood.wfcore.common.machine.compute.CoolingPartMachine;
@@ -563,8 +562,9 @@ public class WFMachines {
                             .where('E', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get()))
                             .where('F', blocks(WFBlocks.CONDENSED_CABLES.get()))
                             .where('G', blocks(matBlock(WFMaterials.GalvanizedSteel)))
-                            .where('H', states(WFBlocks.BOLTABLE_CASING.get().defaultBlockState()
-                                    .setValue(BoltableCasingBlock.BOLTED, false)))
+                            // Requires the bolted casing block: built with the unbolted casing, then bolted
+                            // into place with the bolt gun to complete the structure (1.12.2 mechanic).
+                            .where('H', blocks(WFBlocks.BOLTABLE_CASING_BOLTED.get()))
                             .where('I', frames(GTMaterials.Aluminium))
                             .where('J', blocks(matBlock(GTMaterials.Aluminium)))
                             .where(' ', any())

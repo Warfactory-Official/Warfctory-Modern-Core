@@ -11,6 +11,22 @@ import com.gregtechceu.gtceu.api.sound.SoundEntry;
 
 import com.lowdragmc.lowdraglib.gui.factory.UIFactory;
 
+import com.norwood.wfcore.common.block.WFBlockResistances;
+import com.norwood.wfcore.common.compute.CPURegistry;
+import com.norwood.wfcore.common.compute.RAMRegistry;
+import com.norwood.wfcore.common.compute.WFComputeScripts;
+import com.norwood.wfcore.common.data.WFContent;
+import com.norwood.wfcore.common.data.WFMaterials;
+import com.norwood.wfcore.common.deposit.WFDeposits;
+import com.norwood.wfcore.common.fluid.CoolantRegistry;
+import com.norwood.wfcore.common.particle.WFParticles;
+import com.norwood.wfcore.common.recipe.condition.WFRecipeConditions;
+import com.norwood.wfcore.common.sound.WFSounds;
+import com.norwood.wfcore.common.tool.BoltGunConversions;
+import com.norwood.wfcore.common.worldgen.WFFeatures;
+import com.norwood.wfcore.integration.superbwarfare.SbwBallisticsIntegration;
+import com.norwood.wfcore.integration.tacz.TaczBallisticsIntegration;
+import com.norwood.wfcore.radar.WFRadarScripts;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.common.MinecraftForge;
@@ -31,6 +47,8 @@ import com.norwood.wfcore.gui.VehicleUIFactory;
 import com.norwood.wfcore.radar.RadarConfig;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.norwood.wfcore.serializer.WFCoreSerializers.FLUID_STACK_ENTITY_DATA_SERIALIZER;
 
@@ -65,9 +83,9 @@ public class WFCore {
         modEventBus.addGenericListener(MachineDefinition.class, this::registerMachines);
         modEventBus.addGenericListener(SoundEntry.class, this::registerSounds);
 
-        com.norwood.wfcore.common.worldgen.WFFeatures.init(modEventBus);
-        com.norwood.wfcore.common.particle.WFParticles.PARTICLE_TYPES.register(modEventBus);
-        com.norwood.wfcore.common.sound.WFSounds.SOUNDS.register(modEventBus);
+      WFFeatures.init(modEventBus);
+       WFParticles.PARTICLE_TYPES.register(modEventBus);
+      WFSounds.SOUNDS.register(modEventBus);
 
         // Most other events are fired on Forge's bus.
         // If we want to use annotations to register event listeners,
@@ -84,7 +102,7 @@ public class WFCore {
 
         WF_MACHINES.registerRegistrate();
 
-        com.norwood.wfcore.common.data.WFContent.init();
+      WFContent.init();
     }
 
     /**
@@ -115,23 +133,26 @@ public class WFCore {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
-            com.norwood.wfcore.common.deposit.WFDeposits.registerDefaults();
-            com.norwood.wfcore.common.block.WFBlockResistances.registerDefaults();
-            com.norwood.wfcore.common.fluid.CoolantRegistry.register();
-            com.norwood.wfcore.common.compute.CPURegistry.register();
-            com.norwood.wfcore.common.compute.RAMRegistry.register();
+            WFDeposits.registerDefaults();
+            WFBlockResistances.registerDefaults();
+            CoolantRegistry.register();
+            CPURegistry.register();
+            RAMRegistry.register();
             // Apply KubeJS compute overrides last so packs can add/override/remove any built-in above,
             // plus retune the global WFComputeConfig tunables. (Startup scripts ran before this point.)
-            com.norwood.wfcore.common.compute.WFComputeScripts.apply();
+            WFComputeScripts.apply();
             LOGGER.info("Compute registries: {} CPU item(s), {} RAM item(s)",
-                    com.norwood.wfcore.common.compute.CPURegistry.size(),
-                    com.norwood.wfcore.common.compute.RAMRegistry.size());
+                    CPURegistry.size(),
+                    RAMRegistry.size());
             // Flush WFRadar KubeJS ops now that the block registry is frozen (machine enumeration is safe here).
-            com.norwood.wfcore.radar.WFRadarScripts.apply();
+            WFRadarScripts.apply();
+            BoltGunConversions.apply();
+            LOGGER.info("Bolt gun conversions: {} entry(ies)",
+                    com.norwood.wfcore.common.tool.BoltGunConversions.size());
             // com.norwood.wfcore.common.research.WFResearches.registerTest();
-            com.norwood.wfcore.common.recipe.condition.WFRecipeConditions.init();
-            com.norwood.wfcore.integration.tacz.TaczBallisticsIntegration.register();
-            com.norwood.wfcore.integration.superbwarfare.SbwBallisticsIntegration.register();
+            WFRecipeConditions.init();
+            TaczBallisticsIntegration.register();
+            SbwBallisticsIntegration.register();
             UIFactory.register(VehicleUIFactory.INSTANCE);
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");
             LOGGER.info("Look, I found a {}!", Items.DIAMOND);
@@ -159,7 +180,7 @@ public class WFCore {
      */
     private void onGatherData(final GatherDataEvent event) {
         final Thread datagenThread = Thread.currentThread();
-        final java.util.concurrent.atomic.AtomicBoolean failed = new java.util.concurrent.atomic.AtomicBoolean();
+        final AtomicBoolean failed = new java.util.concurrent.atomic.AtomicBoolean();
         final Thread.UncaughtExceptionHandler prior = datagenThread.getUncaughtExceptionHandler();
         datagenThread.setUncaughtExceptionHandler((t, e) -> {
             failed.set(true);
@@ -202,7 +223,7 @@ public class WFCore {
      * @param event
      */
     private void addMaterials(MaterialEvent event) {
-        com.norwood.wfcore.common.data.WFMaterials.init();
+        WFMaterials.init();
     }
 
     /**
