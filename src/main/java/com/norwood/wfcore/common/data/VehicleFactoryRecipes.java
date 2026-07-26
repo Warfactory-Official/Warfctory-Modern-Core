@@ -88,35 +88,13 @@ public class VehicleFactoryRecipes {
     }
 
     /**
-     * One example recipe per map so every factory works out of the box and shows in JEI. Packs/coremods/
-     * KubeJS/GroovyScript add their own recipes to each {@code wfcore:*} map; the vehicle is just the item
-     * output.
+     * No baked recipes. Every vehicle-factory recipe is supplied by the pack via KubeJS
+     * (kubejs/server_scripts/vehicles/vehicle_factory.js, through the {@code WFVehicles} binding); baking
+     * defaults here duplicated/overrode those pack recipes, so they were all removed. The {@link #vehicle}
+     * helper below is kept for anyone who wants to re-add a built-in example.
      */
     public static void addDefaultRecipes(Consumer<FinishedRecipe> provider) {
-        vehicle(provider, LIGHT_GROUND_VEHICLE_FACTORY, "lav_150", "superbwarfare:lav_150", GTValues.MV, 600,
-                b -> b.inputItems(TagPrefix.plate, GTMaterials.Steel, 16)
-                        .inputItems(TagPrefix.gear, GTMaterials.Steel, 4)
-                        .inputItems(TagPrefix.plate, GTMaterials.Aluminium, 8));
-
-        vehicle(provider, TANK_ASSEMBLY, "bmp_2", "superbwarfare:bmp_2", GTValues.HV, 1200,
-                b -> b.inputItems(TagPrefix.plate, GTMaterials.Steel, 32)
-                        .inputItems(TagPrefix.gear, GTMaterials.Steel, 8)
-                        .inputItems(TagPrefix.plate, GTMaterials.TungstenSteel, 8));
-
-        vehicle(provider, LIGHT_PLANE_ASSEMBLER, "ah_6", "superbwarfare:ah_6", GTValues.HV, 900,
-                b -> b.inputItems(TagPrefix.plate, GTMaterials.Aluminium, 24)
-                        .inputItems(TagPrefix.gear, GTMaterials.Steel, 4)
-                        .inputItems(TagPrefix.plate, GTMaterials.Titanium, 6));
-
-        vehicle(provider, HEAVY_PLANE_ASSEMBLER, "a_10a", "superbwarfare:a_10a", GTValues.EV, 1800,
-                b -> b.inputItems(TagPrefix.plate, GTMaterials.Titanium, 32)
-                        .inputItems(TagPrefix.gear, GTMaterials.StainlessSteel, 8)
-                        .inputItems(TagPrefix.plate, GTMaterials.Aluminium, 24));
-
-        vehicle(provider, HEAVY_VEHICLE_DEPOT, "yx_100", "superbwarfare:yx_100", GTValues.EV, 2400,
-                b -> b.inputItems(TagPrefix.plate, GTMaterials.TungstenSteel, 32)
-                        .inputItems(TagPrefix.gear, GTMaterials.TungstenSteel, 8)
-                        .inputItems(TagPrefix.plate, GTMaterials.Steel, 48));
+        // intentionally empty — all vehicle recipes come from the pack (KubeJS).
     }
 
     /**

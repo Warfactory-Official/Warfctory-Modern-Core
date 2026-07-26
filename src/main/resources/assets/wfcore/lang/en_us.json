@@ -409,5 +409,10 @@
   "wfcore.machine.primitive_alloyer.no_fuel": "Out of fuel (needs Lava or solid fuel)",
   "wfcore.machine.strandcaster.tooltip1": "Casts molten alloys into solid ingots. Consumes no power or fuel.",
   "wfcore.machine.strandcaster.tooltip2": "Casts a batch of 16 ingots from 2304 mb of molten alloy in 6s.",
-  "wfcore.machine.strandcaster.tooltip3": "Supply Water (20 mb/t) to a coolant hatch to cast twice as fast (3s)."
+  "wfcore.machine.strandcaster.tooltip3": "Supply Water (20 mb/t) to a coolant hatch to cast twice as fast (3s).",
+  "block.wfcore.copper_network_cable": "Copper Network Cable",
+  "block.wfcore.mv_computation_transmission_hatch": "MV Computation Data Transmission Hatch",
+  "block.wfcore.mv_computation_reception_hatch": "MV Computation Data Reception Hatch",
+  "block.wfcore.mv_data_transmission_hatch": "MV Optical Data Transmission Hatch",
+  "block.wfcore.mv_data_reception_hatch": "MV Optical Data Reception Hatch"
 }

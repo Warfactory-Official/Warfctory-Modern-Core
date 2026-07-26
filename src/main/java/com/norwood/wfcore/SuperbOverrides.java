@@ -1,6 +1,6 @@
 package com.norwood.wfcore;
 
-import net.minecraft.world.level.material.Fluid;
+import net.minecraft.resources.ResourceLocation;
 
 import java.util.Collection;
 import java.util.Map;
@@ -52,8 +52,15 @@ public final class SuperbOverrides {
      * @param storageSize    desired vehicle storage slot count, or {@code null} when this override does not
      *                       customize storage (the vehicle keeps Superb Warfare's native size/menu).
      * @param storageColumns preferred grid column count for the WFCore ModularUI (<= 0 means "use default").
+     *
+     * <p>
+     * {@code fluidConsumptionMap} is keyed by fluid <em>registry id</em> (e.g. {@code gtceu:diesel}), NOT a
+     * resolved {@link net.minecraft.world.level.material.Fluid}. Overrides are registered from a KubeJS
+     * <em>startup</em> script, which runs during mod loading before other mods' fluids are registered, so
+     * resolving ids to {@code Fluid} objects at registration time yields null and silently drops every fuel.
+     * Callers resolve {@code stack.getFluid()} back to its id via {@code ForgeRegistries.FLUIDS.getKey(...)}.
      */
-    public record OverrideData(int maxFuel, Map<Fluid, Float> fluidConsumptionMap, Integer storageSize,
+    public record OverrideData(int maxFuel, Map<ResourceLocation, Float> fluidConsumptionMap, Integer storageSize,
                                int storageColumns) {
 
         public OverrideData {

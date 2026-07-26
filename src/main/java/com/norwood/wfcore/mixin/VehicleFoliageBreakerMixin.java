@@ -10,7 +10,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
-import com.atsuishio.superbwarfare.data.vehicle.DefaultVehicleData;
+import net.minecraftforge.registries.ForgeRegistries;
+
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.norwood.wfcore.SuperbOverrides;
 import org.spongepowered.asm.mixin.Mixin;
@@ -44,8 +45,9 @@ public abstract class VehicleFoliageBreakerMixin {
         if (level.isClientSide()) {
             return;
         }
-        DefaultVehicleData data = self.computed();
-        if (data == null || !SuperbOverrides.breaksFoliage(data.getId())) {
+
+        var key = ForgeRegistries.ENTITY_TYPES.getKey(self.getType());
+        if (key == null || !SuperbOverrides.breaksFoliage(key.toString())) {
             return;
         }
         AABB box = self.getBoundingBox().expandTowards(movement).inflate(0.1);

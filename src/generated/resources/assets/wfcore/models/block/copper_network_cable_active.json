@@ -1,0 +1,55 @@
+{
+  "parent": "wfcore:block/pipe/copper_network_cable/center_active",
+  "loader": "gtceu:pipe",
+  "parts": {
+    "center": {
+      "model": "wfcore:block/pipe/copper_network_cable/center_active"
+    },
+    "down": {
+      "model": "wfcore:block/pipe/copper_network_cable/connection_active"
+    },
+    "east": {
+      "model": "wfcore:block/pipe/copper_network_cable/connection_active",
+      "x": 90,
+      "y": 270
+    },
+    "north": {
+      "model": "wfcore:block/pipe/copper_network_cable/connection_active",
+      "x": 90,
+      "y": 180
+    },
+    "south": {
+      "model": "wfcore:block/pipe/copper_network_cable/connection_active",
+      "x": 90
+    },
+    "up": {
+      "model": "wfcore:block/pipe/copper_network_cable/connection_active",
+      "x": 180
+    },
+    "west": {
+      "model": "wfcore:block/pipe/copper_network_cable/connection_active",
+      "x": 90,
+      "y": 90
+    }
+  },
+  "restrictors": {
+    "down": {
+      "model": "wfcore:block/pipe/restrictor/down/thickness_6.0"
+    },
+    "east": {
+      "model": "wfcore:block/pipe/restrictor/east/thickness_6.0"
+    },
+    "north": {
+      "model": "wfcore:block/pipe/restrictor/north/thickness_6.0"
+    },
+    "south": {
+      "model": "wfcore:block/pipe/restrictor/south/thickness_6.0"
+    },
+    "up": {
+      "model": "wfcore:block/pipe/restrictor/up/thickness_6.0"
+    },
+    "west": {
+      "model": "wfcore:block/pipe/restrictor/west/thickness_6.0"
+    }
+  }
+}

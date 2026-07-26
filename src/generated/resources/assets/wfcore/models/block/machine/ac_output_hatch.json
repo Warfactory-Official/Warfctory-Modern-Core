@@ -12,9 +12,9 @@
       "model": {
         "parent": "wfcore:block/machine/part/ac_output_hatch",
         "textures": {
-          "bottom": "gtceu:block/casings/voltage/ev/bottom",
-          "side": "gtceu:block/casings/voltage/ev/side",
-          "top": "gtceu:block/casings/voltage/ev/top"
+          "bottom": "gtceu:block/casings/voltage/mv/bottom",
+          "side": "gtceu:block/casings/voltage/mv/side",
+          "top": "gtceu:block/casings/voltage/mv/top"
         }
       }
     },
@@ -22,9 +22,9 @@
       "model": {
         "parent": "wfcore:block/machine/part/ac_output_hatch",
         "textures": {
-          "bottom": "gtceu:block/casings/voltage/ev/bottom",
-          "side": "gtceu:block/casings/voltage/ev/side",
-          "top": "gtceu:block/casings/voltage/ev/top"
+          "bottom": "gtceu:block/casings/voltage/mv/bottom",
+          "side": "gtceu:block/casings/voltage/mv/side",
+          "top": "gtceu:block/casings/voltage/mv/top"
         }
       }
     }

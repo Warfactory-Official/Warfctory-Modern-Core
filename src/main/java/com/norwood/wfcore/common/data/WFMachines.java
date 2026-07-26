@@ -21,6 +21,8 @@ import com.gregtechceu.gtceu.api.registry.registrate.MachineBuilder;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
 import com.gregtechceu.gtceu.common.data.*;
 import com.gregtechceu.gtceu.common.data.models.GTMachineModels;
+import com.gregtechceu.gtceu.common.machine.multiblock.part.OpticalComputationHatchMachine;
+import com.gregtechceu.gtceu.common.machine.multiblock.part.OpticalDataHatchMachine;
 import com.gregtechceu.gtceu.common.machine.multiblock.steam.SteamParallelMultiblockMachine;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.norwood.wfcore.WFCore;
@@ -53,6 +55,12 @@ public class WFMachines {
     public static MachineDefinition COPPER_HEATSINK;
     public static MachineDefinition COOLING_LIQUID;
     public static MachineDefinition CREATIVE_COMPUTATION_SINK;
+    // MV-tier alternatives to GregTech's IV optical computation/data hatches; carry the standard part abilities
+    // so they slot into the existing Mainframe/Research Unit and connect over the copper network cable.
+    public static MachineDefinition MV_COMPUTATION_TRANSMISSION_HATCH;
+    public static MachineDefinition MV_COMPUTATION_RECEPTION_HATCH;
+    public static MachineDefinition MV_DATA_TRANSMISSION_HATCH;
+    public static MachineDefinition MV_DATA_RECEPTION_HATCH;
     public static MultiblockMachineDefinition LARGE_TRANSFORMER;
     public static MultiblockMachineDefinition LARGE_BLAST_FURNACE;
     public static MultiblockMachineDefinition PRIMITIVE_ALLOYER;
@@ -120,7 +128,7 @@ public class WFMachines {
                 .langValue("AC Input Hatch")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.AC_INPUT)
-                .tier(GTValues.EV)
+                .tier(GTValues.MV)
                 .overlayTieredHullModel("ac_input_hatch")
                 .register();
 
@@ -131,7 +139,7 @@ public class WFMachines {
                 .langValue("AC Output Hatch")
                 .rotationState(RotationState.ALL)
                 .abilities(WFPartAbility.AC_OUTPUT)
-                .tier(GTValues.EV)
+                .tier(GTValues.MV)
                 .overlayTieredHullModel("ac_output_hatch")
                 .register();
         PRINTER = WF_MACHINES.machine("printer", holder -> new PrinterMachine(holder, GTValues.LV))
@@ -170,9 +178,6 @@ public class WFMachines {
                         Component.translatable("wfcore.machine.copper_heatsink.tooltip3"),
                         Component.translatable("wfcore.machine.copper_heatsink.tooltip4"))
                 .tier(GTValues.HV)
-                // All six faces use the copper heatsink casing texture (a plain cube_all part model); its
-                // .png.mcmeta ldlib connection makes adjacent heatsinks join into a seamless CTM wall. A
-                // Cooling Fan Cover renders on the exposed face on top of this, so no front overlay is used.
                 .model(GTMachineModels.createBasicMachineModel(WFCore.id("block/machine/part/copper_heatsink")))
                 .register();
 
@@ -220,10 +225,55 @@ public class WFMachines {
                 .machine("creative_computation_sink", CreativeComputationSinkMachine::new)
                 .langValue("Creative Computation Sink")
                 .rotationState(RotationState.NONE)
-                .model(GTMachineModels.createSingleOverlayTieredHullMachineModel(
-                        GTCEu.id("block/overlay/machine/overlay_data_hatch_optical"),
-                        GTCEu.id("block/overlay/machine/overlay_data_hatch_optical_emissive")))
+                .model(GTMachineModels.createOverlayTieredHullMachineModel(
+                        GTCEu.id("block/machine/part/computation_data_hatch")))
                 .tier(GTValues.MAX)
+                .register();
+
+
+        MV_COMPUTATION_TRANSMISSION_HATCH = WF_MACHINES
+                .machine("mv_computation_transmission_hatch",
+                        holder -> new OpticalComputationHatchMachine(holder, true))
+                .langValue("MV Computation Data Transmission Hatch")
+                .rotationState(RotationState.ALL)
+                .abilities(PartAbility.COMPUTATION_DATA_TRANSMISSION)
+                .tier(GTValues.MV)
+
+                .model(GTMachineModels.createOverlayTieredHullMachineModel(
+                        GTCEu.id("block/machine/part/computation_data_hatch")))
+                .register();
+
+        MV_COMPUTATION_RECEPTION_HATCH = WF_MACHINES
+                .machine("mv_computation_reception_hatch",
+                        holder -> new OpticalComputationHatchMachine(holder, false))
+                .langValue("MV Computation Data Reception Hatch")
+                .rotationState(RotationState.ALL)
+                .abilities(PartAbility.COMPUTATION_DATA_RECEPTION)
+                .tier(GTValues.MV)
+                .model(GTMachineModels.createOverlayTieredHullMachineModel(
+                        GTCEu.id("block/machine/part/computation_data_hatch")))
+                .register();
+
+        MV_DATA_TRANSMISSION_HATCH = WF_MACHINES
+                .machine("mv_data_transmission_hatch",
+                        holder -> new OpticalDataHatchMachine(holder, true))
+                .langValue("MV Optical Data Transmission Hatch")
+                .rotationState(RotationState.ALL)
+                .abilities(PartAbility.OPTICAL_DATA_TRANSMISSION)
+                .tier(GTValues.MV)
+                .model(GTMachineModels.createOverlayTieredHullMachineModel(
+                        GTCEu.id("block/machine/part/optical_data_hatch")))
+                .register();
+
+        MV_DATA_RECEPTION_HATCH = WF_MACHINES
+                .machine("mv_data_reception_hatch",
+                        holder -> new OpticalDataHatchMachine(holder, false))
+                .langValue("MV Optical Data Reception Hatch")
+                .rotationState(RotationState.ALL)
+                .abilities(PartAbility.OPTICAL_DATA_RECEPTION)
+                .tier(GTValues.MV)
+                .model(GTMachineModels.createOverlayTieredHullMachineModel(
+                        GTCEu.id("block/machine/part/optical_data_hatch")))
                 .register();
 
         MAINFRAME = WF_MACHINES.multiblock("mainframe", MainframeMachine::new)

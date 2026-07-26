@@ -149,9 +149,10 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
      * the vanilla-sized container.
      *
      * <p>
-     * The override is read by id from {@code computed()} directly (not the cached {@link #wfcore$vehicleId}, which
-     * is still null when {@code getContainerSize} is called during early construction, before the {@code <init>}
-     * tail sets it).
+     * The override is looked up by the entity-type registry id ({@link #wfcore$typeId()}), not the cached
+     * {@link #wfcore$vehicleId} (still null when {@code getContainerSize} runs during early construction, before
+     * the {@code <init>} tail sets it) and not {@code computed().getId()} (unreliable in Superb Warfare 0.8.9 —
+     * it is transient and dropped by the vehicle-data gson copy, so it reads back as "").
      */
     @Inject(method = "getContainerSize", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$overrideContainerSize(CallbackInfoReturnable<Integer> cir) {
@@ -231,7 +232,10 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
 
                 var override = id == null ? null : SuperbOverrides.getOverride(id);
                 if (override != null) {
-                    efficiency = override.fluidConsumptionMap().getOrDefault(currentFluid.getFluid(), 1.0f);
+                    // fluidConsumptionMap is keyed by fluid registry id (see OverrideData) — resolve to the id.
+                    var fluidId = ForgeRegistries.FLUIDS.getKey(currentFluid.getFluid());
+                    efficiency = fluidId == null ? 1.0f
+                            : override.fluidConsumptionMap().getOrDefault(fluidId, 1.0f);
                 }
 
                 double effectiveRatio = WFCoreConfig.getEnergyToFluidRatio() * Math.max(0.0001d, efficiency);

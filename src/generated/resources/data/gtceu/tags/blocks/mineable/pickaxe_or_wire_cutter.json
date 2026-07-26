@@ -4,6 +4,7 @@
     "wfcore:double_ac_pipe",
     "wfcore:quadruple_ac_pipe",
     "wfcore:octal_ac_pipe",
-    "wfcore:hex_ac_pipe"
+    "wfcore:hex_ac_pipe",
+    "wfcore:copper_network_cable"
   ]
 }

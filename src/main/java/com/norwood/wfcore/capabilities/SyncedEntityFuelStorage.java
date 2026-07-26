@@ -4,6 +4,7 @@ import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.templates.FluidTank;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.norwood.wfcore.SuperbOverrides;
@@ -80,17 +81,17 @@ public class SyncedEntityFuelStorage extends FluidTank {
     @Override
     public boolean isFluidValid(FluidStack stack) {
         if (stack.isEmpty()) return false;
-        var data = vehicleEntity.computed();
-        if (data == null) {
+
+        var key = ForgeRegistries.ENTITY_TYPES.getKey(vehicleEntity.getType());
+        if (key == null) {
             return false;
         }
-        String id = data.getId();
-        var override = SuperbOverrides.getOverride(id);
-
-        if (override != null) {
-            return override.fluidConsumptionMap().containsKey(stack.getFluid());
+        var override = SuperbOverrides.getOverride(key.toString());
+        if (override == null) {
+            return false;
         }
-
-        return false;
+        // The override maps fuel by registry id (see OverrideData) — resolve the incoming fluid to its id.
+        var fluidId = ForgeRegistries.FLUIDS.getKey(stack.getFluid());
+        return fluidId != null && override.fluidConsumptionMap().containsKey(fluidId);
     }
 }

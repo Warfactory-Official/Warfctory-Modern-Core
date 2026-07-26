@@ -1,12 +1,16 @@
 package com.norwood.wfcore.integration.kubejs;
 
 import com.gregtechceu.gtceu.api.GTValues;
+import com.gregtechceu.gtceu.data.recipe.builder.GTRecipeBuilder;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.material.Fluid;
-import net.minecraft.world.level.material.Fluids;
+import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import com.google.gson.JsonObject;
@@ -15,7 +19,9 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.data.VehicleFactoryRecipes;
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -53,26 +59,33 @@ import java.util.Map;
 public class WFVehicleBindings {
 
     /**
-     * Build a recipe for the Light Ground Vehicle Factory map ({@code wfcore:light_ground_vehicle_factory}).
-     * Convenience 2-arg form; see {@link #recipe(String, String, String)} to target another factory.
+     * Open a builder for a Light Ground Vehicle Factory recipe ({@code wfcore:light_ground_vehicle_factory}).
+     * 2-arg convenience form; see {@link #recipe(String, String, String)} to target another factory.
      *
-     * @param recipeId a recipe id, e.g. {@code "wfcore:test_truck"}
+     * @param recipeId a recipe id, e.g. {@code "wfcore:mv_truck"}
      * @param entityId the entity to spawn, e.g. {@code "superbwarfare:truck"}
      */
-    public JsonObject recipe(String recipeId, String entityId) {
+    public VehicleRecipe recipe(String recipeId, String entityId) {
         return recipe(recipeId, entityId, "light_ground_vehicle_factory");
     }
 
     /**
-     * Build a vehicle-factory recipe (as the JSON GTCEu would emit) on {@code factory}'s map that outputs a
-     * packaged vehicle for {@code entityId}. Feed the result to {@code event.custom(...)}. Uses cheap fixed
-     * test inputs (4 iron + 1 redstone); copy the body in Java if you want real inputs.
+     * Open a builder for a vehicle-factory recipe on {@code factory}'s map that outputs the packaged vehicle for
+     * {@code entityId}. Chain {@code .item/.tag/.fluid/.circuit/.EUt/.duration}, then {@code .build()} and feed
+     * the result to {@code event.custom(...)}:
      *
-     * @param recipeId a recipe id, e.g. {@code "wfcore:test_truck"}
+     * <pre>{@code
+     * event.custom(WFVehicles.recipe('wfcore:mv_truck', 'superbwarfare:truck')
+     *     .item('kubejs:lv_vehicle_frame', 1).item('superbwarfare:wheel', 4)
+     *     .tag('#gtceu:circuits/lv', 4).EUt(70).duration(4000).build())
+     * }</pre>
+     *
+     * @param recipeId a recipe id, e.g. {@code "wfcore:mv_truck"}
      * @param entityId the entity to spawn, e.g. {@code "superbwarfare:truck"}
-     * @param factory  which factory map the recipe belongs to, e.g. {@code "tank_assembly"}
+     * @param factory  which factory map: {@code light_ground_vehicle_factory}, {@code tank_assembly},
+     *                 {@code light_plane_assembler}, {@code heavy_plane_assembler}, {@code heavy_vehicle_depot}
      */
-    public JsonObject recipe(String recipeId, String entityId, String factory) {
+    public VehicleRecipe recipe(String recipeId, String entityId, String factory) {
         ResourceLocation rid = ResourceLocation.tryParse(recipeId);
         if (rid == null) {
             throw new IllegalArgumentException("Invalid recipe id: '" + recipeId + "'");
@@ -82,15 +95,117 @@ public class WFVehicleBindings {
             throw new IllegalArgumentException(
                     "Unknown entity '" + entityId + "' - is the mod that provides it (e.g. Superb Warfare) loaded?");
         }
+        // Resolve the factory now so a bad name fails fast with the valid-factories list.
+        VehicleFactoryRecipes.byName(factory);
+        return new VehicleRecipe(rid, eid, factory);
+    }
 
-        JsonObject[] json = new JsonObject[1];
-        VehicleFactoryRecipes.byName(factory).recipeBuilder(rid)
-                .inputItems(new ItemStack(Items.IRON_INGOT, 4), new ItemStack(Items.REDSTONE))
-                .outputItems(PackagedVehicleItem.of(eid))
-                .EUt(GTValues.VA[GTValues.MV])
-                .duration(100)
-                .save(fr -> json[0] = fr.serializeRecipe());
-        return json[0];
+    /**
+     * Fluent, Rhino-safe builder for a vehicle-factory recipe. Inputs are accumulated as plain strings/ints (so
+     * the script never touches the ambiguous {@code ItemStack[]} vs {@code Ingredient[]} overloads that break
+     * GTCEu's generic KubeJS builder on this Rhino); {@link #build()} assembles the recipe in Java via
+     * {@link GTRecipeBuilder} and serializes it to the exact JSON GTCEu emits, for {@code event.custom(...)}.
+     */
+    public static final class VehicleRecipe {
+
+        private final ResourceLocation rid;
+        private final ResourceLocation eid;
+        private final String factory;
+        private final List<ItemStack> items = new ArrayList<>();
+        private final List<TagKey<Item>> itemTags = new ArrayList<>();
+        private final List<Integer> itemTagCounts = new ArrayList<>();
+        private final List<FluidStack> fluids = new ArrayList<>();
+        private int circuit = -1;
+        private long eut = GTValues.VA[GTValues.MV];
+        private int duration = 100;
+
+        private VehicleRecipe(ResourceLocation rid, ResourceLocation eid, String factory) {
+            this.rid = rid;
+            this.eid = eid;
+            this.factory = factory;
+        }
+
+        /** Add {@code count} of item {@code id} (e.g. {@code 'kubejs:lv_engine'}) as an input. */
+        public VehicleRecipe item(String id, int count) {
+            ResourceLocation r = ResourceLocation.tryParse(id);
+            Item it = r == null ? null : ForgeRegistries.ITEMS.getValue(r);
+            if (it == null || it == Items.AIR) {
+                throw new IllegalArgumentException("Unknown item '" + id + "'");
+            }
+            items.add(new ItemStack(it, Math.max(1, count)));
+            return this;
+        }
+
+        /** Add one of item {@code id}. */
+        public VehicleRecipe item(String id) {
+            return item(id, 1);
+        }
+
+        /** Add {@code count} of any item in tag {@code tag} (leading {@code #} optional), e.g. {@code '#gtceu:circuits/lv'}. */
+        public VehicleRecipe tag(String tag, int count) {
+            String t = (tag != null && tag.startsWith("#")) ? tag.substring(1) : tag;
+            ResourceLocation r = (t == null) ? null : ResourceLocation.tryParse(t);
+            if (r == null) {
+                throw new IllegalArgumentException("Invalid item tag '" + tag + "'");
+            }
+            itemTags.add(TagKey.create(Registries.ITEM, r));
+            itemTagCounts.add(Math.max(1, count));
+            return this;
+        }
+
+        /** Add {@code millibuckets} of fluid {@code id}, e.g. {@code fluid('gtceu:lubricant', 500)}. */
+        public VehicleRecipe fluid(String id, int millibuckets) {
+            ResourceLocation r = ResourceLocation.tryParse(id);
+            Fluid f = (r == null) ? null : ForgeRegistries.FLUIDS.getValue(r);
+            if (f == null || millibuckets <= 0) {
+                throw new IllegalArgumentException("Unknown fluid or non-positive amount: '" + id + "' x" + millibuckets);
+            }
+            fluids.add(new FluidStack(f, millibuckets));
+            return this;
+        }
+
+        /** Set the programmed (ghost) selector circuit. NB: it occupies one of the machine's item-input slots. */
+        public VehicleRecipe circuit(int n) {
+            this.circuit = n;
+            return this;
+        }
+
+        /** Recipe EU/t (raw, e.g. {@code 70}); determines the required machine tier. */
+        public VehicleRecipe EUt(long v) {
+            if (v > 0) {
+                this.eut = v;
+            }
+            return this;
+        }
+
+        /** Recipe duration in ticks. */
+        public VehicleRecipe duration(int ticks) {
+            if (ticks > 0) {
+                this.duration = ticks;
+            }
+            return this;
+        }
+
+        /** Assemble + serialize to the recipe JSON GTCEu emits; feed the result to {@code event.custom(...)}. */
+        public JsonObject build() {
+            GTRecipeBuilder b = VehicleFactoryRecipes.byName(factory).recipeBuilder(rid);
+            for (ItemStack s : items) {
+                b.inputItems(s);
+            }
+            for (int i = 0; i < itemTags.size(); i++) {
+                b.inputItems(itemTags.get(i), itemTagCounts.get(i));
+            }
+            for (FluidStack fs : fluids) {
+                b.inputFluids(fs);
+            }
+            if (circuit >= 0) {
+                b.circuitMeta(circuit);
+            }
+            b.outputItems(PackagedVehicleItem.of(eid)).EUt(eut).duration(duration);
+            JsonObject[] json = new JsonObject[1];
+            b.save(fr -> json[0] = fr.serializeRecipe());
+            return json[0];
+        }
     }
 
     // --- Vehicle fuel/storage overrides (moved here from the wfcore.toml `vehicles` config) ---------------
@@ -126,7 +241,7 @@ public class WFVehicleBindings {
         private int maxFuel = 4000;
         private Integer storageSize;
         private int storageColumns = 9;
-        private final Map<Fluid, Float> fluids = new LinkedHashMap<>();
+        private final Map<ResourceLocation, Float> fluids = new LinkedHashMap<>();
 
         private OverrideBuilder(String vehicleId) {
             this.vehicleId = vehicleId;
@@ -140,14 +255,22 @@ public class WFVehicleBindings {
             return this;
         }
 
-        /** Accept {@code fluidId} as fuel at the given energy multiplier per mB. Ignored if unknown or ratio <= 0. */
+        /**
+         * Accept {@code fluidId} as fuel at the given energy multiplier per mB. Ignored if the id is malformed or
+         * ratio <= 0.
+         *
+         * <p>
+         * The fluid id is stored as-is (not resolved to a {@link Fluid}); it is resolved at use-time during
+         * gameplay. This binding is called from a KubeJS <em>startup</em> script, which runs before other mods'
+         * fluids are registered — resolving here would return null and silently drop every fuel (e.g. all of
+         * {@code gtceu:*}). We only sanity-check the id format, not that the fluid currently exists.
+         */
         public OverrideBuilder fuel(String fluidId, double ratio) {
             ResourceLocation rl = fluidId == null ? null : ResourceLocation.tryParse(fluidId);
-            Fluid fluid = rl == null ? null : ForgeRegistries.FLUIDS.getValue(rl);
-            if (fluid == null || fluid == Fluids.EMPTY) {
-                WFCore.LOGGER.warn("WFVehicles.override({}): ignoring unknown fuel fluid '{}'", vehicleId, fluidId);
+            if (rl == null) {
+                WFCore.LOGGER.warn("WFVehicles.override({}): ignoring malformed fuel fluid id '{}'", vehicleId, fluidId);
             } else if (ratio > 0) {
-                fluids.put(fluid, (float) ratio);
+                fluids.put(rl, (float) ratio);
             }
             return this;
         }

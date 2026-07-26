@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "active=false": {
+      "model": "wfcore:block/copper_network_cable"
+    },
+    "active=true": {
+      "model": "wfcore:block/copper_network_cable_active"
+    }
+  }
+}

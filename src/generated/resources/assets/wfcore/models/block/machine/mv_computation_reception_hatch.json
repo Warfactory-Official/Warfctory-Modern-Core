@@ -1,7 +1,7 @@
 {
   "parent": "minecraft:block/block",
   "loader": "gtceu:machine",
-  "machine": "wfcore:creative_computation_sink",
+  "machine": "wfcore:mv_computation_reception_hatch",
   "replaceable_textures": [
     "bottom",
     "top",
@@ -12,9 +12,9 @@
       "model": {
         "parent": "gtceu:block/machine/part/computation_data_hatch",
         "textures": {
-          "bottom": "gtceu:block/casings/voltage/max/bottom",
-          "side": "gtceu:block/casings/voltage/max/side",
-          "top": "gtceu:block/casings/voltage/max/top"
+          "bottom": "gtceu:block/casings/voltage/mv/bottom",
+          "side": "gtceu:block/casings/voltage/mv/side",
+          "top": "gtceu:block/casings/voltage/mv/top"
         }
       }
     }

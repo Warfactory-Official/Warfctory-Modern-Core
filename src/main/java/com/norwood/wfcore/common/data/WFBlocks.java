@@ -22,10 +22,16 @@ import com.norwood.wfcore.common.block.MiningChargeBlock;
 import com.norwood.wfcore.common.machine.DepositBlockEntity;
 import com.norwood.wfcore.common.machine.FoundryCastingBlockEntity;
 import com.norwood.wfcore.common.machine.MiningChargeBlockEntity;
+import com.gregtechceu.gtceu.api.block.PipeBlock;
+import com.gregtechceu.gtceu.api.item.PipeBlockItem;
+import com.gregtechceu.gtceu.common.blockentity.OpticalPipeBlockEntity;
+import com.gregtechceu.gtceu.common.pipelike.optical.OpticalPipeType;
+
 import com.norwood.wfcore.common.pipenet.ac.ACPipeBlock;
 import com.norwood.wfcore.common.pipenet.ac.ACPipeBlockEntity;
 import com.norwood.wfcore.common.pipenet.ac.ACPipeBlockItem;
 import com.norwood.wfcore.common.pipenet.ac.ACPipeType;
+import com.norwood.wfcore.common.pipenet.optical.CopperNetworkCableBlock;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
@@ -58,6 +64,10 @@ public class WFBlocks {
     @SuppressWarnings({ "unchecked", "rawtypes" })
     public static final BlockEntry<ACPipeBlock>[] AC_PIPES = new BlockEntry[ACPipeType.VALUES.length];
     public static BlockEntityEntry<ACPipeBlockEntity> AC_PIPE_BE;
+
+    /** MV copper computation/data cable — a cheap optical-fibre alternative sharing GregTech's optical net. */
+    public static BlockEntry<CopperNetworkCableBlock> COPPER_NETWORK_CABLE;
+    public static BlockEntityEntry<OpticalPipeBlockEntity> COPPER_NETWORK_CABLE_BE;
 
     // Fortification blocks. Hardness is mining difficulty; resistance is blast toughness (see WFBlockResistances
     // for balance notes: values are calibrated against superb-warfare's grenade/RPG/mortar/missile arsenal so
@@ -177,6 +187,12 @@ public class WFBlocks {
                 .validBlocks(AC_PIPES)
                 .register();
 
+        registerCopperNetworkCable();
+        // Reuses GregTech's own OpticalPipeBlockEntity, so it shares the LevelOpticalPipeNet (see the block javadoc).
+        COPPER_NETWORK_CABLE_BE = WF_MACHINES.blockEntity("copper_network_cable", OpticalPipeBlockEntity::new)
+                .validBlocks(COPPER_NETWORK_CABLE)
+                .register();
+
         SANDBAGS = createArmorBlock("sandbags", Blocks.SAND, SoundType.SAND, 0.5F, 9.0F,
                 ResourceLocation.fromNamespaceAndPath("wfcore", "block/sandbags"), BlockTags.MINEABLE_WITH_SHOVEL);
         HESCO_BASTION = createSidedArmorBlock("hesco_bastion", Blocks.GRAVEL, SoundType.GRAVEL, 1.0F, 17.0F,
@@ -212,6 +228,22 @@ public class WFBlocks {
                 }))
                 .tag(CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WRENCH)
                 .item(BlockItem::new)
+                .build()
+                .register();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void registerCopperNetworkCable() {
+        COPPER_NETWORK_CABLE = (BlockEntry<CopperNetworkCableBlock>) (BlockEntry<?>) WF_MACHINES
+                .block("copper_network_cable", p -> new CopperNetworkCableBlock(p, OpticalPipeType.NORMAL))
+                .initialProperties(() -> Blocks.IRON_BLOCK)
+                .properties(p -> p.dynamicShape().noOcclusion().forceSolidOn())
+                .gtBlockstate(GTModels::createPipeBlockModel)
+                .defaultLoot()
+                .tag(CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WIRE_CUTTER)
+                .addLayer(() -> RenderType::cutoutMipped)
+                .item((block, props) -> new PipeBlockItem((PipeBlock) block, props))
+                .model(NonNullBiConsumer.noop())
                 .build()
                 .register();
     }

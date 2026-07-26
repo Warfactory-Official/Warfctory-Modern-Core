@@ -51,6 +51,58 @@
         11.002999,
         11.002999
       ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#restrictor"
+        },
+        "north": {
+          "texture": "#restrictor"
+        },
+        "south": {
+          "texture": "#restrictor"
+        },
+        "up": {
+          "texture": "#restrictor"
+        }
+      },
+      "from": [
+        0,
+        4.997,
+        4.997
+      ],
+      "to": [
+        4.997,
+        11.002999,
+        11.002999
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#restrictor"
+        },
+        "north": {
+          "texture": "#restrictor"
+        },
+        "south": {
+          "texture": "#restrictor"
+        },
+        "up": {
+          "texture": "#restrictor"
+        }
+      },
+      "from": [
+        0,
+        4.997,
+        4.997
+      ],
+      "to": [
+        4.997,
+        11.002999,
+        11.002999
+      ]
     }
   ],
   "textures": {
