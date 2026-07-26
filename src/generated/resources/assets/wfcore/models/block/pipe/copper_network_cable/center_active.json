@@ -111,7 +111,7 @@
   "render_type": "minecraft:cutout_mipped",
   "textures": {
     "particle": "#side",
-    "side": "gtceu:block/pipe/pipe_optical_side",
+    "side": "wfcore:block/pipe/copper_network_cable_side",
     "side_overlay": "gtceu:block/pipe/pipe_optical_side_overlay_active"
   }
 }
