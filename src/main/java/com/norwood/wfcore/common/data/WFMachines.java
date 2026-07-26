@@ -883,7 +883,7 @@ public class WFMachines {
                 .rotationState(RotationState.NON_Y_AXIS)
                 .recipeType(WFRecipeTypes.MISSILE_FACTORY)
                 .recipeModifier(GTRecipeModifiers.OC_NON_PERFECT)
-                .appearanceBlock(GCYMBlocks.CASING_INDUSTRIAL_STEAM)
+                .appearanceBlock(WFBlocks.REINFORCED_STAINLESS_CASING)
                 .pattern(definition -> {
                     var pattern = FactoryBlockPattern.start(
                             RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT);
@@ -895,23 +895,23 @@ public class WFMachines {
                     // Missile Launch Silo — a player can never hold one.
                     return pattern
                             .where('S', controller(blocks(definition.getBlock())))
-                            .where('A', blocks(GTBlocks.CASING_STEEL_SOLID.get()) // gtceu:solid_machine_casing x115
+                            .where('A', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get()) // gtceu:solid_machine_casing x115
                                     .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
                                             .setMaxGlobalLimited(2, 1))
                                     .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1, 1))
                                     .or(abilities(PartAbility.IMPORT_FLUIDS).setMaxGlobalLimited(2, 1))
                                     // Maintenance Hatch (required once maintenance is enabled in the GT config).
                                     .or(autoAbilities(true, false, false)))
-                            .where('B', blocks(GCYMBlocks.CASING_INDUSTRIAL_STEAM.get())) // x145
-                            .where('C', blocks(GCYMBlocks.CASING_ATOMIC.get())) // gtceu:atomic_casing x104
-                            .where('D', blocks(GTBlocks.CASING_HSSE_STURDY.get())) // gtceu:sturdy_machine_casing x327
+                            .where('B', blocks(WFBlocks.CONCRETE_BASE.get())) // x145
+                            .where('C', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get())) // gtceu:atomic_casing x104
+                            .where('D', blocks(WFBlocks.REINFORCED_STAINLESS_CASING.get())) // gtceu:sturdy_machine_casing x327
                             .where('E', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x133
                             .where('F', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x36
                             .where('G', blocks(GTBlocks.METAL_SHEETS.get(DyeColor.LIGHT_GRAY).get())) // x124
                             .where(' ', any())
                             .build();
                 })
-                .workableCasingModel(GTCEu.id("block/casings/gcym/industrial_steam_casing"),
+                .workableCasingModel(WFCore.id("block/casings/reinforced_stainless_casing"),
                         GTCEu.id("block/machines/assembler"))
                 .register();
 

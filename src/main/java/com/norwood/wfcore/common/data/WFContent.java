@@ -15,6 +15,7 @@ public final class WFContent {
         WF_MACHINES.creativeModeTab(() -> WFCreativeTabs.WFCORE_TAB);
         WFBlocks.init();
         WFItems.init();
+        WFMissiles.init();
         WFMolds.init();
     }
 }

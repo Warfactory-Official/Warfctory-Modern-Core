@@ -12,6 +12,7 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.common.util.LazyOptional;
+import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.fluids.FluidStack;
 import net.minecraftforge.fluids.capability.IFluidHandler;
 
@@ -147,19 +148,41 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
      */
     @Inject(method = "getContainerSize", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$overrideContainerSize(CallbackInfoReturnable<Integer> cir) {
-        var data = computed();
-        if (data == null) {
+        var id = wfcore$typeId();
+        if (id == null) {
             return;
         }
-        var override = SuperbOverrides.getOverride(data.getId());
+        var override = SuperbOverrides.getOverride(id);
         if (override != null && override.hasStorageOverride()) {
             cir.setReturnValue(override.storageSize());
         }
     }
 
-    // method = "baseTick" is the vanilla Entity#baseTick and must be remapped (default remap = true);
-    // only the @At target (superbwarfare's hasEnergyStorage, called by baseTick's item->energy charging block)
-    // keeps remap = false.
+
+    @Inject(method = "hasMenu", at = @At("HEAD"), cancellable = true, remap = false)
+    private void wfcore$overrideHasMenu(CallbackInfoReturnable<Boolean> cir) {
+        if (wfcore$hasStorageOverride()) {
+            cir.setReturnValue(true);
+        }
+    }
+
+    /** True when this vehicle's entity-type id carries a WFCore storage override. */
+    @Unique
+    private boolean wfcore$hasStorageOverride() {
+        var id = wfcore$typeId();
+        var override = id == null ? null : SuperbOverrides.getOverride(id);
+        return override != null && override.hasStorageOverride();
+    }
+
+    /
+    @Unique
+    @Nullable
+    private String wfcore$typeId() {
+        var key = ForgeRegistries.ENTITY_TYPES.getKey(this.getType());
+        return key == null ? null : key.toString();
+    }
+
+
     @Redirect(
               method = "baseTick",
               at = @At(value = "INVOKE",
@@ -243,8 +266,7 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
     @Unique
     @Nullable
     private String wfcore$getVehicleId() {
-        var data = computed();
-        return data == null ? null : data.getId();
+        return wfcore$typeId();
     }
 
     // ----- WFCore ModularUI storage (only for vehicles with a configured storageSize) -----
@@ -257,7 +279,7 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
      */
     @Inject(method = "openMenu", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$openVehicleStorageUI(Player player, CallbackInfo ci) {
-        if (this.wfcore$usesModularStorage && player instanceof ServerPlayer serverPlayer) {
+        if (player instanceof ServerPlayer serverPlayer && wfcore$hasStorageOverride()) {
             VehicleUIFactory.INSTANCE.openUI((VehicleEntity) (Object) this, serverPlayer);
             ci.cancel();
         }
