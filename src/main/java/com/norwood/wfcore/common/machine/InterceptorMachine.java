@@ -9,6 +9,7 @@ import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
 import com.gregtechceu.gtceu.api.machine.feature.IDataStickInteractable;
 import com.gregtechceu.gtceu.api.machine.feature.IInteractedMachine;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMaintenanceMachine;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.misc.EnergyContainerList;
@@ -145,6 +146,9 @@ public class InterceptorMachine extends MultiblockControllerMachine
 
     @Nullable
     protected EnergyContainerList energyContainer;
+    /** The structure's maintenance hatch part, gathered on form; the battery stands down while it has problems. */
+    @Nullable
+    protected IMaintenanceMachine maintenance;
     @Nullable
     protected TickableSubscription tickSub;
     protected int voltageTier = -1;
@@ -169,7 +173,11 @@ public class InterceptorMachine extends MultiblockControllerMachine
     public void onStructureFormed() {
         super.onStructureFormed();
         List<IEnergyContainer> containers = new ArrayList<>();
+        this.maintenance = null;
         for (IMultiPart part : getParts()) {
+            if (part instanceof IMaintenanceMachine maintenanceMachine) {
+                this.maintenance = maintenanceMachine;
+            }
             for (var handlerList : part.getRecipeHandlers()) {
                 if (!handlerList.isValid(IO.IN)) {
                     continue;
@@ -192,6 +200,7 @@ public class InterceptorMachine extends MultiblockControllerMachine
     public void onStructureInvalid() {
         super.onStructureInvalid();
         this.energyContainer = null;
+        this.maintenance = null;
         this.voltageTier = -1;
         this.displayState = State.UNFORMED.ordinal();
         this.deployProgress = 0f;
@@ -220,10 +229,13 @@ public class InterceptorMachine extends MultiblockControllerMachine
         }
         this.displayState = computeState().ordinal();
 
-        // Operational = formed, powered, and a stocked interceptor selected (auto-healed by rebuildAvailability
-        // to a stocked type, so this is non-empty whenever any interceptor is available).
-        boolean operational = isFormed() && voltageTier >= MIN_TIER
+        // Operational = formed, powered, serviced, and a stocked interceptor selected (auto-healed by
+        // rebuildAvailability to a stocked type, so this is non-empty whenever any interceptor is available).
+        boolean operational = isFormed() && voltageTier >= MIN_TIER && !hasMaintenanceProblems()
                 && getAvailableInterceptors().containsKey(selectedInterceptorId) && drainEnergy(true);
+        if (operational && maintenance != null) {
+            maintenance.calculateMaintenance(maintenance); // armed + watching counts as active time -> problems
+        }
 
         // Scan for a threat periodically; a live target refreshes the deploy hold so the dome stays open.
         MissileEntity target = null;
@@ -481,10 +493,16 @@ public class InterceptorMachine extends MultiblockControllerMachine
     public State computeState() {
         if (!isFormed()) return State.UNFORMED;
         if (voltageTier < MIN_TIER) return State.LOW_TIER;
+        if (hasMaintenanceProblems()) return State.MAINTENANCE;
         if (getAvailableInterceptors().isEmpty()) return State.NO_INTERCEPTORS;
         if (!drainEnergy(true)) return State.NO_ENERGY;
         if (cooldown > 0) return State.RELOADING;
         return State.SCANNING;
+    }
+
+    /** True when a maintenance hatch is present and reporting unfixed problems (the battery stands down). */
+    public boolean hasMaintenanceProblems() {
+        return maintenance != null && maintenance.hasMaintenanceProblems();
     }
 
     public State getDisplayState() {
@@ -515,6 +533,8 @@ public class InterceptorMachine extends MultiblockControllerMachine
                     .withStyle(ChatFormatting.YELLOW);
             case SCANNING -> Component.translatable("wfcore.gui.interceptor.status_scanning")
                     .withStyle(ChatFormatting.GREEN);
+            case MAINTENANCE -> Component.translatable("wfcore.gui.interceptor.status_maintenance")
+                    .withStyle(ChatFormatting.RED);
         };
     }
 
@@ -694,6 +714,7 @@ public class InterceptorMachine extends MultiblockControllerMachine
         NO_INTERCEPTORS,
         NO_ENERGY,
         RELOADING,
-        SCANNING
+        SCANNING,
+        MAINTENANCE
     }
 }

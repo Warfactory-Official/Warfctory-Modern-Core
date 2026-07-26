@@ -287,7 +287,9 @@ public class WFMachines {
                                 // Optional Optical Data Transmission Hatch (Research Data Output): the unit is a
                                 // research producer, so it transmits; wire a Data Bank to it to two-way sync.
                                 .or(abilities(PartAbility.OPTICAL_DATA_TRANSMISSION).setMaxGlobalLimited(1, 1))
-                                .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMinGlobalLimited(1, 1)))
+                                .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMinGlobalLimited(1, 1))
+                                // Maintenance Hatch (required once maintenance is enabled in the GT config).
+                                .or(autoAbilities(true, false, false)))
                         .where('C', blocks(GTBlocks.CASING_STEEL_SOLID.get()))
                         .where('D', frames(WFMaterials.GalvanizedSteel))
                         .where('E', blocks(GTBlocks.FIREBOX_STEEL.get()))
@@ -505,7 +507,9 @@ public class WFMachines {
                             .where('K', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get())
                                     .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
                                             .setMaxGlobalLimited(2, 1))
-                                    .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMaxGlobalLimited(1, 1)))
+                                    .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMaxGlobalLimited(1, 1))
+                                    // Maintenance Hatch (required once maintenance is enabled in the GT config).
+                                    .or(autoAbilities(true, false, false)))
                             .where('E', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get()))
                             .where('F', blocks(WFBlocks.CONDENSED_CABLES.get()))
                             .where('G', blocks(matBlock(WFMaterials.GalvanizedSteel)))
@@ -895,7 +899,9 @@ public class WFMachines {
                                     .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
                                             .setMaxGlobalLimited(2, 1))
                                     .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1, 1))
-                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMaxGlobalLimited(2, 1)))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMaxGlobalLimited(2, 1))
+                                    // Maintenance Hatch (required once maintenance is enabled in the GT config).
+                                    .or(autoAbilities(true, false, false)))
                             .where('B', blocks(GCYMBlocks.CASING_INDUSTRIAL_STEAM.get())) // x145
                             .where('C', blocks(GCYMBlocks.CASING_ATOMIC.get())) // gtceu:atomic_casing x104
                             .where('D', blocks(GTBlocks.CASING_HSSE_STURDY.get())) // gtceu:sturdy_machine_casing x327
@@ -926,7 +932,9 @@ public class WFMachines {
                             .where('S', controller(blocks(definition.getBlock())))
                             .where('A', blocks(WFBlocks.REINFORCED_STAINLESS_CASING.get()) // gtceu:solid_machine_casing x47
                                     .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
-                                            .setMaxGlobalLimited(2, 1)))
+                                            .setMaxGlobalLimited(2, 1))
+                                    // Maintenance Hatch (required once maintenance is enabled in the GT config).
+                                    .or(autoAbilities(true, false, false)))
                             .where('B', blocks(WFBlocks.CONCRETE_BASE.get())) // x36
                             .where('C', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x125
                             .where('D', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get())) // gtceu:atomic_casing x122
@@ -959,7 +967,9 @@ public class WFMachines {
                             .where('S', controller(blocks(definition.getBlock())))
                             .where('A', blocks(GTBlocks.CASING_STEEL_SOLID.get()) // gtceu:solid_machine_casing x22
                                     .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
-                                            .setMaxGlobalLimited(2, 1)))
+                                            .setMaxGlobalLimited(2, 1))
+                                    // Maintenance Hatch (required once maintenance is enabled in the GT config).
+                                    .or(autoAbilities(true, false, false)))
                             .where('B', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x4
                             .where('C', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get()))
                             .where('D', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x4

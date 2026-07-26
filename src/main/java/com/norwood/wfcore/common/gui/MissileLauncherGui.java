@@ -390,6 +390,8 @@ public final class MissileLauncherGui {
                     (mte.getCooldown() + 19) / 20).withStyle(net.minecraft.ChatFormatting.YELLOW);
             case READY -> Component.translatable("wfcore.gui.launcher.status_ready")
                     .withStyle(net.minecraft.ChatFormatting.GREEN);
+            case MAINTENANCE -> Component.translatable("wfcore.gui.launcher.status_maintenance")
+                    .withStyle(net.minecraft.ChatFormatting.RED);
         };
     }
 

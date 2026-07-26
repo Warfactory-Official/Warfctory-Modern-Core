@@ -32,6 +32,7 @@ import brachy.modularui.widgets.ListWidget;
 import brachy.modularui.widgets.PageButton;
 import brachy.modularui.widgets.PagedWidget;
 import brachy.modularui.widgets.RichTextWidget;
+import brachy.modularui.widgets.SlotGroupWidget;
 import brachy.modularui.widgets.TextWidget;
 import brachy.modularui.widgets.slot.ItemSlot;
 import brachy.modularui.widgets.slot.ModularSlot;
@@ -331,8 +332,15 @@ public final class ResearchTreeGui {
 
     private static ModularPanel<?> buildLibraryPanel(ResearchUnitMachine mte, PanelSyncManager sync) {
         int w = 214;
-        int h = 210;
         int pad = 6;
+        int wellY = 35;
+        int footerY = 176;                 // footer divider (fixed, so the player inventory can sit below it)
+        int slotRowY = footerY + 8;        // data-item slot + Read/Write buttons
+        int invW = 9 * 18;                 // player inventory block: 3 rows + hotbar, 162x76
+        int invX = (w - invW) / 2;         // centred horizontally
+        int invY = slotRowY + 18 + 10;     // 10px gap under the button row
+        int h = invY + 76 + pad;           // room for the inventory + bottom margin
+        int wellH = footerY - wellY - 4;
         ModularPanel<?> panel = ModularPanel.defaultPanel("research_library", w, h);
         panel.draggable(true);
 
@@ -345,9 +353,6 @@ public final class ResearchTreeGui {
                 .scale(0.9f).pos(8, 24).name("library_subheader"));
 
         // recessed well: one row per obtained (fully-unlocked) blueprint, or a centred hint when there are none
-        int wellY = 35;
-        int footerY = h - 34;
-        int wellH = footerY - wellY - 4;
         ParentWidget<?> well = new ParentWidget<>();
         well.name("library_well");
         well.pos(pad, wellY).size(w - 2 * pad, wellH);
@@ -377,7 +382,7 @@ public final class ResearchTreeGui {
                 .filter(ResearchDataItem::isDataItem).accessibility(true, true);
         sync.syncValue("library_slot", 0, new ItemSlotSyncHandler(slot));
         ItemSlot slotWidget = new ItemSlot();
-        slotWidget.pos(8, footerY + 8).size(18, 18);
+        slotWidget.pos(8, slotRowY).size(18, 18);
         slotWidget.syncHandler("library_slot", 0);
         panel.child(slotWidget);
 
@@ -385,10 +390,15 @@ public final class ResearchTreeGui {
         int btnW = (w - pad - btnX - 4) / 2;
         panel.child(libraryActionButton(sync, "library_read", COLOR_LIB_READ, "wfcore.gui.research.read_label",
                 "wfcore.gui.research.read", "wfcore.gui.research.read_hint", () -> mte.readLibrary(),
-                btnX, footerY + 8, btnW));
+                btnX, slotRowY, btnW));
         panel.child(libraryActionButton(sync, "library_write", COLOR_LIB_WRITE, "wfcore.gui.research.write_label",
                 "wfcore.gui.research.write", "wfcore.gui.research.write_hint", () -> mte.writeLibrary(),
-                btnX + btnW + 4, footerY + 8, btnW));
+                btnX + btnW + 4, slotRowY, btnW));
+
+        // Player inventory, present only while this library window is open (it lives on this panel). Lets the
+        // player move data sticks/orbs between their inventory and the library slot without closing the GUI.
+        panel.child(hairline(pad, invY - 6, w - 2 * pad).name("library_inv_divider"));
+        panel.child(SlotGroupWidget.playerInventory(false).pos(invX, invY).name("library_player_inv"));
         return panel;
     }
 
@@ -904,7 +914,7 @@ public final class ResearchTreeGui {
             seg.setEnabledIf(s -> progress.getAsDouble() >= threshold);
             bar.child(seg);
         }
-        bar.tooltipDynamic(t -> t.addLine(Text.str(Math.round(progress.getAsDouble() * 100f) + "%")))
+        bar.tooltipDynamic(t -> t.addLine(Text.str(percentOf(progress.getAsDouble()) + "%")))
                 .tooltipAutoUpdate(true);
         parent.child(bar);
         return bar;
@@ -937,7 +947,7 @@ public final class ResearchTreeGui {
                 Research r = ResearchRegistry.get(q.get(slot));
                 t.titleMargin();
                 if (r != null) t.addLine(Text.lang(r.getNameKey()));
-                t.addLine(Text.str(Math.round(mte.getClientProgress(q.get(slot)) * 100f) + "%"));
+                t.addLine(Text.str(percentOf(mte.getClientProgress(q.get(slot))) + "%"));
                 t.addLine(Text.lang(slot < mte.getJobCapacity() ? "wfcore.gui.research.running" :
                         "wfcore.gui.research.waiting"));
                 t.spaceLine(2);
@@ -993,7 +1003,7 @@ public final class ResearchTreeGui {
     private static Component currentStepText(ResearchUnitMachine mte) {
         String id = leadingActiveId(mte);
         if (id == null) return Component.empty();
-        return Component.translatable("wfcore.gui.research.screen_step", Math.round(stepProgress(mte) * 100f));
+        return Component.translatable("wfcore.gui.research.screen_step", percentOf(stepProgress(mte)));
     }
 
     //////////////////// GT-style machine status screen ////////////////////
@@ -1026,6 +1036,8 @@ public final class ResearchTreeGui {
                     .withStyle(net.minecraft.ChatFormatting.GOLD);
             case WAITING_ENERGY -> Component.translatable("wfcore.gui.research.screen_waiting_energy")
                     .withStyle(net.minecraft.ChatFormatting.GOLD);
+            case WAITING_MAINTENANCE -> Component.translatable("wfcore.gui.research.screen_waiting_maintenance")
+                    .withStyle(net.minecraft.ChatFormatting.RED);
             case IDLE -> Component.translatable("wfcore.gui.research.screen_idling")
                     .withStyle(net.minecraft.ChatFormatting.YELLOW);
         };
@@ -1092,6 +1104,16 @@ public final class ResearchTreeGui {
     private static float barProgress(ResearchUnitMachine mte) {
         Research r = selected();
         return r == null ? 0f : mte.getResearchState().getProgress(r.getId());
+    }
+
+    /**
+     * Formats 0..1 progress as an integer percent, never reading "100%" until the research is actually complete:
+     * a plain {@code Math.round} shows "100%" from 99.5% onward, which looked like a finished research that hadn't
+     * finished. Anything short of a true 1.0 is capped at 99%.
+     */
+    private static int percentOf(double progress) {
+        if (progress >= 1.0) return 100;
+        return Math.min(99, (int) Math.round(progress * 100.0));
     }
 
     private static ItemStack queueIcon(ResearchUnitMachine mte, int slot) {
@@ -1188,7 +1210,7 @@ public final class ResearchTreeGui {
     }
 
     private static String statusLine(ResearchUnitMachine mte, String rid) {
-        int pct = Math.round(mte.getResearchState().getProgress(rid) * 100f);
+        int pct = percentOf(mte.getResearchState().getProgress(rid));
         return switch (statusOf(mte, rid)) {
             case COMPLETE -> Component.translatable("wfcore.gui.research.status_complete").getString();
             case RESEARCHING -> Component.translatable("wfcore.gui.research.status_running", pct).getString();

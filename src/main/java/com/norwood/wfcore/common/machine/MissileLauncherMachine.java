@@ -9,6 +9,7 @@ import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
 import com.gregtechceu.gtceu.api.machine.feature.IDataStickInteractable;
 import com.gregtechceu.gtceu.api.machine.feature.IInteractedMachine;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMaintenanceMachine;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.misc.EnergyContainerList;
@@ -150,6 +151,9 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
 
     @Nullable
     protected EnergyContainerList energyContainer;
+    /** The structure's maintenance hatch part, gathered on form; launching is blocked while it has problems. */
+    @Nullable
+    protected IMaintenanceMachine maintenance;
     @Nullable
     protected TickableSubscription tickSub;
     protected int voltageTier = -1;
@@ -183,7 +187,11 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     public void onStructureFormed() {
         super.onStructureFormed();
         List<IEnergyContainer> containers = new ArrayList<>();
+        this.maintenance = null;
         for (IMultiPart part : getParts()) {
+            if (part instanceof IMaintenanceMachine maintenanceMachine) {
+                this.maintenance = maintenanceMachine;
+            }
             for (var handlerList : part.getRecipeHandlers()) {
                 if (!handlerList.isValid(IO.IN)) {
                     continue;
@@ -206,6 +214,7 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     public void onStructureInvalid() {
         super.onStructureInvalid();
         this.energyContainer = null;
+        this.maintenance = null;
         this.voltageTier = -1;
         this.displayState = LaunchState.UNFORMED.ordinal();
         if (tickSub != null) {
@@ -217,6 +226,9 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     protected void tickLauncher() {
         if (cooldown > 0) {
             cooldown--;
+            if (maintenance != null) {
+                maintenance.calculateMaintenance(maintenance); // the launch/reload cycle counts as active time
+            }
             // Once the display missile has streaked up to the spawn height (ANIM_TICKS after the click),
             // release the real missile entity from the top of the silo.
             if (pendingSpawn && cooldown <= LAUNCH_COOLDOWN - ANIM_TICKS) {
@@ -486,6 +498,7 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     public LaunchState computeLaunchState() {
         if (!isFormed()) return LaunchState.UNFORMED;
         if (voltageTier < MIN_TIER) return LaunchState.LOW_TIER;
+        if (hasMaintenanceProblems()) return LaunchState.MAINTENANCE;
         if (selectedMissileId.isEmpty() || !getAvailableMissiles().containsKey(selectedMissileId)) {
             return LaunchState.NO_MISSILE;
         }
@@ -497,6 +510,11 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     /** The synced launch state, safe to read on the client (drives the GUI button colour + status line). */
     public LaunchState getDisplayState() {
         return LaunchState.values()[displayState];
+    }
+
+    /** True when a maintenance hatch is present and reporting unfixed problems (launching is blocked until fixed). */
+    public boolean hasMaintenanceProblems() {
+        return maintenance != null && maintenance.hasMaintenanceProblems();
     }
 
     /**
@@ -691,7 +709,8 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
         NO_MISSILE,
         NO_ENERGY,
         COOLDOWN,
-        READY
+        READY,
+        MAINTENANCE
     }
 
     /**

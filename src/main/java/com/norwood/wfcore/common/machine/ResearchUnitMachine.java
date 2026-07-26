@@ -14,6 +14,7 @@ import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
 import com.gregtechceu.gtceu.api.machine.feature.IInteractedMachine;
 import com.gregtechceu.gtceu.api.machine.feature.IMachineLife;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMaintenanceMachine;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiController;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
@@ -113,7 +114,8 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         WORKING,
         WAITING_MATERIALS,
         WAITING_COMPUTE,
-        WAITING_ENERGY
+        WAITING_ENERGY,
+        WAITING_MAINTENANCE
     }
 
     public static final int QUEUE_SIZE = 3;
@@ -172,6 +174,9 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     private EnergyContainerList energyContainer;
     @Nullable
     private IOpticalComputationProvider computationProvider;
+    /** The structure's maintenance hatch part, gathered on form; research halts while it has problems. */
+    @Nullable
+    private IMaintenanceMachine maintenance;
     /** Position of the Computation Reception Hatch part, used to find the optical-pipe net slaves link over. */
     @Nullable
     private BlockPos receptionHatchPos;
@@ -223,6 +228,9 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         this.inputInventories.clear();
         this.inputFluidTanks.clear();
         for (IMultiPart part : getParts()) {
+            if (part instanceof IMaintenanceMachine maintenanceMachine) {
+                this.maintenance = maintenanceMachine;
+            }
             part.self().holder.self().getCapability(GTCapability.CAPABILITY_COMPUTATION_PROVIDER)
                     .ifPresent(p -> {
                         this.computationProvider = p;
@@ -271,6 +279,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         this.inputInventories.clear();
         this.inputFluidTanks.clear();
         this.computationProvider = null;
+        this.maintenance = null;
         this.receptionHatchPos = null;
         this.opticalDataHatchPos = null;
         this.bankResearchIds.clear();
@@ -285,6 +294,11 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     @Nullable
     public IOpticalComputationProvider getComputationProvider() {
         return computationProvider;
+    }
+
+    /** True when a maintenance hatch is present and reporting unfixed problems (research halts until fixed). */
+    public boolean hasMaintenanceProblems() {
+        return maintenance != null && maintenance.hasMaintenanceProblems();
     }
 
     //////////////////// slave/control clustering ////////////////////
@@ -473,6 +487,16 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
             status = RunStatus.PAUSED;
         } else if (jobs.isEmpty()) {
             status = RunStatus.IDLE;
+        } else if (hasMaintenanceProblems()) {
+            // Maintenance problems halt research; the active runs' step progress bleeds back down (GT decay).
+            status = RunStatus.WAITING_MAINTENANCE;
+            for (int i = Math.min(jobs.size(), getJobCapacity()) - 1; i >= 0; i--) {
+                Job job = jobs.get(i);
+                Research research = ResearchRegistry.get(job.researchId);
+                if (research != null && decayStep(job, research)) {
+                    changed = true;
+                }
+            }
         } else {
             // only the first `capacity` queued researches run concurrently; the rest wait their turn
             int activeCount = Math.min(jobs.size(), getJobCapacity());
@@ -506,11 +530,14 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
                     changed = true;
                 }
             }
+            if (anyProgressed && maintenance != null) {
+                maintenance.calculateMaintenance(maintenance); // accrue active time -> random problems over time
+            }
             status = anyProgressed ? RunStatus.WORKING : jobs.isEmpty() ? RunStatus.IDLE : stall;
         }
 
 
-        animAdvancing = !slaveMode && isWorkingEnabled && !jobs.isEmpty();
+        animAdvancing = !slaveMode && isWorkingEnabled && !jobs.isEmpty() && !hasMaintenanceProblems();
         this.runStatus = status.ordinal();
         if (changed || tickCounter % 10 == 0) pushResearchSync();
     }

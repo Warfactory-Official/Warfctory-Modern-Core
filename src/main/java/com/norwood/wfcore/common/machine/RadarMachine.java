@@ -8,10 +8,12 @@ import com.gregtechceu.gtceu.api.capability.forge.GTCapability;
 import com.gregtechceu.gtceu.api.capability.recipe.EURecipeCapability;
 import com.gregtechceu.gtceu.api.capability.recipe.IO;
 import com.gregtechceu.gtceu.api.gui.GuiTextures;
+import com.gregtechceu.gtceu.api.gui.fancy.TooltipsPanel;
 import com.gregtechceu.gtceu.api.gui.widget.SlotWidget;
 import com.gregtechceu.gtceu.api.machine.IMachineBlockEntity;
 import com.gregtechceu.gtceu.api.machine.TickableSubscription;
 import com.gregtechceu.gtceu.api.machine.feature.IFancyUIMachine;
+import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMaintenanceMachine;
 import com.gregtechceu.gtceu.api.machine.feature.multiblock.IMultiPart;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.machine.trait.NotifiableItemStackHandler;
@@ -91,6 +93,9 @@ public class RadarMachine extends MultiblockControllerMachine
     protected EnergyContainerList energyContainer;
     @Nullable
     protected IOpticalComputationProvider computationProvider;
+    /** The structure's maintenance hatch part, gathered on form; scanning stalls while it has problems. */
+    @Nullable
+    protected IMaintenanceMachine maintenance;
     @Nullable
     protected TickableSubscription tickSub;
     @Nullable
@@ -121,7 +126,11 @@ public class RadarMachine extends MultiblockControllerMachine
         super.onStructureFormed();
         List<IEnergyContainer> containers = new ArrayList<>();
         this.computationProvider = null;
+        this.maintenance = null;
         for (IMultiPart part : getParts()) {
+            if (part instanceof IMaintenanceMachine maintenanceMachine) {
+                this.maintenance = maintenanceMachine;
+            }
             part.self().holder.self().getCapability(GTCapability.CAPABILITY_COMPUTATION_PROVIDER)
                     .ifPresent(p -> this.computationProvider = p);
             for (var handlerList : part.getRecipeHandlers()) {
@@ -146,6 +155,7 @@ public class RadarMachine extends MultiblockControllerMachine
         super.onStructureInvalid();
         this.energyContainer = null;
         this.computationProvider = null;
+        this.maintenance = null;
         this.isActive = false;
         this.scanProgress = 0;
         this.computationReady = false;
@@ -172,6 +182,11 @@ public class RadarMachine extends MultiblockControllerMachine
             return;
         }
         int targetTicks = getScanDurationTicks();
+        if (hasMaintenanceProblems()) {
+            animAdvancing = false; // maintenance problems freeze the dish until the hatch is serviced
+            tickLog("STALLED: maintenance required");
+            return;
+        }
         if (!drainEnergy(true)) {
             animAdvancing = false; // power loss mid-scan: freeze the dish where it is
             tickLog("STALLED: not enough energy (need " + GTValues.VA[Math.max(MIN_TIER, voltageTier)]
@@ -185,6 +200,9 @@ public class RadarMachine extends MultiblockControllerMachine
         }
         drainEnergy(false);
         requestCWU(false);
+        if (maintenance != null) {
+            maintenance.calculateMaintenance(maintenance); // accrue active time -> random problems over a long scan
+        }
         animAdvancing = true; // powered and scanning: keep spinning
         tickLog("scanning");
 
@@ -235,6 +253,11 @@ public class RadarMachine extends MultiblockControllerMachine
 
     public boolean hasComputation() {
         return requestCWU(true) >= getRequiredCWUt();
+    }
+
+    /** True when a maintenance hatch is present and reporting unfixed problems (scanning stays blocked until fixed). */
+    public boolean hasMaintenanceProblems() {
+        return maintenance != null && maintenance.hasMaintenanceProblems();
     }
 
     @Override
@@ -295,7 +318,7 @@ public class RadarMachine extends MultiblockControllerMachine
 
     public boolean canScan() {
         return isFormed() && !isActive && voltageTier >= MIN_TIER && hasDataStick() && isCorrectY() &&
-                hasSkylightAccess() && drainEnergy(true) && hasComputation();
+                hasSkylightAccess() && !hasMaintenanceProblems() && drainEnergy(true) && hasComputation();
     }
 
     public boolean hasDataStick() {
@@ -490,6 +513,18 @@ public class RadarMachine extends MultiblockControllerMachine
 
     //////////////////// UI ////////////////////
 
+    /**
+     * Attach each part's fancy tooltips to the controller's tooltip panel, so the maintenance hatch's red
+     * "needs servicing" icon and its tool checklist show in the FancyUI like GT's own multiblock controllers.
+     * The {@link IFancyUIMachine} default only attaches the controller's own tooltips, not its parts'.
+     */
+    @Override
+    public void attachTooltips(TooltipsPanel tooltipsPanel) {
+        for (IMultiPart part : getParts()) {
+            part.attachFancyTooltipsToController(this, tooltipsPanel);
+        }
+    }
+
     @Override
     public Widget createUIWidget() {
         WidgetGroup group = new WidgetGroup(0, 0, 170, 108);
@@ -557,6 +592,9 @@ public class RadarMachine extends MultiblockControllerMachine
         }
         if (voltageTier < MIN_TIER) {
             return "§cRequires an HV+ energy hatch";
+        }
+        if (hasMaintenanceProblems()) {
+            return "§cNeeds maintenance";
         }
         if (isActive) {
             return animAdvancing ? "§eScanning..." : "§6Stalled - no power/computation";
