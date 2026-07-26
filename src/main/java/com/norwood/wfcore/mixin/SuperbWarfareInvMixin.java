@@ -93,6 +93,13 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
     @Shadow(remap = false)
     public abstract int getContainerSize();
 
+    @Shadow(remap = false)
+    public abstract com.atsuishio.superbwarfare.inventory.handler.VehicleContainerHandler getInventory();
+
+    // Superb Warfare's own resize: grows/shrinks the backing item handler to getContainerSize(), preserving items.
+    @Shadow(remap = false)
+    protected abstract void resizeItems();
+
     @Override
     public SyncedEntityFuelStorage getFluidTank() {
         return this.wfcore$fluidTank;
@@ -174,7 +181,7 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
         return override != null && override.hasStorageOverride();
     }
 
-    /
+    /** Override key = the entity-type registry id (what wfcore.toml is keyed by; stable across SBW's internal id changes). */
     @Unique
     @Nullable
     private String wfcore$typeId() {
@@ -280,6 +287,13 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
     @Inject(method = "openMenu", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$openVehicleStorageUI(Player player, CallbackInfo ci) {
         if (player instanceof ServerPlayer serverPlayer && wfcore$hasStorageOverride()) {
+            // Grow the backing item handler to the configured size before building the UI, so its slot widgets
+            // never reference a slot the handler lacks (e.g. a truck saved at 12 then reconfigured to 50).
+            // resizeItems() preserves items; only invoked when growing so a smaller config never drops items.
+            var inv = getInventory();
+            if (inv != null && getContainerSize() > inv.getSlots()) {
+                resizeItems();
+            }
             VehicleUIFactory.INSTANCE.openUI((VehicleEntity) (Object) this, serverPlayer);
             ci.cancel();
         }

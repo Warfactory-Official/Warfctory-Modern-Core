@@ -32,6 +32,22 @@ public final class SuperbOverrides {
         return vehicleId != null && foliageBreakers.contains(vehicleId);
     }
 
+
+    private static final Map<String, OverrideData> REGISTERED_OVERRIDES = new java.util.LinkedHashMap<>();
+    private static final Set<String> REGISTERED_FOLIAGE = new java.util.LinkedHashSet<>();
+
+    /** Register (or replace) a vehicle fuel/storage override from the {@code WFVehicles} KubeJS API. */
+    public static synchronized void registerOverride(String vehicleId, OverrideData data) {
+        REGISTERED_OVERRIDES.put(vehicleId, data);
+        overrideDataMap = Map.copyOf(REGISTERED_OVERRIDES);
+    }
+
+    /** Register a foliage-breaking vehicle id from the {@code WFVehicles} KubeJS API. */
+    public static synchronized void registerFoliageBreaker(String vehicleId) {
+        REGISTERED_FOLIAGE.add(vehicleId);
+        foliageBreakers = Set.copyOf(REGISTERED_FOLIAGE);
+    }
+
     /**
      * @param storageSize    desired vehicle storage slot count, or {@code null} when this override does not
      *                       customize storage (the vehicle keeps Superb Warfare's native size/menu).

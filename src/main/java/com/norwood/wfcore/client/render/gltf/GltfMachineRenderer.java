@@ -109,11 +109,19 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         RenderSystem.depthMask(true);
 
 
+
         GL13.glActiveTexture(GL13.GL_TEXTURE2);
         final int prevTexture2 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, worldLightLightmap(be));
+        final int lightTex = worldLightLightmap(be);
+
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        final int prevTexture1 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, lightTex);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
 
+
+        GL30.glVertexAttribI4i(RenderedGltfModel.vaUV1, 0, 0, 0, 0);
+        GL30.glVertexAttribI4i(RenderedGltfModel.vaUV2, 0, 0, 0, 0);
 
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
 
@@ -129,7 +137,7 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
             WFCore.LOGGER.error("Failed to render GLTF model {}", model.getModelLocation(), e);
         } finally {
             restoreGlState(prevVao, prevArrayBuffer, prevElementArrayBuffer,
-                    prevCullFace, prevDepthTest, prevBlend, prevTexture2);
+                    prevCullFace, prevDepthTest, prevBlend, prevTexture1, prevTexture2);
         }
     }
 
@@ -158,9 +166,11 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
 
     private static void restoreGlState(int prevVao, int prevArrayBuffer, int prevElementArrayBuffer,
                                        boolean prevCullFace, boolean prevDepthTest, boolean prevBlend,
-                                       int prevTexture2) {
+                                       int prevTexture1, int prevTexture2) {
         GL13.glActiveTexture(GL13.GL_TEXTURE2);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture2);
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture1);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
 
         if (!prevDepthTest) GL11.glDisable(GL11.GL_DEPTH_TEST);

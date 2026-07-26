@@ -20,7 +20,9 @@ public class WFCoreFuelHandler {
                 return;
             }
 
-            for (int i = 0; i < instance.getContainerSize(); i++) {
+
+            int slotCount = instance.getInventory() == null ? 0 : instance.getInventory().getSlots();
+            for (int i = 0; i < slotCount; i++) {
                 ItemStack stack = instance.getItem(i);
                 if (stack.isEmpty()) {
                     continue;

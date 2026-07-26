@@ -1,16 +1,8 @@
 package com.norwood.wfcore.config;
 
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.material.Fluid;
 import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.registries.ForgeRegistries;
 
-import com.norwood.wfcore.SuperbOverrides;
 import com.norwood.wfcore.WFCore;
-
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
 
 public final class WFCoreConfig {
 
@@ -78,8 +70,6 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.BooleanValue REPLAY_RANK_REQUIRED;
     private static final ForgeConfigSpec.BooleanValue SHOW_CHAT_TAGS;
     private static final ForgeConfigSpec.BooleanValue SHOW_TAB_TAGS;
-    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> VEHICLES;
-    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> FOLIAGE_BREAKERS;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MIN;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MAX;
     private static final ForgeConfigSpec.BooleanValue DEPOSIT_WORLDGEN_ENABLED;
@@ -114,21 +104,6 @@ public final class WFCoreConfig {
                 .comment(
                         "Dev tool: numpad-driven live editor for animated-machine model offsets (see IAnimatedMachine). Off by default so the numpad bindings and HUD stay inert for normal players.")
                 .define("modelTransformDebugEnabled", DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED);
-
-        VEHICLES = builder
-                .comment(
-                        "Per-vehicle fuel/storage overrides. One quoted entry per line, format:",
-                        "  \"vehicleId; maxFuel=4000; fluids=fluidId=ratio,fluidId=ratio; storageSize=40; storageColumns=10\"",
-                        "Every field after the id is optional. An entry only takes effect if it sets fluids or storageSize.",
-                        "storageSize switches the vehicle to WFCore's resizable ModularUI storage; storageColumns is the grid width (default 9).",
-                        "Example: \"superbwarfare:example_vehicle; maxFuel=4000; fluids=minecraft:lava=1.0,minecraft:water=0.5; storageSize=40; storageColumns=10\"")
-                .defineList("vehicles", List.of(), o -> o instanceof String);
-
-        FOLIAGE_BREAKERS = builder
-                .comment(
-                        "Vehicle ids that plough through and break cacti, wood logs and leaves as they drive.",
-                        "Example: [\"superbwarfare:lav_150\", \"superbwarfare:truck\"]")
-                .defineList("foliageBreakers", List.of(), o -> o instanceof String);
 
         builder.comment(
                 "Drillable bedrock deposits. defaultYield is the per-block yield range used when a deposit type (built-in or KubeJS) does not specify its own.")
@@ -335,154 +310,9 @@ public final class WFCoreConfig {
         depositScatter = DEPOSIT_SCATTER.get();
         depositWorldgenRarity = DEPOSIT_WORLDGEN_RARITY.get();
         depositLogPlacements = DEPOSIT_LOG_PLACEMENTS.get();
-        SuperbOverrides.setOverrideDataMap(parseVehicleOverrides(VEHICLES.get()));
-        SuperbOverrides.setFoliageBreakers(FOLIAGE_BREAKERS.get());
-        WFCore.LOGGER.info(
-                "Loaded WFCore TOML config: {} vehicle overrides, energy ratio {}, refuel interval {} ticks",
-                SuperbOverrides.overrideDataMap.size(), energyToFluidRatio, refuelIntervalTicks);
+        // Vehicle overrides + foliage breakers now come from the WFVehicles KubeJS API (registered at startup).
+        WFCore.LOGGER.info("Loaded WFCore TOML config: energy ratio {}, refuel interval {} ticks",
+                energyToFluidRatio, refuelIntervalTicks);
     }
 
-    // -------------------------------------------------------------------------
-    // Vehicle override parsing — string-line based (replaces snakeyaml parsing)
-    // -------------------------------------------------------------------------
-
-    private static Map<String, SuperbOverrides.OverrideData> parseVehicleOverrides(List<? extends String> lines) {
-        Map<String, SuperbOverrides.OverrideData> overrides = new LinkedHashMap<>();
-
-        for (String raw : lines) {
-            if (raw == null) continue;
-            String line = raw.trim();
-            if (line.isEmpty()) continue;
-
-            String id = null;
-            int maxFuel = 4000;
-            Integer storageSize = null;
-            int storageColumns = 9;
-            Map<Fluid, Float> fluidMap = new LinkedHashMap<>();
-
-            String[] tokens = line.split(";");
-            for (String token : tokens) {
-                String t = token.trim();
-                if (t.isEmpty()) continue;
-
-                int eqIdx = t.indexOf('=');
-                if (eqIdx < 0) {
-                    // Bare token — treat as vehicle id
-                    if (id == null) {
-                        id = t;
-                    }
-                    continue;
-                }
-
-                String key = t.substring(0, eqIdx).trim();
-                String value = t.substring(eqIdx + 1).trim();
-
-                switch (key) {
-                    case "id" -> id = value;
-                    case "maxFuel" -> {
-                        Integer v = parseIntOr(value, null);
-                        if (v != null && v > 0) maxFuel = v;
-                    }
-                    case "storageSize" -> storageSize = parsePositiveIntOrNull(value);
-                    case "storageColumns" -> {
-                        Integer v = parseIntOr(value, null);
-                        if (v != null && v > 0) storageColumns = v;
-                    }
-                    case "fluids", "fluidConsumption" -> {
-                        if (fluidMap.isEmpty()) {
-                            fluidMap = parseFluidSubMap(value);
-                        }
-                    }
-                    default -> { /* ignore unknown keys */ }
-                }
-            }
-
-            if (id == null || id.isBlank()) continue;
-
-            if (fluidMap.isEmpty() && storageSize == null) {
-                WFCore.LOGGER.warn(
-                        "Skipping WFCore vehicle override {} because it defines neither fluids nor storageSize", id);
-                continue;
-            }
-
-            overrides.put(id, new SuperbOverrides.OverrideData(maxFuel, fluidMap, storageSize, storageColumns));
-        }
-
-        return overrides;
-    }
-
-    /**
-     * Parse a fluid sub-map from a value string like {@code minecraft:lava=1.0,minecraft:water=0.5}.
-     * Fluid ids contain ':' but never '=', so splitting on the first '=' is safe.
-     */
-    private static Map<Fluid, Float> parseFluidSubMap(String value) {
-        Map<Fluid, Float> fluidMap = new LinkedHashMap<>();
-        if (value == null || value.isBlank()) return fluidMap;
-
-        String[] entries = value.split(",");
-        for (String entry : entries) {
-            String e = entry.trim();
-            if (e.isEmpty()) continue;
-
-            int eqIdx = e.indexOf('=');
-            if (eqIdx < 0) continue;
-
-            String fluidId = e.substring(0, eqIdx).trim();
-            String ratioText = e.substring(eqIdx + 1).trim();
-
-            if (fluidId.isBlank()) continue;
-
-            Float ratio = parseFloatOrNull(ratioText);
-            if (ratio == null || ratio <= 0.0f) continue;
-
-            ResourceLocation rl = ResourceLocation.tryParse(fluidId);
-            if (rl == null) {
-                WFCore.LOGGER.warn("Ignoring invalid fluid id '{}' in WFCore config", fluidId);
-                continue;
-            }
-
-            Fluid fluid = ForgeRegistries.FLUIDS.getValue(rl);
-            if (fluid == null) {
-                WFCore.LOGGER.warn("Ignoring unknown fluid '{}' in WFCore config", fluidId);
-                continue;
-            }
-
-            fluidMap.put(fluid, ratio);
-        }
-
-        return fluidMap;
-    }
-
-    // -------------------------------------------------------------------------
-    // Small parsing helpers (String-typed, replacing the old Object-typed ones)
-    // -------------------------------------------------------------------------
-
-    /** Returns {@code fallback} (which may be null) if {@code text} is blank or unparseable. */
-    private static Integer parseIntOr(String text, Integer fallback) {
-        if (text == null || text.isBlank()) return fallback;
-        try {
-            return Integer.parseInt(text.trim());
-        } catch (NumberFormatException ignored) {
-            return fallback;
-        }
-    }
-
-    private static Integer parsePositiveIntOrNull(String text) {
-        if (text == null || text.isBlank()) return null;
-        try {
-            int v = Integer.parseInt(text.trim());
-            return v > 0 ? v : null;
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
-    }
-
-    private static Float parseFloatOrNull(String text) {
-        if (text == null || text.isBlank()) return null;
-        try {
-            return Float.parseFloat(text.trim());
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
-    }
 }

@@ -5,11 +5,18 @@ import com.gregtechceu.gtceu.api.GTValues;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.level.material.Fluid;
+import net.minecraft.world.level.material.Fluids;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import com.google.gson.JsonObject;
+import com.norwood.wfcore.SuperbOverrides;
+import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.data.VehicleFactoryRecipes;
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * KubeJS binding exposed as {@code WFVehicles}: a custom handler for authoring vehicle-factory recipes.
@@ -84,5 +91,92 @@ public class WFVehicleBindings {
                 .duration(100)
                 .save(fr -> json[0] = fr.serializeRecipe());
         return json[0];
+    }
+
+    // --- Vehicle fuel/storage overrides (moved here from the wfcore.toml `vehicles` config) ---------------
+
+    /** Open a builder to register a per-vehicle fuel/storage override. Call {@code .register()} to apply it. */
+    public OverrideBuilder override(String vehicleId) {
+        return new OverrideBuilder(vehicleId);
+    }
+
+    /** Mark a vehicle id as ploughing through cacti/logs/leaves as it drives (was config {@code foliageBreakers}). */
+    public void foliageBreaker(String vehicleId) {
+        if (vehicleId != null && !vehicleId.isBlank()) {
+            SuperbOverrides.registerFoliageBreaker(vehicleId);
+        }
+    }
+
+    /**
+     * Builds a {@link SuperbOverrides.OverrideData} for one vehicle. {@code fuel(...)} is a whitelist (the vehicle
+     * accepts only the listed fluids), each ratio the energy multiplier per mB; {@code storage(...)} switches the
+     * vehicle to WFCore's resizable ModularUI storage.
+     *
+     * <pre>{@code
+     * WFVehicles.override('superbwarfare:truck')
+     *     .maxFuel(4000)
+     *     .fuel('gtceu:diesel', 1.0).fuel('gtceu:gasoline', 1.5)
+     *     .storage(50, 10)
+     *     .register()
+     * }</pre>
+     */
+    public static final class OverrideBuilder {
+
+        private final String vehicleId;
+        private int maxFuel = 4000;
+        private Integer storageSize;
+        private int storageColumns = 9;
+        private final Map<Fluid, Float> fluids = new LinkedHashMap<>();
+
+        private OverrideBuilder(String vehicleId) {
+            this.vehicleId = vehicleId;
+        }
+
+        /** Fuel-tank capacity in mB (default 4000). */
+        public OverrideBuilder maxFuel(int millibuckets) {
+            if (millibuckets > 0) {
+                this.maxFuel = millibuckets;
+            }
+            return this;
+        }
+
+        /** Accept {@code fluidId} as fuel at the given energy multiplier per mB. Ignored if unknown or ratio <= 0. */
+        public OverrideBuilder fuel(String fluidId, double ratio) {
+            ResourceLocation rl = fluidId == null ? null : ResourceLocation.tryParse(fluidId);
+            Fluid fluid = rl == null ? null : ForgeRegistries.FLUIDS.getValue(rl);
+            if (fluid == null || fluid == Fluids.EMPTY) {
+                WFCore.LOGGER.warn("WFVehicles.override({}): ignoring unknown fuel fluid '{}'", vehicleId, fluidId);
+            } else if (ratio > 0) {
+                fluids.put(fluid, (float) ratio);
+            }
+            return this;
+        }
+
+        /** Give the vehicle a WFCore resizable storage of {@code size} slots (9-wide grid). */
+        public OverrideBuilder storage(int size) {
+            return storage(size, 9);
+        }
+
+        /** Give the vehicle a WFCore resizable storage of {@code size} slots laid out {@code columns} wide. */
+        public OverrideBuilder storage(int size, int columns) {
+            this.storageSize = size > 0 ? size : null;
+            if (columns > 0) {
+                this.storageColumns = columns;
+            }
+            return this;
+        }
+
+        /** Build + register the override; ignored (with a warning) if it sets neither fuel nor storage. */
+        public void register() {
+            if (vehicleId == null || vehicleId.isBlank()) {
+                return;
+            }
+            if (fluids.isEmpty() && storageSize == null) {
+                WFCore.LOGGER.warn("WFVehicles.override({}) sets neither fuel nor storage; ignored", vehicleId);
+                return;
+            }
+            SuperbOverrides.registerOverride(vehicleId,
+                    new SuperbOverrides.OverrideData(maxFuel, fluids, storageSize, storageColumns));
+        }
     }
 }
