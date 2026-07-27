@@ -96,6 +96,8 @@ public class ACPipeBlock extends PipeBlock<ACPipeType, ACPipeProperties, LevelAC
 
     @Override
     public PipeModel createPipeModel(GTBlockstateProvider provider) {
+        // Placeholder art: ac_cable_side.png is currently a copy of copper_network_cable_side.png until
+        // this mod has its own AC cable texture (datagen fails outright without SOME file here).
         ActivablePipeModel model = new ActivablePipeModel(this, this.pipeType.getThickness(),
                 WFCore.id("block/pipe/ac_cable_side"), GTCEu.id("block/pipe/pipe_laser_in"), provider);
         model.setSideOverlay(GTCEu.id("block/pipe/pipe_laser_side_overlay"));

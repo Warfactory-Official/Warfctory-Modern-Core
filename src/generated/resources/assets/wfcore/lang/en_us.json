@@ -4,6 +4,7 @@
   "block.wfcore.aluminium_sheet_casing": "Aluminium Sheet Casing",
   "block.wfcore.ballistic_glass": "Ballistic Glass",
   "block.wfcore.boltable_casing": "Boltable Casing",
+  "block.wfcore.boltable_casing_bolted": "Boltable Casing Bolted",
   "block.wfcore.chunk_reinforcer_ev": "Advanced Chunk Reinforcer (EV)",
   "block.wfcore.chunk_reinforcer_hv": "Fortified Chunk Reinforcer (HV)",
   "block.wfcore.chunk_reinforcer_iv": "Bastion Chunk Reinforcer (IV)",
