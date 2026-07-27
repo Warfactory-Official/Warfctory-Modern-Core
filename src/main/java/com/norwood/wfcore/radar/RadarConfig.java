@@ -6,8 +6,10 @@ import net.minecraftforge.common.ForgeConfigSpec;
 import com.norwood.wfcore.WFCore;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -79,6 +81,20 @@ public final class RadarConfig {
 
     public static int getValue(ResourceLocation id) {
         return WHITELIST.getInt(id);
+    }
+
+    /**
+     * Read-only snapshot of every radar-detectable target (block registry id -> richness value), sorted by id.
+     * Boxed and copied on purpose: this is a one-shot diagnostic/listing view (e.g. {@code /wfcore_radar list}),
+     * not a hot path, so it must not alias the live fastutil map or its reused entry objects.
+     */
+    public static synchronized List<Map.Entry<ResourceLocation, Integer>> snapshot() {
+        List<Map.Entry<ResourceLocation, Integer>> out = new ArrayList<>(WHITELIST.size());
+        for (var e : WHITELIST.object2IntEntrySet()) {
+            out.add(Map.entry(e.getKey(), e.getIntValue()));
+        }
+        out.sort(Map.Entry.comparingByKey());
+        return out;
     }
 
     /** Configured default DBSCAN neighbourhood radius (blocks); overridable per scan. */
