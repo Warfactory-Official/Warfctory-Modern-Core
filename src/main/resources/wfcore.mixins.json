@@ -40,7 +40,8 @@
     "GuiHandlerMainMenuStabilityMixin",
     "ReplayPlaybackGateMixin",
     "PlayerTabRankMixin",
-    "ForceFirstPersonCameraMixin"
+    "ForceFirstPersonCameraMixin",
+    "SodayoRocketShellBoundsMixin"
   ],
   "injectors": {
     "defaultRequire": 1
