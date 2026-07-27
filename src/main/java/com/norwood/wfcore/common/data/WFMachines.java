@@ -78,6 +78,8 @@ public class WFMachines {
     public static MultiblockMachineDefinition MISSILE_FACTORY;
     public static MultiblockMachineDefinition MISSILE_LAUNCHER;
     public static MultiblockMachineDefinition INTERCEPTOR;
+    public static MultiblockMachineDefinition GREENHOUSE;
+    public static MultiblockMachineDefinition MOB_FARMER;
 
     // JEI preview stages for the Large Blast Furnace, generated to match its pattern.
     // Each aisle is a FRONT-depth slice; strings go bottom->top; the char column maps to the RIGHT
@@ -1028,6 +1030,84 @@ public class WFMachines {
                 })
                 // Same casing + assembler front as the Light Plane Assembler.
                 .workableCasingModel(GTCEu.id("block/casings/steam/steel/side"),
+                        GTCEu.id("block/machines/assembler"))
+                .register();
+
+
+        GREENHOUSE = WF_MACHINES.multiblock("greenhouse", WorkableElectricMultiblockMachine::new)
+                .langValue("Greenhouse")
+                .rotationState(RotationState.NON_Y_AXIS)
+                .recipeType(WFRecipeTypes.GREENHOUSE)
+                .recipeModifier(GTRecipeModifiers.OC_NON_PERFECT)
+                .appearanceBlock(GTBlocks.CASING_STEEL_SOLID)
+                .pattern(definition -> {
+                    final String[][] AISLES = {
+                            { " AAA ", " CBC ", " CBC ", " CBC ", " CCC " },
+                            { "ABBBA", "C###C", "C###C", "C###C", "C###C" },
+                            { "ABBBA", "B###S", "B###B", "B###B", "C###C" },
+                            { "ABBBA", "C###C", "C###C", "C###C", "C###C" },
+                            { " AAA ", " CBC ", " CBC ", " CBC ", " CCC " },
+                    };
+                    var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
+                            RelativeDirection.RIGHT);
+                    for (String[] aisle : AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(GTBlocks.CASING_TEMPERED_GLASS.get())) // roof/floor glass
+                            .where('B', blocks(GTBlocks.CASING_TEMPERED_GLASS.get())) // glass walls
+                            .where('#', air())
+                            .where('C', blocks(GTBlocks.CASING_STEEL_SOLID.get()) // steel frame + hatches
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
+                                            .setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMinGlobalLimited(1))
+                                    .or(abilities(PartAbility.EXPORT_ITEMS).setMinGlobalLimited(1)))
+                            .where(' ', any())
+                            .build();
+                })
+                .workableCasingModel(GTCEu.id("block/casings/solid/machine_casing_solid_steel"),
+                        GTCEu.id("block/machines/assembler"))
+                .register();
+
+
+        MOB_FARMER = WF_MACHINES.multiblock("mob_farmer", WorkableElectricMultiblockMachine::new)
+                .langValue("Mob Farmer")
+                .rotationState(RotationState.NON_Y_AXIS)
+                .recipeType(WFRecipeTypes.MOB_FARMER)
+                .recipeModifier(GTRecipeModifiers.OC_NON_PERFECT)
+                .appearanceBlock(GTBlocks.MACHINE_CASING_MV)
+                .pattern(definition -> {
+                    final String[][] AISLES = {
+                            { "AAA", "BBB", "CBC", " B " },
+                            { "AAA", "B B", "C C", " B " },
+                            { "AAA", "B B", "C C", " B " },
+                            { "AAA", "B B", "C C", " B " },
+                            { "AAA", "B B", "C C", " B " },
+                            { "AAA", "B B", "C C", " B " },
+                            { "AAA", "BBB", "BBB", "BBB" },
+                            { "AAA", "B S", "B B", "BBB" },
+                            { "AAA", "BBB", "BBB", "BBB" },
+                    };
+                    var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
+                            RelativeDirection.RIGHT);
+                    for (String[] aisle : AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(GTBlocks.MACHINE_CASING_MV.get())) // MV hull
+                            .where('B', blocks(GTBlocks.CASING_STEEL_SOLID.get()) // steel casing + hatches
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
+                                            .setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1))
+                                    .or(abilities(PartAbility.EXPORT_ITEMS).setMinGlobalLimited(1)))
+                            .where('C', frames(GTMaterials.Steel)) // cage bars
+                            .where(' ', any())
+                            .build();
+                })
+                .workableCasingModel(GTCEu.id("block/casings/voltage/mv/side"),
                         GTCEu.id("block/machines/assembler"))
                 .register();
 

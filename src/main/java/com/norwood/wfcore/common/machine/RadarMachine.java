@@ -67,13 +67,8 @@ public class RadarMachine extends MultiblockControllerMachine
     private static final int BASE_CWUT = 128;
     /** Lowest energy-hatch tier the radar will run at. Below this it forms but refuses to scan. */
     private static final int MIN_TIER = GTValues.HV;
-    /** Full-scan length at EV, in ticks (20 t/s → 600 s). */
     private static final int BASE_SCAN_TICKS_EV = 12000;
-    /**
-     * Per-voltage-tier scan-duration multiplier. GT normally halves a recipe's duration per overclock
-     * tier; the radar instead multiplies by 0.8, so each tier above EV only shaves ~20% off — higher
-     * voltage still helps, but with steep diminishing returns, keeping high-tier scans long.
-     */
+
     private static final double SCAN_TIER_FACTOR = 0.8;
 
     public static final ManagedFieldHolder MANAGED_FIELD_HOLDER = new ManagedFieldHolder(RadarMachine.class,

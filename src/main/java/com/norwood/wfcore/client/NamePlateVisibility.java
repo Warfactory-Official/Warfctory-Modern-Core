@@ -11,6 +11,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
+import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
+
 
 public final class NamePlateVisibility {
 
@@ -22,6 +24,12 @@ public final class NamePlateVisibility {
 
 
     public static Font.DisplayMode displayMode(Entity entity) {
+        // WarForge teammates always show through walls; everyone else needs the aim/cover/line-of-sight gate.
+        // The FactionTeammateCache reference stays lazy behind isLoaded() so its WarForge imports never load
+        // when the mod is absent.
+        if (WarforgeIntegration.isLoaded() && FactionTeammateCache.isTeammate(entity)) {
+            return Font.DisplayMode.SEE_THROUGH;
+        }
         return shouldPierce(entity) ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
     }
 

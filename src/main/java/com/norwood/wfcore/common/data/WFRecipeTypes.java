@@ -37,6 +37,8 @@ public class WFRecipeTypes {
     public static GTRecipeType PRIMITIVE_ALLOYER;
     public static GTRecipeType STRANDCASTER;
     public static GTRecipeType GAS_EXTRACTOR;
+    public static GTRecipeType GREENHOUSE;
+    public static GTRecipeType MOB_FARMER;
 
     public static void init() {
         var id = WFCore.id("large_blast_furnace");
@@ -106,6 +108,28 @@ public class WFRecipeTypes {
                 .setProgressBar(GuiTextures.PROGRESS_BAR_ARROW, ProgressTexture.FillDirection.LEFT_TO_RIGHT)
                 .setMaxTooltips(1)
                 .setSound(GTSoundEntries.COMPRESSOR);
+
+
+        var greenhouseId = WFCore.id("greenhouse");
+        GREENHOUSE = new GTRecipeType(greenhouseId, "multiblock");
+        GTRegistries.register(BuiltInRegistries.RECIPE_TYPE, greenhouseId, GREENHOUSE);
+        GTRegistries.register(BuiltInRegistries.RECIPE_SERIALIZER, greenhouseId, new GTRecipeSerializer());
+        GTRegistries.RECIPE_TYPES.register(greenhouseId, GREENHOUSE);
+        GREENHOUSE.setMaxIOSize(3, 3, 1, 0)
+                .setProgressBar(GuiTextures.PROGRESS_BAR_ARROW, ProgressTexture.FillDirection.LEFT_TO_RIGHT)
+                .setMaxTooltips(1)
+                .setSound(GTSoundEntries.BATH);
+
+
+        var mobFarmerId = WFCore.id("mob_farmer");
+        MOB_FARMER = new GTRecipeType(mobFarmerId, "multiblock");
+        GTRegistries.register(BuiltInRegistries.RECIPE_TYPE, mobFarmerId, MOB_FARMER);
+        GTRegistries.register(BuiltInRegistries.RECIPE_SERIALIZER, mobFarmerId, new GTRecipeSerializer());
+        GTRegistries.RECIPE_TYPES.register(mobFarmerId, MOB_FARMER);
+        MOB_FARMER.setMaxIOSize(2, 6, 0, 0)
+                .setProgressBar(GuiTextures.PROGRESS_BAR_ARROW, ProgressTexture.FillDirection.LEFT_TO_RIGHT)
+                .setMaxTooltips(1)
+                .setSound(GTSoundEntries.MACERATOR);
     }
 
     /**
