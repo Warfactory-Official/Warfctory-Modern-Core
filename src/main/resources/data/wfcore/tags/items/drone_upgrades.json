@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "sbwdroneconfig:spotlight_module", "required": false },
+    { "id": "sbwdroneconfig:fiber_optic_spool_upgrade", "required": false },
+    { "id": "sbwdroneconfig:drone_jammer", "required": false }
+  ]
+}

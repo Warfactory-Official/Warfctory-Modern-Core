@@ -99,6 +99,7 @@ public class WFCore {
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.block.WFBlockResistanceTooltip());
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.loot.WFLootEvents());
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.ballistics.BallisticsEvents());
+        MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.integration.superbwarfare.DroneUpgradeBay.INSTANCE);
 
         WF_MACHINES.registerRegistrate();
 
@@ -153,6 +154,7 @@ public class WFCore {
             WFRecipeConditions.init();
             TaczBallisticsIntegration.register();
             SbwBallisticsIntegration.register();
+            com.norwood.wfcore.integration.superbwarfare.DroneUpgradeBay.registerOverrides();
             UIFactory.register(VehicleUIFactory.INSTANCE);
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");
             LOGGER.info("Look, I found a {}!", Items.DIAMOND);

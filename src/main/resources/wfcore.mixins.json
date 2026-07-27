@@ -19,7 +19,9 @@
     "SplashPotionMixin",
     "ProjectileBallisticsMixin",
     "ProspectorOreDepositMixin",
-    "EntityKineticBulletAccessor"
+    "EntityKineticBulletAccessor",
+    "NoBrewingMixin",
+    "WFBallisticsGasMaskMixin"
   ],
   "client": [
     "NamePlateMixin",

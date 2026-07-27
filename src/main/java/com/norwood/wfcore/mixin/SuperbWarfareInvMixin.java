@@ -10,6 +10,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraftforge.common.util.LazyOptional;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -163,6 +164,22 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
         var override = SuperbOverrides.getOverride(id);
         if (override != null && override.hasStorageOverride()) {
             cir.setReturnValue(override.storageSize());
+        }
+    }
+
+    /**
+     * Restrict configured vehicles' storage to the override's item filter (e.g. the drone upgrade bay, which
+     * only accepts drone upgrades). Superb Warfare routes every insertion — both the WFCore ModularUI (via
+     * {@link com.norwood.wfcore.gui.VehicleInventoryContainer}) and the item-handler capability
+     * ({@code VehicleContainerHandler.isItemValid}) — through {@code canPlaceItem}, so gating it here covers the
+     * GUI and any automation (hopper/pipe) alike. Vehicles without a storage filter fall through unchanged.
+     */
+    @Inject(method = "canPlaceItem", at = @At("HEAD"), cancellable = true, remap = false)
+    private void wfcore$filterStorageItem(int slot, ItemStack stack, CallbackInfoReturnable<Boolean> cir) {
+        var id = wfcore$typeId();
+        var override = id == null ? null : SuperbOverrides.getOverride(id);
+        if (override != null && override.hasStorageFilter() && !override.allowsInStorage(stack)) {
+            cir.setReturnValue(false);
         }
     }
 

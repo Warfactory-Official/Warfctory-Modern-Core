@@ -1,6 +1,11 @@
 package com.norwood.wfcore;
 
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.Map;
@@ -52,6 +57,10 @@ public final class SuperbOverrides {
      * @param storageSize    desired vehicle storage slot count, or {@code null} when this override does not
      *                       customize storage (the vehicle keeps Superb Warfare's native size/menu).
      * @param storageColumns preferred grid column count for the WFCore ModularUI (<= 0 means "use default").
+     * @param storageFilter  optional item tag the storage slots are restricted to; {@code null} means no
+     *                       restriction (any item allowed, like Superb Warfare's stock storage). A
+     *                       {@link TagKey} is safe to build at registration time even before the referenced
+     *                       tag is populated — it is resolved lazily by {@code stack.is(tag)} at use-time.
      *
      * <p>
      * {@code fluidConsumptionMap} is keyed by fluid <em>registry id</em> (e.g. {@code gtceu:diesel}), NOT a
@@ -61,7 +70,7 @@ public final class SuperbOverrides {
      * Callers resolve {@code stack.getFluid()} back to its id via {@code ForgeRegistries.FLUIDS.getKey(...)}.
      */
     public record OverrideData(int maxFuel, Map<ResourceLocation, Float> fluidConsumptionMap, Integer storageSize,
-                               int storageColumns) {
+                               int storageColumns, @Nullable TagKey<Item> storageFilter) {
 
         public OverrideData {
             fluidConsumptionMap = Map.copyOf(fluidConsumptionMap);
@@ -77,6 +86,19 @@ public final class SuperbOverrides {
 
         public int columnsOrDefault() {
             return storageColumns > 0 ? storageColumns : 9;
+        }
+
+        /** True when this override restricts what may be placed in the vehicle's storage to {@link #storageFilter}. */
+        public boolean hasStorageFilter() {
+            return storageFilter != null;
+        }
+
+        /**
+         * Whether {@code stack} may be placed in the vehicle's storage. Always {@code true} when no filter is set,
+         * and empty stacks always pass so items can be cleared/removed regardless of the filter.
+         */
+        public boolean allowsInStorage(ItemStack stack) {
+            return storageFilter == null || stack.isEmpty() || stack.is(storageFilter);
         }
     }
 }

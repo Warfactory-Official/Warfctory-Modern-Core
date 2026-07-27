@@ -204,7 +204,7 @@ public class WFMachines {
                         .where('K', controller(blocks(definition.getBlock())))
                         .build())
                 .workableCasingModel(GTCEu.id("block/casings/steam/bronze/side"),
-                        WFCore.id("block/multiblock/new_multiblock"))
+                        GTCEu.id("block/machines/wiremill"))
                 .register();
 
         COOLING_LIQUID = WF_MACHINES.machine("cooling_liquid", holder -> new CoolingPartMachine(holder, true))

@@ -241,6 +241,7 @@ public class WFVehicleBindings {
         private int maxFuel = 4000;
         private Integer storageSize;
         private int storageColumns = 9;
+        private TagKey<Item> storageFilter;
         private final Map<ResourceLocation, Float> fluids = new LinkedHashMap<>();
 
         private OverrideBuilder(String vehicleId) {
@@ -289,6 +290,23 @@ public class WFVehicleBindings {
             return this;
         }
 
+        /**
+         * Restrict the vehicle's storage to items in item tag {@code tagId} (leading {@code #} optional), e.g.
+         * {@code '#wfcore:drone_upgrades'}. Only meaningful alongside {@link #storage}. The tag is stored as a
+         * {@link TagKey} and resolved lazily at use-time, so it need not exist yet at startup.
+         */
+        public OverrideBuilder storageFilter(String tagId) {
+            String t = (tagId != null && tagId.startsWith("#")) ? tagId.substring(1) : tagId;
+            ResourceLocation r = t == null ? null : ResourceLocation.tryParse(t);
+            if (r == null) {
+                WFCore.LOGGER.warn("WFVehicles.override({}): ignoring malformed storage filter tag '{}'",
+                        vehicleId, tagId);
+            } else {
+                this.storageFilter = TagKey.create(Registries.ITEM, r);
+            }
+            return this;
+        }
+
         /** Build + register the override; ignored (with a warning) if it sets neither fuel nor storage. */
         public void register() {
             if (vehicleId == null || vehicleId.isBlank()) {
@@ -299,7 +317,7 @@ public class WFVehicleBindings {
                 return;
             }
             SuperbOverrides.registerOverride(vehicleId,
-                    new SuperbOverrides.OverrideData(maxFuel, fluids, storageSize, storageColumns));
+                    new SuperbOverrides.OverrideData(maxFuel, fluids, storageSize, storageColumns, storageFilter));
         }
     }
 }
