@@ -198,14 +198,19 @@ public class WFBlocks {
         HESCO_BASTION = createSidedArmorBlock("hesco_bastion", Blocks.GRAVEL, SoundType.GRAVEL, 1.0F, 17.0F,
                 WFCore.id("block/hesco_barrier_side"), WFCore.id("block/hesco_barrier_bottom"),
                 WFCore.id("block/hesco_barrier_top"), BlockTags.MINEABLE_WITH_SHOVEL);
-        BALLISTIC_GLASS = createArmorBlock("ballistic_glass", Blocks.GLASS, SoundType.GLASS, 3.0F, 7.0F,
-                ResourceLocation.fromNamespaceAndPath("minecraft", "block/glass"), BlockTags.MINEABLE_WITH_PICKAXE);
+        // World model uses the "_ctm" variant sheet (Fusion picks one of its 4 tiles per position to break up
+        // tiling on large walls -- see the .png.mcmeta next to each texture); the item icon uses the plain
+        // single texture so the inventory/hand render isn't tied to a world position. Fusion is an optional
+        // client-side dependency (mods.toml) -- without it, the world model just shows tile (0,0) statically.
+        BALLISTIC_GLASS = createCtmArmorBlock("ballistic_glass", Blocks.GLASS, SoundType.GLASS, 3.0F, 7.0F,
+                WFCore.id("block/reinforced_glass"), WFCore.id("block/reinforced_glass_ctm"),
+                BlockTags.MINEABLE_WITH_PICKAXE);
         STANDARD_CONCRETE = createArmorBlock("standard_concrete", Blocks.LIGHT_GRAY_CONCRETE, SoundType.STONE, 2.0F,
                 22.0F, ResourceLocation.fromNamespaceAndPath("minecraft", "block/light_gray_concrete"),
                 BlockTags.MINEABLE_WITH_PICKAXE);
-        REINFORCED_CONCRETE = createArmorBlock("reinforced_concrete", Blocks.POLISHED_DEEPSLATE, SoundType.DEEPSLATE,
-                6.0F, 46.0F, ResourceLocation.fromNamespaceAndPath("minecraft", "block/polished_deepslate"),
-                BlockTags.MINEABLE_WITH_PICKAXE);
+        REINFORCED_CONCRETE = createCtmArmorBlock("reinforced_concrete", Blocks.POLISHED_DEEPSLATE,
+                SoundType.DEEPSLATE, 6.0F, 46.0F, WFCore.id("block/reinforced_concrete"),
+                WFCore.id("block/reinforced_concrete_ctm"), BlockTags.MINEABLE_WITH_PICKAXE);
         // Placeholder art reusing GTCEu's steel/tungstensteel casing textures until this mod has its own.
         HARDENED_STEEL = createArmorBlock("hardened_steel", Blocks.IRON_BLOCK, SoundType.METAL, 10.0F, 75.0F,
                 GTCEu.id("block/casings/solid/machine_casing_solid_steel"),
@@ -290,6 +295,28 @@ public class WFBlocks {
                 .exBlockstate(GTModels.cubeAllModel(texture))
                 .tag(tool)
                 .item(BlockItem::new)
+                .build()
+                .register();
+    }
+
+    /**
+     * Like {@link #createArmorBlock}, but the placed block and its item icon use different textures: the
+     * world model reads {@code worldTexture} (a Fusion "random" connected-texture sheet, see the matching
+     * {@code .png.mcmeta}), while the item model reads {@code itemTexture} (the plain single-tile texture),
+     * since a random per-position tile pick has no meaningful "position" for an inventory/hand icon.
+     */
+    private static BlockEntry<Block> createCtmArmorBlock(String name, Block base, SoundType sound, float hardness,
+                                                          float resistance, ResourceLocation itemTexture,
+                                                          ResourceLocation worldTexture, TagKey<Block> tool) {
+        return WF_MACHINES.block(name, Block::new)
+                .initialProperties(() -> base)
+                .properties(p -> p.strength(hardness, resistance).sound(sound)
+                        .isValidSpawn((state, level, pos, ent) -> false))
+                .addLayer(() -> RenderType::solid)
+                .exBlockstate(GTModels.cubeAllModel(worldTexture))
+                .tag(tool)
+                .item(BlockItem::new)
+                .model((ctx, prov) -> prov.cubeAll(ctx.getName(), itemTexture))
                 .build()
                 .register();
     }

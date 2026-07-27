@@ -9,6 +9,7 @@
     "wfcore:drill_head",
     "wfcore:hardened_steel",
     "wfcore:tungsten_plating",
-    "wfcore:boltable_casing"
+    "wfcore:boltable_casing",
+    "wfcore:boltable_casing_bolted"
   ]
 }

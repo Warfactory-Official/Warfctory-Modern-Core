@@ -232,6 +232,11 @@ dependencies {
     modImplementation("com.wf:warforge-remaintained:${warforge_version}") { transitive = false }
     modImplementation("com.wf:wfballistics:${wfballistics_version}")
     modRuntimeOnly("dev.engine-room.flywheel:flywheel-forge-${minecraft_version}:${flywheel_version}")
+
+    // Fusion: client-only connected-textures resource-pack support for reinforced_glass/reinforced_concrete's
+    // "_ctm" variants (see textures/block/reinforced_*_ctm.png .mcmeta). Optional in mods.toml -- without it
+    // installed, those blocks just render with their plain (non-varied) texture.
+    modRuntimeOnly("maven.modrinth:fusion-connected-textures:1.3.9-forge-mc1.20.1")
 }
 
 tasks.named('shadowJar', ShadowJar).configure {
