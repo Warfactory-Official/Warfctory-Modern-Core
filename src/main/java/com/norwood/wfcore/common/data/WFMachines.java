@@ -14,15 +14,18 @@ import com.gregtechceu.gtceu.api.machine.MachineDefinition;
 import com.gregtechceu.gtceu.api.machine.MultiblockMachineDefinition;
 import com.gregtechceu.gtceu.api.machine.multiblock.PartAbility;
 import com.gregtechceu.gtceu.api.machine.multiblock.WorkableElectricMultiblockMachine;
+import com.gregtechceu.gtceu.api.machine.property.GTMachineModelProperties;
 import com.gregtechceu.gtceu.api.pattern.FactoryBlockPattern;
 import com.gregtechceu.gtceu.api.pattern.MultiblockShapeInfo;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.api.registry.registrate.MachineBuilder;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
 import com.gregtechceu.gtceu.common.data.*;
+import com.gregtechceu.gtceu.common.data.machines.GTMachineUtils;
 import com.gregtechceu.gtceu.common.data.models.GTMachineModels;
 import com.gregtechceu.gtceu.common.machine.multiblock.part.OpticalComputationHatchMachine;
 import com.gregtechceu.gtceu.common.machine.multiblock.part.OpticalDataHatchMachine;
+import com.gregtechceu.gtceu.common.machine.electric.ChargerMachine;
 import com.gregtechceu.gtceu.common.machine.multiblock.steam.SteamParallelMultiblockMachine;
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.norwood.wfcore.WFCore;
@@ -54,6 +57,7 @@ public class WFMachines {
     public static MachineDefinition COPPER_HEATSINK;
     public static MachineDefinition COOLING_LIQUID;
     public static MachineDefinition CREATIVE_COMPUTATION_SINK;
+    public static MachineDefinition[] VEHICLE_CHARGER;
     // MV-tier alternatives to GregTech's IV optical computation/data hatches; carry the standard part abilities
     // so they slot into the existing Mainframe/Research Unit and connect over the copper network cable.
     public static MachineDefinition MV_COMPUTATION_TRANSMISSION_HATCH;
@@ -73,6 +77,7 @@ public class WFMachines {
     public static MultiblockMachineDefinition LIGHT_PLANE_ASSEMBLER;
     public static MultiblockMachineDefinition HEAVY_PLANE_ASSEMBLER;
     public static MultiblockMachineDefinition HEAVY_VEHICLE_DEPOT;
+    public static MultiblockMachineDefinition HELICOPTER_ASSEMBLER;
     public static MultiblockMachineDefinition DRILL_RIG;
     public static MultiblockMachineDefinition STEAM_WIREMILL;
     public static MultiblockMachineDefinition MISSILE_FACTORY;
@@ -151,6 +156,22 @@ public class WFMachines {
                         FormattingUtil.formatNumbers(GTValues.V[GTValues.LV]), GTValues.VNF[GTValues.LV]))
                 .workableTieredHullModel(WFCore.id("block/multiblock/printer"))
                 .register();
+
+        // Tiered EU charging station for Superb Warfare vehicles. Reuses GregTech's own charger model + state
+        // property so it looks and tiers exactly like a stock Turbo Charger; charges nearby energy-based vehicles
+        // that are NOT under the WFCore fluid-fuel override (those run on a fluid tank instead of EU/FE).
+        VEHICLE_CHARGER = GTMachineUtils.registerTieredMachines(WF_MACHINES, "vehicle_charger",
+                (holder, tier) -> new VehicleChargerMachine(holder, tier),
+                (tier, builder) -> builder
+                        .rotationState(RotationState.ALL)
+                        .modelProperty(GTMachineModelProperties.CHARGER_STATE, ChargerMachine.State.IDLE)
+                        .model(GTMachineModels.createChargerModel())
+                        .langValue(GTValues.VN[tier] + " Vehicle Charging Station")
+                        .tooltips(Component.translatable("gtceu.universal.tooltip.voltage_in",
+                                FormattingUtil.formatNumbers(GTValues.V[tier]), GTValues.VNF[tier]),
+                                Component.literal("Charges nearby Superb Warfare vehicles that run on energy"))
+                        .register(),
+                GTMachineUtils.ALL_TIERS);
 
         CPU_SLOT = WF_MACHINES.machine("cpu_slot", CPUSlotPartMachine::new)
                 .langValue("CPU Slot")
@@ -880,6 +901,55 @@ public class WFMachines {
                             .where('H', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x26
                             .where('I', frames(GTMaterials.Polytetrafluoroethylene)) // gtceu:polytetrafluoroethylene_frame x43
                             .where('J', blocks(GTBlocks.CASING_LAMINATED_GLASS.get())) // gtceu:laminated_glass x140
+                            .where(' ', any()).build();
+                })
+                .workableCasingModel(WFCore.id("block/casings/machine_casing_turbine_titanium"),
+                        GTCEu.id("block/machines/assembler"))
+                .register();
+
+        HELICOPTER_ASSEMBLER = WF_MACHINES
+                .multiblock("helicopter_assembler", LightGroundVehicleFactoryMachine::new,
+                        MetaMachineBlock::new, MetaMachineItem::new, VehicleFactoryBlockEntity::new)
+                .langValue("Helicopter Assembler")
+                .recipeType(VehicleFactoryRecipes.HELICOPTER_ASSEMBLER)
+                .appearanceBlock(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM)
+                .allowFlip(false)
+                .allowExtendedFacing(false)
+                .pattern(definition -> {
+                    final String[][] AISLES = {
+                            { " XXXX     XXXX ", " A           A ", " B           B ", " A           A ", " B           B ", " A           A ", "               ", "               ", "               " },
+                            { "XBBBBXXXXXBBBXX", "ACADD     DDACA", "BCB         BCB", "ACA         ACA", "BCB         BCB", "ACA         ACA", " A           A ", " A           A ", " A           A " },
+                            { "XBXXXBBBBBXXXBX", " ADEEDDDDDEEDA ", " B           B ", " A           A ", " B           B ", " AB         BA ", " A B       B A ", " B  B     B  B ", " ABBABBBBBABBA " },
+                            { "XBXBBXXXXXBXXBX", " DEEEEEEEEEEED ", "               ", "               ", "               ", "               ", " A           A ", " A           A ", " A           A " },
+                            { "XBXBXBBBBBXBXBX", " DEEEEEEEEEEED ", "               ", "               ", "               ", "               ", "               ", "               ", "               " },
+                            { " XBXBXXXXXBXBX ", "  DEEEEEEEEED  ", "               ", "               ", "               ", "               ", "               ", "               ", "               " },
+                            { " XBXBXXXXXBXBX ", "  DEEEEEEEEED  ", "               ", "               ", "               ", "               ", "               ", "               ", "               " },
+                            { " XBXBXXXXXBXBS ", "  DEEEEEEEEED  ", "               ", "               ", "               ", "               ", "               ", "               ", "               " },
+                            { " XBXBXXXXXBXBX ", "  DEEEEEEEEED  ", "               ", "               ", "               ", "               ", "               ", "               ", "               " },
+                            { " XBXBXXXXXBXBX ", "  DEEEEEEEEED  ", "               ", "               ", "               ", "               ", "               ", "               ", "               " },
+                            { "XBXBXBBBBBXBXBX", " DEEEEEEEEEEED ", "               ", "               ", "               ", "               ", "               ", "               ", "               " },
+                            { "XBXXBXXXXXBXXBX", " DEEEEEEEEEEED ", "               ", "               ", "               ", "               ", " A           A ", " A           A ", " A           A " },
+                            { "XBXXXBBBBBXXXBX", " ADEEDDDDDEEDA ", " B           B ", " A           A ", " B           B ", " AB         BA ", " A B       B A ", " B  B     B  B ", " ABBABBBBBABBA " },
+                            { "XXBBBXXXXXBBBXX", "ACADD     DDACA", "BCB         BCB", "ACA         ACA", "BCB         BCB", "ACA         ACA", " A           A ", " A           A ", " A           A " },
+                            { " XXXX     XXXX ", " A           A ", " B           B ", " A           A ", " B           B ", " A           A ", "               ", "               ", "               " },
+                    };
+                    var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
+                            RelativeDirection.RIGHT);
+                    for (String[] aisle : AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+                            .where('A', blocks(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM.get()))
+                            .where('X', blocks(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM.get())
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.DATA_ACCESS))) // wfcore:machine_casing_turbine_titanium x210
+                            .where('B', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x140
+                            .where('C', blocks(WFBlocks.CONDENSED_CABLES.get())) // wfcore:condensed_cables x20
+                            .where('D', blocks(GTBlocks.REINFORCED_STONE.get())) // gtceu:reinforced_stone x40
+                            .where('E', blocks(GTBlocks.LIGHT_CONCRETE.get())) // gtceu:light_concrete x97
                             .where(' ', any()).build();
                 })
                 .workableCasingModel(WFCore.id("block/casings/machine_casing_turbine_titanium"),

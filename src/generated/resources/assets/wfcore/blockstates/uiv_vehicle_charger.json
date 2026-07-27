@@ -1,0 +1,28 @@
+{
+  "variants": {
+    "facing=down": {
+      "model": "wfcore:block/machine/uiv_vehicle_charger",
+      "x": 90
+    },
+    "facing=east": {
+      "model": "wfcore:block/machine/uiv_vehicle_charger",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "wfcore:block/machine/uiv_vehicle_charger"
+    },
+    "facing=south": {
+      "model": "wfcore:block/machine/uiv_vehicle_charger",
+      "y": 180
+    },
+    "facing=up": {
+      "gtceu:z": 180,
+      "model": "wfcore:block/machine/uiv_vehicle_charger",
+      "x": 270
+    },
+    "facing=west": {
+      "model": "wfcore:block/machine/uiv_vehicle_charger",
+      "y": 270
+    }
+  }
+}

@@ -10,7 +10,12 @@
       "model": {
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
-          "all": "gtceu:block/casings/steam/bronze/side"
+          "all": "gtceu:block/casings/steam/bronze/side",
+          "overlay_front": "gtceu:block/machines/wiremill/overlay_front",
+          "overlay_front_emissive": "gtceu:block/machines/wiremill/overlay_front_emissive",
+          "overlay_side": "gtceu:block/machines/wiremill/overlay_side",
+          "overlay_top": "gtceu:block/machines/wiremill/overlay_top",
+          "overlay_top_emissive": "gtceu:block/machines/wiremill/overlay_top_emissive"
         }
       }
     },
@@ -18,7 +23,12 @@
       "model": {
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
-          "all": "gtceu:block/casings/steam/bronze/side"
+          "all": "gtceu:block/casings/steam/bronze/side",
+          "overlay_front": "gtceu:block/machines/wiremill/overlay_front_paused",
+          "overlay_front_emissive": "gtceu:block/machines/wiremill/overlay_front_paused_emissive",
+          "overlay_side": "gtceu:block/machines/wiremill/overlay_side",
+          "overlay_top": "gtceu:block/machines/wiremill/overlay_top_paused",
+          "overlay_top_emissive": "gtceu:block/machines/wiremill/overlay_top_paused_emissive"
         }
       }
     },
@@ -26,7 +36,13 @@
       "model": {
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
-          "all": "gtceu:block/casings/steam/bronze/side"
+          "all": "gtceu:block/casings/steam/bronze/side",
+          "overlay_front": "gtceu:block/machines/wiremill/overlay_front_active",
+          "overlay_front_emissive": "gtceu:block/machines/wiremill/overlay_front_active_emissive",
+          "overlay_side": "gtceu:block/machines/wiremill/overlay_side_active",
+          "overlay_side_emissive": "gtceu:block/machines/wiremill/overlay_side_active_emissive",
+          "overlay_top": "gtceu:block/machines/wiremill/overlay_top_active",
+          "overlay_top_emissive": "gtceu:block/machines/wiremill/overlay_top_active_emissive"
         }
       }
     },
@@ -34,7 +50,13 @@
       "model": {
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
-          "all": "gtceu:block/casings/steam/bronze/side"
+          "all": "gtceu:block/casings/steam/bronze/side",
+          "overlay_front": "gtceu:block/machines/wiremill/overlay_front_active",
+          "overlay_front_emissive": "gtceu:block/machines/wiremill/overlay_front_active_emissive",
+          "overlay_side": "gtceu:block/machines/wiremill/overlay_side_active",
+          "overlay_side_emissive": "gtceu:block/machines/wiremill/overlay_side_active_emissive",
+          "overlay_top": "gtceu:block/machines/wiremill/overlay_top_active",
+          "overlay_top_emissive": "gtceu:block/machines/wiremill/overlay_top_active_emissive"
         }
       }
     },
@@ -42,7 +64,12 @@
       "model": {
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
-          "all": "gtceu:block/casings/steam/bronze/side"
+          "all": "gtceu:block/casings/steam/bronze/side",
+          "overlay_front": "gtceu:block/machines/wiremill/overlay_front",
+          "overlay_front_emissive": "gtceu:block/machines/wiremill/overlay_front_emissive",
+          "overlay_side": "gtceu:block/machines/wiremill/overlay_side",
+          "overlay_top": "gtceu:block/machines/wiremill/overlay_top",
+          "overlay_top_emissive": "gtceu:block/machines/wiremill/overlay_top_emissive"
         }
       }
     },
@@ -50,7 +77,12 @@
       "model": {
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
-          "all": "gtceu:block/casings/steam/bronze/side"
+          "all": "gtceu:block/casings/steam/bronze/side",
+          "overlay_front": "gtceu:block/machines/wiremill/overlay_front_paused",
+          "overlay_front_emissive": "gtceu:block/machines/wiremill/overlay_front_paused_emissive",
+          "overlay_side": "gtceu:block/machines/wiremill/overlay_side",
+          "overlay_top": "gtceu:block/machines/wiremill/overlay_top_paused",
+          "overlay_top_emissive": "gtceu:block/machines/wiremill/overlay_top_paused_emissive"
         }
       }
     },
@@ -58,7 +90,13 @@
       "model": {
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
-          "all": "gtceu:block/casings/steam/bronze/side"
+          "all": "gtceu:block/casings/steam/bronze/side",
+          "overlay_front": "gtceu:block/machines/wiremill/overlay_front_active",
+          "overlay_front_emissive": "gtceu:block/machines/wiremill/overlay_front_active_emissive",
+          "overlay_side": "gtceu:block/machines/wiremill/overlay_side_active",
+          "overlay_side_emissive": "gtceu:block/machines/wiremill/overlay_side_active_emissive",
+          "overlay_top": "gtceu:block/machines/wiremill/overlay_top_active",
+          "overlay_top_emissive": "gtceu:block/machines/wiremill/overlay_top_active_emissive"
         }
       }
     },
@@ -66,7 +104,13 @@
       "model": {
         "parent": "gtceu:block/machine/template/cube_all/sided",
         "textures": {
-          "all": "gtceu:block/casings/steam/bronze/side"
+          "all": "gtceu:block/casings/steam/bronze/side",
+          "overlay_front": "gtceu:block/machines/wiremill/overlay_front_active",
+          "overlay_front_emissive": "gtceu:block/machines/wiremill/overlay_front_active_emissive",
+          "overlay_side": "gtceu:block/machines/wiremill/overlay_side_active",
+          "overlay_side_emissive": "gtceu:block/machines/wiremill/overlay_side_active_emissive",
+          "overlay_top": "gtceu:block/machines/wiremill/overlay_top_active",
+          "overlay_top_emissive": "gtceu:block/machines/wiremill/overlay_top_active_emissive"
         }
       }
     }
