@@ -37,6 +37,10 @@ public final class ResearchRegistry {
         return RESEARCHES.containsKey(id);
     }
 
+    public static void clear() {
+        RESEARCHES.clear();
+    }
+
     public static Collection<Research> all() {
         return Collections.unmodifiableCollection(RESEARCHES.values());
     }

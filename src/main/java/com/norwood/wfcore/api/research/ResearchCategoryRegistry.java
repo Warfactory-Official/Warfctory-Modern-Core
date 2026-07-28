@@ -45,6 +45,10 @@ public final class ResearchCategoryRegistry {
         return category;
     }
 
+    public static void clear() {
+        CATEGORIES.clear();
+    }
+
     public static Collection<ResearchCategory> all() {
         return Collections.unmodifiableCollection(CATEGORIES.values());
     }
