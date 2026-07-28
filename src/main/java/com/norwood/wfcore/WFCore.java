@@ -57,7 +57,7 @@ import static com.norwood.wfcore.serializer.WFCoreSerializers.FLUID_STACK_ENTITY
 public class WFCore {
 
     public static final String MOD_ID = "wfcore";
-    public static final boolean DEBUG = true;
+    public static final boolean DEBUG = false;
     public static final Logger LOGGER = LogManager.getLogger();
     public static GTRegistrate WF_MACHINES = GTRegistrate.create(WFCore.MOD_ID);
 
