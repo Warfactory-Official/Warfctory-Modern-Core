@@ -217,6 +217,8 @@ dependencies {
         exclude group: "org.spongepowered", module: "mixin"
     }
 
+    modCompileOnly("curse.maven:gunfire-overhaul-echoes-of-the-battlefield-1324526:8062389"){ transitive = false }
+
     modImplementation("curse.maven:${tacz_version}") {
         exclude group: "org.spongepowered", module: "mixin"
         transitive = false
