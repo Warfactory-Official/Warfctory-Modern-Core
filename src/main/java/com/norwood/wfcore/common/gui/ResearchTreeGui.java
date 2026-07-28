@@ -500,6 +500,12 @@ public final class ResearchTreeGui {
         };
     }
 
+    /** Returns the connector colour at ~40% of its original alpha, used to render anyOf (soft) edges. */
+    private static int dimConnector(int argb) {
+        int a = (int) (((argb >>> 24) & 0xFF) * 0.4f);
+        return (a << 24) | (argb & 0x00FFFFFF);
+    }
+
     /** Lightens each RGB channel of an ARGB colour by {@code amount} (clamped), keeping alpha. */
     private static int brighten(int argb, int amount) {
         int a = (argb >>> 24) & 0xFF;
@@ -595,6 +601,8 @@ public final class ResearchTreeGui {
 
         // connectors are added before the nodes, so the nodes (opaque tiles) always draw over them
         int connectorColor = category.getConnectorColor();
+        // anyOf connectors share the hue but at ~40% alpha so they're visually softer than hard prerequisites
+        int anyOfColor = dimConnector(connectorColor);
         for (Research research : nodes) {
             int[] to = layout.get(research.getId());
             for (String prereqId : research.getPrerequisites()) {
@@ -602,6 +610,15 @@ public final class ResearchTreeGui {
                 if (prereq != null && prereq.getCategory().equals(id)) {
                     int[] from = layout.get(prereq.getId());
                     addConnector(canvas, from[0], from[1], to[0], to[1], ox, oy, connectorColor);
+                }
+            }
+            for (List<String> group : research.getAnyOfGroups()) {
+                for (String anyId : group) {
+                    Research any = ResearchRegistry.get(anyId);
+                    if (any != null && any.getCategory().equals(id)) {
+                        int[] from = layout.get(any.getId());
+                        addConnector(canvas, from[0], from[1], to[0], to[1], ox, oy, anyOfColor);
+                    }
                 }
             }
         }
@@ -663,7 +680,8 @@ public final class ResearchTreeGui {
             t.addLine(Text.lang("wfcore.gui.research.runs", research.getRunsRequired()));
             t.addLine(Text.lang("wfcore.gui.research.cwu_per_run", research.getCwuPerRun()));
             t.addLine(Text.str(statusLine(mte, rid)));
-            if (statusOf(mte, rid) == NodeStatus.LOCKED && !research.getPrerequisites().isEmpty()) {
+            if (statusOf(mte, rid) == NodeStatus.LOCKED &&
+                    (!research.getPrerequisites().isEmpty() || !research.getAnyOfGroups().isEmpty())) {
                 t.spaceLine(2);
                 t.addLine(Text.lang("wfcore.gui.research.blocker_locked"));
                 appendUnmetPrereqs(t, mte, research);
@@ -766,11 +784,11 @@ public final class ResearchTreeGui {
         detail.child(new TextWidget<>(Text.dynamic(() -> {
             Research r = selected();
             return r == null ? Component.empty() : Component.translatable(r.getNameKey());
-        })).pos(INSET, 4).name("detail_name"));
+        })).pos(INSET, 3).name("detail_name"));
 
         RichTextWidget description = new RichTextWidget();
         description.name("detail_description");
-        description.pos(INSET, 15).size(innerW, 20);
+        description.pos(INSET, 13).size(innerW, 30);
         description.autoUpdate(true);
         description.textBuilder(rt -> {
             Research r = selected();
@@ -779,28 +797,28 @@ public final class ResearchTreeGui {
         detail.child(description);
 
         // per-run inputs: up to 4 item costs, then up to 3 fluid costs on the same row (before the unlocks column)
-        addItemRow(detail, INSET, 37, ResearchTreeGui::inputPerRunAt, 4, "input_item");
-        addFluidRow(detail, INSET + 4 * 17, 37, 3);
+        addItemRow(detail, INSET, 46, ResearchTreeGui::inputPerRunAt, 4, "input_item");
+        addFluidRow(detail, INSET + 4 * 17, 46, 3);
 
         detail.child(new TextWidget<>(Text.dynamic(() -> {
             Research r = selected();
             return r == null ? Component.empty() :
                     Component.translatable("wfcore.gui.research.steps", r.getRunsRequired());
-        })).pos(INSET, 55).name("detail_steps"));
+        })).pos(INSET, 64).name("detail_steps"));
 
         detail.child(new TextWidget<>(Text.dynamic(() -> {
             Research r = selected();
             return r == null ? Component.empty() :
                     Component.translatable("wfcore.gui.research.cost_per_run", r.getCwuPerRun(), r.getEut());
-        })).pos(INSET, 67).name("detail_cost"));
+        })).pos(INSET, 76).name("detail_cost"));
 
         detail.child(buildActionButton(mte, sync));
 
         detail.child(
-                new TextWidget<>(Text.lang("wfcore.gui.research.unlocks")).pos(INSET + 140, 37).name("unlocks_label"));
-        addItemRow(detail, INSET + 140, 48, ResearchTreeGui::unlockedAt, 4, "unlock_item");
+                new TextWidget<>(Text.lang("wfcore.gui.research.unlocks")).pos(INSET + 140, 46).name("unlocks_label"));
+        addItemRow(detail, INSET + 140, 57, ResearchTreeGui::unlockedAt, 4, "unlock_item");
 
-        addProgressBar(detail, mte, INSET, 106, innerW, 6);
+        addProgressBar(detail, mte, INSET, 110, innerW, 6);
         return detail;
     }
 
@@ -815,7 +833,7 @@ public final class ResearchTreeGui {
 
         ButtonWidget<?> button = new ButtonWidget<>();
         button.name("action_button");
-        button.pos(INSET, 82).size(108, 16).syncHandler("research_action", 0);
+        button.pos(INSET, 90).size(108, 16).syncHandler("research_action", 0);
         button.background(new Rectangle().color(COLOR_BUTTON_DISABLED));
 
         ParentWidget<?> activeFill = new ParentWidget<>();
@@ -1197,7 +1215,9 @@ public final class ResearchTreeGui {
     }
 
     /**
-     * Adds one greyed line per still-incomplete prerequisite (incl. cross-category ones) to a tooltip.
+     * Adds one greyed line per still-incomplete prerequisite and one block per unsatisfied any-of group to a
+     * tooltip. Cross-category prerequisites are included; any-of groups show all candidates so the player
+     * knows which paths they can take.
      */
     private static void appendUnmetPrereqs(RichTooltip t, ResearchUnitMachine mte, Research r) {
         ResearchState state = mte.getResearchState();
@@ -1206,6 +1226,17 @@ public final class ResearchTreeGui {
             Research p = ResearchRegistry.get(prereqId);
             Component name = p != null ? Component.translatable(p.getNameKey()) : Component.literal(prereqId);
             t.addLine(Text.of(Component.literal(" - ").append(name).withStyle(net.minecraft.ChatFormatting.GRAY)));
+        }
+        for (List<String> group : r.getAnyOfGroups()) {
+            if (group.stream().anyMatch(state::isComplete)) continue;
+            t.addLine(Text.of(Component.translatable("wfcore.gui.research.blocker_any_of")
+                    .withStyle(net.minecraft.ChatFormatting.GRAY)));
+            for (String id : group) {
+                Research p = ResearchRegistry.get(id);
+                Component name = p != null ? Component.translatable(p.getNameKey()) : Component.literal(id);
+                t.addLine(Text.of(Component.literal("   ◦ ").append(name)
+                        .withStyle(net.minecraft.ChatFormatting.GRAY)));
+            }
         }
     }
 

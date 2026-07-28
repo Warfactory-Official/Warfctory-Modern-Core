@@ -3,6 +3,8 @@ package com.norwood.wfcore.api.research;
 import net.minecraft.nbt.CompoundTag;
 
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+
+import java.util.List;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2LongMap;
 import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
@@ -46,12 +48,15 @@ public final class ResearchState {
         return r != null && getCompletedRuns(researchId) >= r.getRunsRequired();
     }
 
-    /** True if every prerequisite of this research is complete (so it can be started). */
+    /** True if every prerequisite is complete and every any-of group has at least one complete member. */
     public boolean isUnlocked(String researchId) {
         Research r = ResearchRegistry.get(researchId);
         if (r == null) return false;
         for (String prereq : r.getPrerequisites()) {
             if (!isComplete(prereq)) return false;
+        }
+        for (List<String> group : r.getAnyOfGroups()) {
+            if (group.stream().noneMatch(this::isComplete)) return false;
         }
         return true;
     }
@@ -72,6 +77,12 @@ public final class ResearchState {
         if (!visiting.add(researchId)) return true; // cycle guard
         for (String prereq : r.getPrerequisites()) {
             if (!isPathComplete(prereq, visiting)) return false;
+        }
+        // Each any-of group must have at least one member whose own full path is also complete — this is what
+        // prevents a player from loading a late-tier data stick to satisfy a group while still missing that
+        // member's own ancestors.
+        for (List<String> group : r.getAnyOfGroups()) {
+            if (group.stream().noneMatch(id -> isPathComplete(id, visiting))) return false;
         }
         return true;
     }

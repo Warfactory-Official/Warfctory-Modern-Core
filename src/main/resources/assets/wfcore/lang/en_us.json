@@ -119,6 +119,7 @@
   "wfcore.gui.research.tip_cancel": "§7Click to cancel — banked progress is kept",
   "wfcore.gui.research.blocker_complete": "Already researched",
   "wfcore.gui.research.blocker_locked": "Locked — finish its prerequisites:",
+  "wfcore.gui.research.blocker_any_of": "At least one of:",
   "wfcore.gui.research.blocker_queue_full": "Research queue is full (%s). Remove one to start another.",
   "wfcore.gui.research.working_enabled": "§aWorking Enabled",
   "wfcore.gui.research.working_disabled": "§cWorking Disabled",

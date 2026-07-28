@@ -13,6 +13,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * A node in the research tree, defined through {@link #builder(String)} (Java or KubeJS).
@@ -36,6 +37,8 @@ public final class Research {
     private final boolean manualPos;
     private final int nodeColor;
     private final List<String> prerequisites;
+    /** Each inner list is an "any-of" group: at least one id in the group must be complete to unlock this node. */
+    private final List<List<String>> anyOfGroups;
 
     private final int runsRequired;
     private final List<ItemStack> itemsPerRun;
@@ -57,6 +60,9 @@ public final class Research {
         this.manualPos = b.manualPos;
         this.nodeColor = b.nodeColor;
         this.prerequisites = Collections.unmodifiableList(new ArrayList<>(b.prerequisites));
+        this.anyOfGroups = b.anyOfGroups.stream()
+                .map(g -> Collections.unmodifiableList(new ArrayList<>(g)))
+                .collect(Collectors.toUnmodifiableList());
         this.runsRequired = Math.max(1, b.runsRequired);
         this.itemsPerRun = Collections.unmodifiableList(new ArrayList<>(b.itemsPerRun));
         this.fluidsPerRun = Collections.unmodifiableList(new ArrayList<>(b.fluidsPerRun));
@@ -110,6 +116,11 @@ public final class Research {
 
     public List<String> getPrerequisites() {
         return prerequisites;
+    }
+
+    /** Groups where at least one member must be complete before this node unlocks (in addition to all prerequisites). */
+    public List<List<String>> getAnyOfGroups() {
+        return anyOfGroups;
     }
 
     public int getRunsRequired() {
@@ -173,6 +184,7 @@ public final class Research {
         private boolean manualPos;
         private int nodeColor;
         private final List<String> prerequisites = new ArrayList<>();
+        private final List<List<String>> anyOfGroups = new ArrayList<>();
         private int runsRequired = 1;
         private List<ItemStack> itemsPerRun = new ArrayList<>();
         private final List<FluidStack> fluidsPerRun = new ArrayList<>();
@@ -229,6 +241,20 @@ public final class Research {
 
         public Builder requires(String... researchIds) {
             Collections.addAll(this.prerequisites, researchIds);
+            return this;
+        }
+
+        /**
+         * Adds an "any-of" group: at least one of the given research IDs must be complete before this node
+         * unlocks (checked on top of all {@link #requires} prerequisites). Call multiple times to add multiple
+         * independent groups — each group must independently satisfy the "≥1 complete" condition.
+         */
+        public Builder anyOf(String... researchIds) {
+            if (researchIds.length > 0) {
+                List<String> group = new ArrayList<>(researchIds.length);
+                Collections.addAll(group, researchIds);
+                this.anyOfGroups.add(group);
+            }
             return this;
         }
 

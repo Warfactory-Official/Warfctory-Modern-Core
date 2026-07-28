@@ -1,12 +1,22 @@
 package com.norwood.wfcore.common.data;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.TagKey;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.block.Block;
 
 import com.norwood.wfcore.WFCore;
 
 public final class WFTags {
+
+    public static final class EntityTypes {
+        /** Vehicles in this tag are NOT blocked from GT crowbar pickup. */
+        public static final TagKey<EntityType<?>> GT_CROWBAR_PICKUP_ALLOWED =
+            TagKey.create(Registries.ENTITY_TYPE, WFCore.id("gt_crowbar_pickup_allowed"));
+
+        private EntityTypes() {}
+    }
 
     /**
      * Surface (tier 1) blocks a mining charge may break: vanilla stone/granite/dirt/sand families, ores (via
