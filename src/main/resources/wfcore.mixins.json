@@ -8,6 +8,7 @@
     "AmbientGunfireC2MEMixin",
     "BlockBehaviourAccessor",
     "SuperbWarfareInvMixin",
+    "VectorToolChunkSafeClipMixin",
     "VehicleCrowbarPickupMixin",
     "VehicleFoliageBreakerMixin",
     "VehicleEntitySetEnergyInvoker",

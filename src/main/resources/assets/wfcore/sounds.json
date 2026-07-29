@@ -37,5 +37,25 @@
     "sounds": [
       "wfcore:tool/boltgun"
     ]
+  },
+  "missile_gas_drone": {
+    "category": "hostile",
+    "subtitle": "wfcore.subtitle.missile_drone",
+    "sounds": [
+      {
+        "name": "wfcore:missile/drone",
+        "stream": false
+      }
+    ]
+  },
+  "missile_jartydrone": {
+    "category": "hostile",
+    "subtitle": "wfcore.subtitle.missile_drone",
+    "sounds": [
+      {
+        "name": "wfcore:missile/jartydrone",
+        "stream": false
+      }
+    ]
   }
 }

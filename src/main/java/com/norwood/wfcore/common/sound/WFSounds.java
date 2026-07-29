@@ -19,6 +19,9 @@ public final class WFSounds {
     public static final RegistryObject<SoundEvent> DETONATOR_DETONATE = register("detonator_detonate");
     /** The NTM CE boltgun report, played when the bolt gun bolts a casing. */
     public static final RegistryObject<SoundEvent> BOLT_TOOL_FIRE = register("bolt_tool_fire");
+    /** Looping flight sound for the Gas Drone (Shahed-Jarty airframe). */
+    public static final RegistryObject<SoundEvent> MISSILE_DRONE = register("missile_gas_drone");
+    public static final RegistryObject<SoundEvent> MISSILE_JARTY = register("missile_jartydrone");
 
     private WFSounds() {}
 
