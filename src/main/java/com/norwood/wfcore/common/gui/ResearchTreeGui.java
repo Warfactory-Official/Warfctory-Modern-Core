@@ -41,9 +41,11 @@ import com.norwood.wfcore.common.gui.widget.PanViewport;
 import com.norwood.wfcore.common.machine.ResearchUnitMachine;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -592,6 +594,11 @@ public final class ResearchTreeGui {
         }
         final int ox = minX, oy = minY;
 
+        // Occupied grid cells, so a connector can run straight through a gutter-free span instead of detouring
+        // (a same-row hop only humps up-and-over when a node actually sits between the two).
+        Set<String> occupied = new HashSet<>();
+        for (int[] cell : layout.values()) occupied.add(cell[0] + "," + cell[1]);
+
         PanViewport<?> canvas = new PanViewport<>();
         canvas.name("tree_canvas_" + id);
         canvas.pos(INSET, INSET).size(viewW, viewH);
@@ -609,7 +616,7 @@ public final class ResearchTreeGui {
                 Research prereq = ResearchRegistry.get(prereqId);
                 if (prereq != null && prereq.getCategory().equals(id)) {
                     int[] from = layout.get(prereq.getId());
-                    addConnector(canvas, from[0], from[1], to[0], to[1], ox, oy, connectorColor);
+                    addConnector(canvas, from[0], from[1], to[0], to[1], ox, oy, connectorColor, occupied);
                 }
             }
             for (List<String> group : research.getAnyOfGroups()) {
@@ -617,7 +624,7 @@ public final class ResearchTreeGui {
                     Research any = ResearchRegistry.get(anyId);
                     if (any != null && any.getCategory().equals(id)) {
                         int[] from = layout.get(any.getId());
-                        addConnector(canvas, from[0], from[1], to[0], to[1], ox, oy, anyOfColor);
+                        addConnector(canvas, from[0], from[1], to[0], to[1], ox, oy, anyOfColor, occupied);
                     }
                 }
             }
@@ -702,7 +709,7 @@ public final class ResearchTreeGui {
      * arrowhead always points into the child's near edge.
      */
     private static void addConnector(ParentWidget<?> canvas, int fromCol, int fromRow, int toCol, int toRow,
-                                     int ox, int oy, int color) {
+                                     int ox, int oy, int color, Set<String> occupied) {
         int py = nodeY(fromRow, oy) + NODE / 2;
         int cy = nodeY(toRow, oy) + NODE / 2;
 
@@ -730,6 +737,9 @@ public final class ResearchTreeGui {
                 verticalLeg(canvas, riser1, py, cy, color);
                 horizontalLeg(canvas, riser1, tipX, cy, color);
             }
+        } else if (py == cy && rowSpanClear(occupied, fromCol, toCol, fromRow)) {
+            // Same row with nothing sitting between the two: a single straight leg reads cleanest (no hump).
+            horizontalLeg(canvas, exitX, tipX, cy, color);
         } else {
             // Spans intermediate columns: detour the long run through the row gutter beside the child's row,
             // so it crosses those columns only where no node sits.
@@ -742,6 +752,15 @@ public final class ResearchTreeGui {
             horizontalLeg(canvas, riser2, tipX, cy, color);
         }
         addArrowhead(canvas, tipX, cy, rightward ? 1 : -1, 0, color);
+    }
+
+    /** True if no node occupies a cell strictly between {@code fromCol} and {@code toCol} on {@code row}. */
+    private static boolean rowSpanClear(Set<String> occupied, int fromCol, int toCol, int row) {
+        int lo = Math.min(fromCol, toCol), hi = Math.max(fromCol, toCol);
+        for (int c = lo + 1; c < hi; c++) {
+            if (occupied.contains(c + "," + row)) return false;
+        }
+        return true;
     }
 
     private static void verticalLeg(ParentWidget<?> canvas, int x, int y1, int y2, int color) {

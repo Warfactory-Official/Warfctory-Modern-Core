@@ -58,12 +58,11 @@ public class WFMachines {
     public static MachineDefinition COOLING_LIQUID;
     public static MachineDefinition CREATIVE_COMPUTATION_SINK;
     public static MachineDefinition[] VEHICLE_CHARGER;
-    // MV-tier alternatives to GregTech's IV optical computation/data hatches; carry the standard part abilities
-    // so they slot into the existing Mainframe/Research Unit and connect over the copper network cable.
     public static MachineDefinition MV_COMPUTATION_TRANSMISSION_HATCH;
     public static MachineDefinition MV_COMPUTATION_RECEPTION_HATCH;
     public static MachineDefinition MV_DATA_TRANSMISSION_HATCH;
     public static MachineDefinition MV_DATA_RECEPTION_HATCH;
+    public static MultiblockMachineDefinition MV_NETWORK_SWITCH;
     public static MultiblockMachineDefinition LARGE_TRANSFORMER;
     public static MultiblockMachineDefinition LARGE_BLAST_FURNACE;
     public static MultiblockMachineDefinition PRIMITIVE_ALLOYER;
@@ -296,6 +295,49 @@ public class WFMachines {
                 .tier(GTValues.MV)
                 .model(GTMachineModels.createOverlayTieredHullMachineModel(
                         GTCEu.id("block/machine/part/optical_data_hatch")))
+                .register();
+
+
+        MV_NETWORK_SWITCH = WF_MACHINES.multiblock("mv_network_switch", MVNetworkSwitchMachine::new)
+                .langValue("MV Network Switch")
+                .rotationState(RotationState.NON_Y_AXIS)
+                .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
+                .recipeType(GTRecipeTypes.DUMMY_RECIPES)
+                .tooltips(Component.translatable("wfcore.machine.mv_network_switch.tooltip0"),
+                        Component.translatable("wfcore.machine.mv_network_switch.tooltip1"),
+                        Component.translatable("wfcore.machine.mv_network_switch.tooltip2"),
+                        Component.translatable("wfcore.machine.mv_network_switch.tooltip3",
+                                FormattingUtil.formatNumbers(GTValues.VA[GTValues.MV])))
+                .pattern(definition -> FactoryBlockPattern.start()
+                        .aisle("XXX", "XXX", "XXX")
+                        .aisle("XXX", "XAX", "XXX")
+                        .aisle("XXX", "XSX", "XXX")
+                        .where('S', controller(blocks(definition.getBlock())))
+                        .where('A', blocks(WFBlocks.CONDENSED_CABLES.get()))
+                        .where('X', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()).setMinGlobalLimited(7)
+                                .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1).setMaxGlobalLimited(2, 1))
+                                .or(abilities(PartAbility.COMPUTATION_DATA_TRANSMISSION).setMinGlobalLimited(1, 1))
+                                .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMinGlobalLimited(1, 2))
+                                // Maintenance Hatch (required once maintenance is enabled in the GT config).
+                                .or(autoAbilities(true, false, false)))
+                        .build())
+                .shapeInfo(definition -> MultiblockShapeInfo.builder()
+                        .aisle("XMX", "XSX", "XRX")
+                        .aisle("XXX", "XAX", "XXX")
+                        .aisle("XEX", "XXX", "TTT")
+                        .where('S', definition, Direction.NORTH)
+                        .where('X', WFBlocks.ALUMINIUM_SHEET_CASING.get())
+                        .where('A', WFBlocks.CONDENSED_CABLES.get())
+                        .where('R', MV_COMPUTATION_RECEPTION_HATCH, Direction.NORTH)
+                        .where('T', MV_COMPUTATION_TRANSMISSION_HATCH, Direction.SOUTH)
+                        .where('M', GTMachines.MAINTENANCE_HATCH, Direction.NORTH)
+                        .where('E', GTMachines.ENERGY_INPUT_HATCH[GTValues.MV], Direction.NORTH)
+                        .build())
+                // Reuse GregTech's network_switch front overlay art over WFCore's aluminium casing.
+                // The aluminium casing is a single all-faces texture (not a sided bottom/top/side dir),
+                // so use the non-sided workable model like the Mainframe does.
+                .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
+                        GTCEu.id("block/multiblock/network_switch"))
                 .register();
 
         MAINFRAME = WF_MACHINES.multiblock("mainframe", MainframeMachine::new)

@@ -54,6 +54,7 @@
   "block.wfcore.mv_computation_transmission_hatch": "MV Computation Data Transmission Hatch",
   "block.wfcore.mv_data_reception_hatch": "MV Optical Data Reception Hatch",
   "block.wfcore.mv_data_transmission_hatch": "MV Optical Data Transmission Hatch",
+  "block.wfcore.mv_network_switch": "MV Network Switch",
   "block.wfcore.mv_vehicle_charger": "MV Vehicle Charging Station",
   "block.wfcore.octal_ac_pipe": "Octal Ac Pipe",
   "block.wfcore.opv_vehicle_charger": "OpV Vehicle Charging Station",
