@@ -23,11 +23,13 @@ import com.lowdragmc.lowdraglib.syncdata.field.ManagedFieldHolder;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.NbtUtils;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -40,12 +42,20 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 import brachy.modularui.factory.BlockEntityUIFactory;
+import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.render.gltf.IAnimatedMachine;
+import com.norwood.wfcore.common.data.LoiterUntilDryStage;
+import com.norwood.wfcore.common.data.WFMissiles;
+import com.tterrag.registrate.util.entry.ItemEntry;
 import com.norwood.wfcore.integration.warforge.FactionNotifier;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 import com.wf.wfballistics.MissileEntity;
 import com.wf.wfballistics.compat.WarforgeCompat;
+import com.wf.wfballistics.flight.FlightStageRegistry;
 import com.wf.wfballistics.item.MissileItem;
+import com.wf.wfballistics.item.MissilePreset;
+import com.wf.wfballistics.sim.MissileSimConfig;
+import com.wf.wfballistics.warhead.WarheadRegistry;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -96,6 +106,22 @@ public class InterceptorMachine extends MultiblockControllerMachine
     /** Minimum ticks between team warnings, so a sustained attack doesn't spam the faction (10s). */
     private static final int WARN_INTERVAL = 200;
 
+    // ---- best-fit interceptor selection ----
+    /** Estimated single-shot kill probability the auto-picker treats as "good enough" (a confident kill). At or
+     *  above it, the CHEAPEST clearing round is taken (conserve premium interceptors); below it for every round,
+     *  the highest-odds shot available is taken instead. */
+    private static final double KILL_FLOOR = 0.6;
+    /** Mirror of {@code MissileEntity.BOOST_SPEED_MULT} (private there): an evading target boosts to ~2x its
+     *  cruise speed, so the auto-picker weighs an interceptor's speed against that boosted figure, not cruise. */
+    private static final double TARGET_BOOST_SPEED_MULT = 2.0;
+    /** WF-B's inert warhead id — an inert round is transparently harmless, so the auto-picker ignores it (the
+     *  {@link com.norwood.wfcore.common.data.WFMissiles#DUMMY dummy}) unless it's a loitering decoy (below). */
+    private static final ResourceLocation INERT_WARHEAD_ID = WarheadRegistry.rl("inert");
+    /** The loiter-until-dry cruise stage id ({@link com.norwood.wfcore.common.data.WFMissiles#LOITER_DRONE}):
+     *  an inert missile flying it reads as a live loitering munition, so the battery deliberately engages it —
+     *  wasting a round on the decoy is exactly what it's for. */
+    private static final ResourceLocation LOITER_STAGE_ID = FlightStageRegistry.rl(LoiterUntilDryStage.ID);
+
     public static final ManagedFieldHolder MANAGED_FIELD_HOLDER = new ManagedFieldHolder(
             InterceptorMachine.class, MultiblockControllerMachine.MANAGED_FIELD_HOLDER);
 
@@ -121,6 +147,12 @@ public class InterceptorMachine extends MultiblockControllerMachine
     @Persisted
     @DescSynced
     protected String selectedInterceptorId = "";
+    // When true (default), the battery ignores the manual pick and fires the best-fit interceptor for each
+    // incoming missile ({@link #attemptBestFit}); when false, it fires the operator's {@link #selectedInterceptorId}.
+    // Synced so the GUI toggle reflects it; persisted so the mode survives a reload.
+    @Persisted
+    @DescSynced
+    protected boolean autoBestFit = true;
     // Snapshot of the interceptors available across all linked factories ({Id, Count} list), rebuilt
     // server-side every AVAILABILITY_INTERVAL ticks and synced whole for the GUI pick-list (reuses the silo's
     // syncable tag wrapper). Client-side lazily parsed into {@link #clientAvailable}.
@@ -299,9 +331,26 @@ public class InterceptorMachine extends MultiblockControllerMachine
         return best;
     }
 
-    /** A strike missile (not another interceptor) belonging to a hostile faction is a valid target. */
+    /** A hostile, wfcore-built strike round (not another interceptor, and worth a shot) is a valid target. */
     private boolean isEngageable(MissileEntity missile) {
-        return !missile.isInterceptor() && isHostile(missile);
+        return !missile.isInterceptor() && isWfcoreThreat(missile) && isHostile(missile);
+    }
+
+    /**
+     * Whether the battery should spend a round on {@code missile}. Only wfcore-built rounds are engaged — every
+     * one carries a {@code wfcore:} damage response (see {@link com.norwood.wfcore.common.data.WFMissiles}), so
+     * WF-B's own test/debug missiles are left alone. An inert round is transparently harmless and skipped (the
+     * {@code dummy}), <b>unless</b> it's flying the loiter-until-dry cruise — an inert loiterer reads as a live
+     * loitering munition, so the battery is deliberately baited into engaging it (a decoy that wastes ammo).
+     */
+    private boolean isWfcoreThreat(MissileEntity missile) {
+        ResourceLocation response = missile.getDamageResponseId();
+        if (response == null || !WFCore.MOD_ID.equals(response.getNamespace())) {
+            return false; // not one of ours — a WF-B test missile, or something else entirely
+        }
+        boolean inert = INERT_WARHEAD_ID.equals(missile.getDetonationId());
+        boolean loiterer = LOITER_STAGE_ID.equals(missile.getCruiseStageId());
+        return !inert || loiterer; // inert and not loitering == the dummy -> ignore
     }
 
     private boolean isHostile(MissileEntity missile) {
@@ -312,10 +361,12 @@ public class InterceptorMachine extends MultiblockControllerMachine
         return !WarforgeCompat.areFactionsFriendly(cachedTeamId, missile.getTeamId());
     }
 
-    /** Pulls one of the selected interceptor + {@link #EU_PER_INTERCEPT} and launches it at target. */
+    /** Pulls one interceptor (best-fit for this target, or the manual pick) + {@link #EU_PER_INTERCEPT} and launches it. */
     private void fire(ServerLevel level, MissileEntity target) {
+        // In auto mode, size the round to this specific threat; otherwise honour the operator's chosen type.
+        String interceptorId = autoBestFit ? attemptBestFit(target) : selectedInterceptorId;
         // Extract before draining energy, so a pull that races out from under us costs nothing (see the silo).
-        ItemStack taken = extractSelectedInterceptor();
+        ItemStack taken = extractInterceptor(interceptorId);
         if (!(taken.getItem() instanceof MissileItem missileItem) || !missileItem.preset().isInterceptor()) {
             return;
         }
@@ -453,18 +504,135 @@ public class InterceptorMachine extends MultiblockControllerMachine
         }
     }
 
-    /** Extracts one of the selected interceptor from the first linked factory holding it, or EMPTY. */
-    private ItemStack extractSelectedInterceptor() {
-        if (selectedInterceptorId.isEmpty()) {
+    public boolean isAutoBestFit() {
+        return autoBestFit;
+    }
+
+    /** Server-side (from the GUI toggle): flip between auto best-fit and firing the manual pick. */
+    public void toggleAutoBestFit() {
+        if (!isRemote()) {
+            autoBestFit = !autoBestFit;
+        }
+    }
+
+    /** Extracts one interceptor of {@code id} from the first linked factory holding it, or EMPTY. */
+    private ItemStack extractInterceptor(String id) {
+        if (id == null || id.isEmpty()) {
             return ItemStack.EMPTY;
         }
         for (MissileFactoryMachine factory : resolveFactories()) {
-            ItemStack taken = factory.extractInterceptor(selectedInterceptorId);
+            ItemStack taken = factory.extractInterceptor(id);
             if (!taken.isEmpty()) {
                 return taken;
             }
         }
         return ItemStack.EMPTY;
+    }
+
+    //////////////////// best-fit interceptor selection (mirrors WF-B's own kill math) ////////////////////
+
+    /**
+     * Picks the interceptor in stock that best answers {@code target}, scoring each by its estimated single-shot
+     * kill probability (see {@link #estimateKillProbability}). To conserve premium rounds it prefers the
+     * <b>cheapest</b> type that still clears {@link #KILL_FLOOR} (a slow warhead doesn't warrant an Ace); when no
+     * stocked round can clear it, it falls back to the highest-odds shot available. Cost is the round's crafting
+     * tier (see {@link #interceptorCost}), so an HV interceptor is spent before the EV Mk2 before the IV Ace.
+     *
+     * @return the winning interceptor's item registry id, or {@code ""} when no interceptor is in stock.
+     */
+    public String attemptBestFit(MissileEntity target) {
+        String bestId = "";
+        double bestScore = -1.0;              // kill probability of the current pick (-1 = nothing picked yet)
+        double bestCost = Double.MAX_VALUE;   // cruise speed of the current pick (cheapness proxy)
+        boolean bestAdequate = false;         // whether the current pick clears KILL_FLOOR
+        for (Map.Entry<String, Integer> entry : getAvailableInterceptors().entrySet()) {
+            if (entry.getValue() <= 0) {
+                continue;
+            }
+            MissilePreset preset = interceptorPreset(entry.getKey());
+            if (preset == null) {
+                continue; // unresolved id or, defensively, not actually an interceptor
+            }
+            double score = estimateKillProbability(preset, target);
+            double cost = interceptorCost(entry.getKey());
+            boolean adequate = score >= KILL_FLOOR;
+            if (isBetterFit(adequate, score, cost, bestAdequate, bestScore, bestCost)) {
+                bestId = entry.getKey();
+                bestScore = score;
+                bestCost = cost;
+                bestAdequate = adequate;
+            }
+        }
+        return bestId;
+    }
+
+    /**
+     * Fit comparison: an adequate round (clears {@link #KILL_FLOOR}) always beats an inadequate one; among two
+     * adequate rounds the cheaper wins (ties broken by higher odds); among two inadequate rounds the higher-odds
+     * "best shot we've got" wins (ties broken by the cheaper).
+     */
+    private static boolean isBetterFit(boolean adequate, double score, double cost,
+                                       boolean bestAdequate, double bestScore, double bestCost) {
+        if (bestScore < 0.0) {
+            return true;
+        }
+        if (adequate != bestAdequate) {
+            return adequate;
+        }
+        if (adequate) {
+            return cost < bestCost || (cost == bestCost && score > bestScore);
+        }
+        return score > bestScore || (score == bestScore && cost < bestCost);
+    }
+
+
+    private static double estimateKillProbability(MissilePreset interceptor, MissileEntity target) {
+        double interceptorSpeed = Math.max(1.0E-3, interceptor.cruiseSpeed());
+        double targetSpeed = Math.max(0.0, target.getCruiseSpeed());
+
+        double base = interceptor.interceptChance();
+        if (interceptorSpeed <= targetSpeed) {
+            base *= MissileSimConfig.INTERCEPTOR_CROSSING_HIT_FACTOR; // couldn't overtake it -> unreliable crossing shot
+        }
+
+        double escape = 0.0;
+        float evasion = target.effectiveEvasion(); // dive-amplified when the target is already in its terminal dive
+        if (evasion > 0.0f) {
+            double boostedSpeed = targetSpeed * TARGET_BOOST_SPEED_MULT;
+            double speedFactor = Math.min(1.0, boostedSpeed / interceptorSpeed);
+            escape = Math.min(1.0, evasion * speedFactor);
+        }
+        return base * (1.0 - escape);
+    }
+
+    /** Resolves an interceptor item id to its preset, or null if the id isn't a stocked interceptor missile. */
+    @Nullable
+    private MissilePreset interceptorPreset(String id) {
+        if (BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(id)) instanceof MissileItem missile
+                && missile.preset().isInterceptor()) {
+            return missile.preset();
+        }
+        return null;
+    }
+
+
+    @Nullable
+    private static Map<String, Integer> interceptorCosts;
+
+
+    private static int interceptorCost(String id) {
+        if (interceptorCosts == null) {
+            interceptorCosts = Map.of(
+                    itemId(WFMissiles.INTERCEPTOR), GTValues.HV,
+                    itemId(WFMissiles.INTERCEPTOR_MK2), GTValues.EV,
+                    itemId(WFMissiles.INTERCEPTOR_ACE), GTValues.IV,
+                    itemId(WFMissiles.INTERCEPTOR_CLUSTER), GTValues.IV);
+        }
+        return interceptorCosts.getOrDefault(id, GTValues.IV);
+    }
+
+    private static String itemId(ItemEntry<MissileItem> entry) {
+        return BuiltInRegistries.ITEM.getKey(entry.get()).toString();
     }
 
     protected boolean drainEnergy(boolean simulate) {

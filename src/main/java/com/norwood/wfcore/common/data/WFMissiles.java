@@ -139,19 +139,19 @@ public class WFMissiles {
                 MissileModels.rl("v2"), WFWarheads.HE,
                 b -> b.highAltitude(300.0).cruiseSpeed(1.3).health(55.0f)
                         .diveAngleRange(68.0, 90.0).attackStage(controlledDive())
-                        .accel(0.2, 0.3).fuel(MissileEntity.FuelType.SOLID, 8000));
+                        .accel(0.2, 0.3).fuel(MissileEntity.FuelType.LIQUID, 8000));
 
         DUMMY = missile("dummy", "Dummy Missile",
                 MissileModels.rl("v2"), WarheadRegistry.rl("inert"),
                 b -> b.highAltitude(300.0).cruiseSpeed(1.1).health(10.0f)
                         .diveAngleRange(68.0, 90.0).attackStage(controlledDive())
-                        .accel(0.1, 0.4).fuel(MissileEntity.FuelType.SOLID, 8000));
+                        .accel(0.1, 0.4).fuel(MissileEntity.FuelType.LIQUID, 8000));
 
         LONG_RANGE = missile("long_range", "Long-Range Missile",
                 MissileModels.rl("neon"), WFWarheads.LONG_RANGE,
                 b -> b.highAltitude(300.0).cruiseSpeed(2.0).health(45.0f)
                         .diveAngleRange(68.0, 90.0).attackStage(controlledDive())
-                        .accel(0.3, 0.4).fuel(MissileEntity.FuelType.SOLID, 15000));
+                        .accel(0.3, 0.4).fuel(MissileEntity.FuelType.LIQUID, 15000));
 
         // Thermobaric: modest crater, enormous anti-everything overpressure. Slow and fragile.
         THERMOBARIC = missile("thermobaric", "Thermobaric Missile",
@@ -159,7 +159,7 @@ public class WFMissiles {
                 b -> b.highAltitude(300.0).cruiseSpeed(1.2).health(50.0f)
                         .diveAngleRange(68.0, 90.0).attackStage(controlledDive())
                         .exhaustColor(0xFF6A2D)
-                        .accel(0.2, 0.3).fuel(MissileEntity.FuelType.SOLID, 9000));
+                        .accel(0.2, 0.3).fuel(MissileEntity.FuelType.LIQUID, 9000));
 
         // Mininuke: the demolition apex — a ~50-block-wide crater PLUS a deep penetrating jet (WFWarheads
         // custom) so it drives through fortification instead of surface-scorching. Very slow, trivially intercepted.
@@ -167,7 +167,7 @@ public class WFMissiles {
                 MissileModels.rl("huge"), WFWarheads.MININUKE,
                 b -> b.highAltitude(320.0).cruiseSpeed(1.0).health(60.0f)
                         .diveAngleRange(80.0, 90.0).attackStage(controlledDive())
-                        .accel(0.15, 0.25).fuel(MissileEntity.FuelType.SOLID, 6000));
+                        .accel(0.15, 0.25).fuel(MissileEntity.FuelType.LIQUID, 6000));
 
         // =========================== PENETRATOR ===========================================================
         // HE payload, but fast + evasive with a quick vertical dive. Scales to a near-sure hit at hypersonic.
@@ -178,21 +178,21 @@ public class WFMissiles {
                 b -> b.highAltitude(300.0).cruiseSpeed(3.0).health(45.0f)
                         .diveAngleRange(80.0, 90.0).attackStage(controlledDive())
                         .evasion(0.55f)
-                        .accel(1.0, 1.0).fuel(MissileEntity.FuelType.SOLID, 12000));
+                        .accel(1.0, 1.0).fuel(MissileEntity.FuelType.LIQUID, 12000));
 
         PENETRATOR_SUPERSONIC = missile("penetrator_supersonic", "Supersonic Penetrator Missile",
                 MissileModels.rl("atlas"), WFWarheads.HE,
                 b -> b.highAltitude(300.0).cruiseSpeed(4.5).health(45.0f)
                         .diveAngleRange(80.0, 90.0).attackStage(controlledDive())
                         .evasion(0.7f).evasiveManeuver()
-                        .accel(1.2, 1.2).fuel(MissileEntity.FuelType.SOLID, 15000));
+                        .accel(1.2, 1.2).fuel(MissileEntity.FuelType.LIQUID, 15000));
 
         PENETRATOR_HYPERSONIC = missile("penetrator_hypersonic", "Hypersonic Penetrator Missile",
                 MissileModels.rl("atlas"), WFWarheads.HE,
                 b -> b.highAltitude(300.0).cruiseSpeed(7.0).turnRate(0.5).health(40.0f)
                         .diveAngleRange(80.0, 90.0).attackStage(controlledDive())
                         .evasion(0.9f).evasiveManeuver().exhaustColor(0x66E0FF)
-                        .accel(1.5, 1.2).fuel(MissileEntity.FuelType.SOLID, 18000));
+                        .accel(1.5, 1.2).fuel(MissileEntity.FuelType.LIQUID, 18000));
 
         // =========================== ICBM ==================================================================
         // The long-range line fleshed out: extreme range, high-altitude fast cruise, a pure 90-degree top-attack,
@@ -251,17 +251,17 @@ public class WFMissiles {
 
         CLUSTER = missile("cluster", "Cluster Munition Missile",
                 MissileModels.rl("strong"), WarheadRegistry.rl("fragmentation"),
-                b -> b.highAltitude(280.0).cruiseSpeed(2.0).health(30.0f).fragmentCount(24)
+                b -> b.highAltitude(280.0).cruiseSpeed(2.0).health(30.0f).fragmentCount(32)
                         .explosionOffset(24.0f)
                         .diveAngleRange(55.0, 75.0).attackStage(controlledDive())
-                        .accel(0.3, 0.3).fuel(MissileEntity.FuelType.SOLID, 12000));
+                        .accel(0.3, 0.3).fuel(MissileEntity.FuelType.LIQUID, 12000));
 
         CLUSTER_FIRE = missile("cluster_fire", "Incendiary Cluster Missile",
                 MissileModels.rl("strong"), WFWarheads.FIRE_CLUSTER,
                 b -> b.highAltitude(280.0).cruiseSpeed(2.0).health(30.0f).fragmentCount(24)
                         .explosionOffset(24.0f).exhaustColor(0xFF7A1A)
                         .diveAngleRange(55.0, 75.0).attackStage(controlledDive())
-                        .accel(0.3, 0.3).fuel(MissileEntity.FuelType.SOLID, 12000));
+                        .accel(0.3, 0.3).fuel(MissileEntity.FuelType.LIQUID, 12000));
 
         // Gas cluster: scattered small, short-lived mustard pools
         CLUSTER_GAS = missile("cluster_gas", "Chemical Cluster Missile",
@@ -278,7 +278,7 @@ public class WFMissiles {
                 b -> b.highAltitude(300.0).cruiseSpeed(2.5).health(35.0f)
                         .explosionOffset(50.0f).exhaustColor(0xE0C060)
                         .diveAngleRange(70.0, 90.0).attackStage(controlledDive())
-                        .accel(0.35, 0.35).fuel(MissileEntity.FuelType.SOLID, 14000));
+                        .accel(0.35, 0.35).fuel(MissileEntity.FuelType.LIQUID, 14000));
 
         // Skyfall (apex): bursts high (large airburst offset = fires almost as it enters the dive) and rains 9
         // submunitions, each seeking a distinct entity within ~100 blocks of the burst.
@@ -287,7 +287,7 @@ public class WFMissiles {
                 b -> b.highAltitude(320.0).cruiseSpeed(3.0).health(40.0f)
                         .explosionOffset(60.0f).exhaustColor(0xFFC24D)
                         .diveAngleRange(70.0, 90.0).attackStage(controlledDive())
-                        .accel(0.4, 0.4).fuel(MissileEntity.FuelType.SOLID, 16000));
+                        .accel(0.4, 0.4).fuel(MissileEntity.FuelType.LIQUID, 16000));
 
         // =========================== EMP ===================================================================
         // Stealth (invisible to auto-acquisition) terrain-huggers that disable machinery; radius scales by tier.
@@ -309,10 +309,10 @@ public class WFMissiles {
         // Non-stealth EMP cluster: high airburst rains EMP bomblets over a wide area.
         EMP_CLUSTER = missile("emp_cluster", "EMP Cluster Missile",
                 MissileModels.rl("strong"), WFWarheads.EMP_CLUSTER,
-                b -> b.highAltitude(240.0).cruiseSpeed(2.0).health(30.0f).fragmentCount(9)
+                b -> b.highAltitude(240.0).cruiseSpeed(2.0).health(30.0f).fragmentCount(16)
                         .explosionOffset(30.0f).exhaustColor(0x66C2FF)
                         .diveAngleRange(55.0, 75.0).attackStage(controlledDive())
-                        .accel(0.3, 0.3).fuel(MissileEntity.FuelType.SOLID, 13000));
+                        .accel(0.3, 0.3).fuel(MissileEntity.FuelType.LIQUID, 13000));
 
         // EMP lance (penetrator): no terrain damage, a pinpoint 10-block ray down the dive that fries a target's
         // machinery. Fast and evasive rather than stealthy.
@@ -321,7 +321,7 @@ public class WFMissiles {
                 b -> b.highAltitude(300.0).cruiseSpeed(4.0).health(35.0f)
                         .evasion(0.6f).evasiveManeuver().exhaustColor(0x99DBFF)
                         .diveAngleRange(84.0, 90.0).attackStage(controlledDive())
-                        .accel(0.5, 0.5).fuel(MissileEntity.FuelType.SOLID, 14000));
+                        .accel(0.5, 0.5).fuel(MissileEntity.FuelType.LIQUID, 14000));
 
         // =========================== INTERCEPTORS ==========================================================
         // .interceptor(chance) flags preset().isInterceptor() (routes to the Interceptor Battery) and sets the
@@ -357,14 +357,14 @@ public class WFMissiles {
                         .fuel(MissileEntity.FuelType.SOLID, 900));
 
         // =========================== DRONES (cheap, separate class) ========================================
-        // Kept as-is: constant-note moped loop (speedPitch 0), wide anti-personnel blast, tiny structural damage.
+        // Wide anti-personnel blast, tiny structural damage.
 
         STRIKE_DRONE = missile("strike_drone", "Strike Drone",
                 MissileModels.rl("shahed"), WFWarheads.DRONE,
                 b -> b.highAltitude(280.0).cruiseSpeed(1.6).health(20.0f)
                         .diveAngleRange(35.0, 55.0).attackStage(controlledDive())
-                        .flightSound(WFSounds.MISSILE_DRONE.getId()).flightSoundSpeedPitch(0.0)
-                        .flightSoundRange(400.0)
+                        .flightSound(WFSounds.MISSILE_DRONE.getId())
+                        .flightSoundRange(600.0)
                         .accel(0.15, 0.2).fuel(MissileEntity.FuelType.LIQUID, 12500));
 
         GAS_DRONE = missile("gas_drone", "Gas Drone",
@@ -372,16 +372,15 @@ public class WFMissiles {
                 b -> b.highAltitude(280.0).cruiseSpeed(1.5).health(20.0f)
                         .diveAngleRange(35.0, 55.0).attackStage(controlledDive())
                         .explosionOffset(1.0f).flightSound(WFSounds.MISSILE_JARTY.getId())
+                        .exhaustColor(0x487800)
                         .flightSoundSpeedPitch(0.0).flightSoundRange(400.0)
                         .accel(0.15, 0.2).fuel(MissileEntity.FuelType.LIQUID, 12000));
 
-        // Loiter Drone: the same Jarty airframe/loop as the Gas Drone but INERT and long-legged. It flies to the
-        // aimpoint, then rides the endless-loiter cruise (LoiterUntilDryStage) orbiting on-station until the big
-        // tank runs dry — never diving — at which point it just falls harmlessly. A recon/decoy bird, not a weapon.
         LOITER_DRONE = missile("loiter_drone", "Loitering Drone",
                 MissileModels.rl("shahedjarty"), WarheadRegistry.rl("inert"),
                 b -> b.highAltitude(200.0).cruiseSpeed(1.5).health(20.0f)
                         .cruiseStage(FlightStageRegistry.rl(LoiterUntilDryStage.ID))
+                        .exhaustColor(0x487800)
                         .flightSound(WFSounds.MISSILE_JARTY.getId())
                         .flightSoundSpeedPitch(0.0).flightSoundRange(1000.0)
                         .accel(0.15, 0.2).fuel(MissileEntity.FuelType.LIQUID, 48000));

@@ -5,15 +5,18 @@ import net.minecraft.world.item.ItemStack;
 
 import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.api.drawable.Text;
+import brachy.modularui.drawable.GuiDraw;
 import brachy.modularui.drawable.GuiTextures;
 import brachy.modularui.drawable.ItemDrawable;
 import brachy.modularui.drawable.UITexture;
 import brachy.modularui.factory.PosGuiData;
 import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.screen.UISettings;
+import brachy.modularui.value.sync.InteractionSyncHandler;
 import brachy.modularui.value.sync.PanelSyncManager;
 import brachy.modularui.value.sync.StringSyncValue;
 import brachy.modularui.widget.ParentWidget;
+import brachy.modularui.widgets.ButtonWidget;
 import brachy.modularui.widgets.TextWidget;
 import com.norwood.wfcore.common.machine.InterceptorMachine;
 
@@ -38,6 +41,16 @@ public final class InterceptorGui {
     private static final int TAB_INSET = 4;
     private static final int TITLE_W = 150;
     private static final int TITLE_H = 22;
+
+    // Auto/Manual mode toggle: sits in the top strip to the right of the title tab, right edge flush with the panes.
+    private static final int TOGGLE_W = 64;
+    private static final int TOGGLE_H = 18;
+    private static final int TOGGLE_X = MARGIN + LEFT_W - TOGGLE_W;
+    private static final int TOGGLE_Y = MARGIN + (TITLE_H - TOGGLE_H) / 2;
+    private static final int COLOR_TOGGLE_BG = 0xFF1A1A1E;
+    private static final int COLOR_TOGGLE_BORDER = 0xFF101010;
+    private static final int COLOR_AUTO = 0xFF54FF6A;   // green: sizing rounds to each threat
+    private static final int COLOR_MANUAL = 0xFFFFC24C; // amber: firing the operator's fixed pick
 
     // picker pane
     private static final int PICK_Y = MARGIN + TITLE_H - TAB_INSET; // tab overlaps the pane top
@@ -68,6 +81,7 @@ public final class InterceptorGui {
         panel.child(pane("pane_picker", MARGIN, PICK_Y, LEFT_W, PICK_H));
         panel.child(pane("pane_status", MARGIN, STAT_Y, LEFT_W, STAT_H));
         panel.child(buildTitleTab(mte));
+        panel.child(buildAutoToggle(mte, sync));
 
         // Interceptor selection: the row click writes the type's registry id, C2S runs selectInterceptor.
         StringSyncValue selSync = new StringSyncValue(mte::getSelectedInterceptorId, mte::selectInterceptor);
@@ -85,6 +99,33 @@ public final class InterceptorGui {
                 () -> mte.getDisplayState().ordinal(), mte::statusComponent,
                 () -> terminalColor(mte.getDisplayState())));
         return panel;
+    }
+
+    /**
+     * The Auto/Manual mode toggle. Auto (default) fires the best-fit interceptor for each incoming missile;
+     * Manual fires only the type picked in the list below. Click flips the mode server-side; the label + colour
+     * track {@link InterceptorMachine#isAutoBestFit()} (synced).
+     */
+    private static ButtonWidget<?> buildAutoToggle(InterceptorMachine mte, PanelSyncManager sync) {
+        InteractionSyncHandler toggle = new InteractionSyncHandler().setOnMousePressed(d -> mte.toggleAutoBestFit());
+        sync.syncValue("auto_best_fit", 0, toggle);
+
+        ButtonWidget<?> button = new ButtonWidget<>();
+        button.name("auto_toggle");
+        button.pos(TOGGLE_X, TOGGLE_Y).size(TOGGLE_W, TOGGLE_H).syncHandler("auto_best_fit", 0);
+        button.background((ctx, x, y, w, h, theme) -> {
+            boolean auto = mte.isAutoBestFit();
+            GuiDraw.drawRect(ctx.getGraphics(), x, y, w, h, COLOR_TOGGLE_BG);
+            GuiDraw.drawRect(ctx.getGraphics(), x, y, w, 1, COLOR_TOGGLE_BORDER);
+            GuiDraw.drawRect(ctx.getGraphics(), x, y + h - 1, w, 1, COLOR_TOGGLE_BORDER);
+            GuiDraw.drawText(ctx.getGraphics(), Component.translatable(auto
+                            ? "wfcore.gui.interceptor.mode_auto" : "wfcore.gui.interceptor.mode_manual"),
+                    x + 6, y + 5, 1f, auto ? COLOR_AUTO : COLOR_MANUAL, false);
+        });
+        button.tooltipDynamic(t -> t.addLine(Text.lang(mte.isAutoBestFit()
+                        ? "wfcore.gui.interceptor.mode_auto_tip" : "wfcore.gui.interceptor.mode_manual_tip")))
+                .tooltipAutoUpdate(true);
+        return button;
     }
 
     private static Component pickerHint(InterceptorMachine mte) {

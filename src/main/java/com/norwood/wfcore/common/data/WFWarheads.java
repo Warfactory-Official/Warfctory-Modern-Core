@@ -99,7 +99,7 @@ public final class WFWarheads {
     private static final float HE_SIZE = 20.0f;
     private static final float LONG_RANGE_SIZE = 11.0f;
     private static final float DRONE_SIZE = 4.0f;
-    private static final float THERMOBARIC_SIZE = 12.0f;
+    private static final float THERMOBARIC_SIZE = 32.0f;
     // Multiplies only the entity blast radius/damage, leaving block destruction at the base size.
     private static final float DRONE_ENTITY_RANGE_MOD = 4.0f;
     private static final float THERMOBARIC_ENTITY_RANGE_MOD = 3.0f;
@@ -113,8 +113,8 @@ public final class WFWarheads {
     private static final int SKYFALL_SUBMUNITION_FUEL = 120;
 
     // Fragmentation storm cascade: 9 child missiles, each throwing 4 low-yield bomblets, scattered wide.
-    private static final int FRAG_STORM_CHILDREN = 9;
-    private static final int FRAG_STORM_CHILD_FRAGS = 4;
+    private static final int FRAG_STORM_CHILDREN = 8;
+    private static final int FRAG_STORM_CHILD_FRAGS =8;
     private static final double FRAG_STORM_SPREAD = 40.0;   // radius the child missiles scatter over
     private static final float FRAG_LOW_SIZE = 3.0f;        // one bomblet's blast: clears wood/leaves, weak vs cover
 
@@ -145,7 +145,7 @@ public final class WFWarheads {
     private static final EmpEffect EMP_LONG = new EmpEffect(20, true, false, true);
 
     // A small EMP burst carried by each emp-cluster bomblet (registered so it survives bomblet save/load).
-    private static final WarheadRegistry.Detonation EMP_BOMBLET_DET = (source, pos) -> empBlast(source.level(), pos, 8, EMP_STANDARD);
+    private static final WarheadRegistry.Detonation EMP_BOMBLET_DET = (source, pos) -> empBlast(source.level(), pos, 10, EMP_STANDARD);
 
     // EMP lance ray length (blocks) — shared by the block-entity allocator and the visible beam.
     private static final double EMP_RAY_LENGTH = 10.0;
@@ -178,7 +178,7 @@ public final class WFWarheads {
             if (level.isClientSide) {
                 return;
             }
-            ExplosionAEF jet = new ExplosionAEF(level, pos.x, pos.y, pos.z, 18);
+            ExplosionAEF jet = new ExplosionAEF(level, pos.x, pos.y, pos.z, 50);
             jet.setBlockAllocator(new BlockAllocatorShapedCharge(source.angle(), 18.0f, 20.0f));
             jet.setBlockProcessor(new BlockProcessorStandard().setNoDrop());
             jet.setPlayerProcessor(new PlayerProcessorStandard());
@@ -254,10 +254,10 @@ public final class WFWarheads {
                 return;
             }
             RandomSource rng = level.random;
-            for (int i = 0; i < 8; i++) {
+            for (int i = 0; i < 16; i++) {
                 // Tighter spread (±8, was ±14) so the pools overlap into a denser patch instead of sprawling.
                 Vec3 c = pos.add(rng.nextInt(17) - 8, 0, rng.nextInt(17) - 8);
-                GasCloud.spawn(level, WFFluids.MUSTARD_GAS.get(), c, 3, 2048, 120);
+                GasCloud.spawn(level, WFFluids.MUSTARD_GAS.get(), c, 3, 2048, 820);
             }
             ExplosionSmallCreator.composeEffect(level, pos.x, pos.y, pos.z, 12, 2, 2);
         });
@@ -290,8 +290,7 @@ public final class WFWarheads {
             if (level.isClientSide) {
                 return;
             }
-            FragmentationUtil.cone(level, pos, new Vec3(0.0, -1.0, 0.0), Math.toRadians(70.0),
-                    FRAG_STORM_CHILD_FRAGS, 0.6, 0.2, FRAG_LOW, FRAG_LOW_DET, BombletEntity.DEFAULT_FUSE, null);
+            FragmentationUtil.burst(level, pos, FRAG_STORM_CHILD_FRAGS, 0.6, 0.2, FRAG_LOW, FRAG_LOW_DET, BombletEntity.DEFAULT_FUSE, null);
             ExplosionSmallCreator.composeEffect(level, pos.x, pos.y, pos.z, 5, 1, 1);
         });
         WarheadRegistry.register(FRAG_STORM, WFWarheads::fragStorm);
@@ -584,8 +583,6 @@ public final class WFWarheads {
                     .detonation(FRAG_STORM_CHILD)
                     .swarmId(swarm)
                     .startInAttack()
-                    // Controlled dive (~5 b/t) instead of the default plunge, and a gentle burst below — the
-                    // secondaries were coming down far too fast; they drift out and settle now.
                     .attackStage(FlightStageRegistry.rl(ControlledDiveStage.ID))
                     .explosionOffset(10.0f)     // airburst so the 4 bomblets spread before hitting the ground
                     .cruiseSpeed(2.0)
@@ -614,7 +611,7 @@ public final class WFWarheads {
         }
         long swarm = SwarmManager.newId(level);
         UUID control = source instanceof MissileEntity m ? m.getControlId() : null;
-        for (int i = 0; i < 6; i++) {
+        for (int i = 0; i < 9; i++) {
             MissileEntity.Builder b = MissileEntity.builder(ModEntities.STEALTH_MISSILE.get(), level)
                     .model(MissileModels.rl("abm"))
                     .target(pos)
