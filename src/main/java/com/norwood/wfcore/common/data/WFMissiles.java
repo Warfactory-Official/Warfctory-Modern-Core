@@ -148,14 +148,14 @@ public class WFMissiles {
                         .accel(0.1, 0.4).fuel(MissileEntity.FuelType.LIQUID, 8000));
 
         LONG_RANGE = missile("long_range", "Long-Range Missile",
-                MissileModels.rl("neon"), WFWarheads.LONG_RANGE,
+                MissileModels.rl("booster"), WFWarheads.LONG_RANGE,
                 b -> b.highAltitude(300.0).cruiseSpeed(2.0).health(45.0f)
                         .diveAngleRange(68.0, 90.0).attackStage(controlledDive())
                         .accel(0.3, 0.4).fuel(MissileEntity.FuelType.LIQUID, 15000));
 
         // Thermobaric: modest crater, enormous anti-everything overpressure. Slow and fragile.
         THERMOBARIC = missile("thermobaric", "Thermobaric Missile",
-                MissileModels.rl("thermo"), WFWarheads.THERMOBARIC,
+                MissileModels.rl("strong"), WFWarheads.THERMOBARIC,
                 b -> b.highAltitude(300.0).cruiseSpeed(1.2).health(50.0f)
                         .diveAngleRange(68.0, 90.0).attackStage(controlledDive())
                         .exhaustColor(0xFF6A2D)
@@ -164,7 +164,7 @@ public class WFMissiles {
         // Mininuke: the demolition apex — a ~50-block-wide crater PLUS a deep penetrating jet (WFWarheads
         // custom) so it drives through fortification instead of surface-scorching. Very slow, trivially intercepted.
         MININUKE = missile("mininuke", "Tactical Mininuke Missile",
-                MissileModels.rl("huge"), WFWarheads.MININUKE,
+                MissileModels.rl("atlas_doomsday"), WFWarheads.MININUKE,
                 b -> b.highAltitude(320.0).cruiseSpeed(1.0).health(60.0f)
                         .diveAngleRange(80.0, 90.0).attackStage(controlledDive())
                         .accel(0.15, 0.25).fuel(MissileEntity.FuelType.LIQUID, 6000));
@@ -224,14 +224,14 @@ public class WFMissiles {
         // and higher tiers buy it back with tighter guidance (Mk2 ~2.5), so accuracy IMPROVES up the ladder.
 
         BUNKER_BUSTER = missile("bunker_buster", "Bunker Buster Missile",
-                MissileModels.rl("heavy"), WFWarheads.BUNKER_MK1,
+                MissileModels.rl("v2_bunker"), WFWarheads.BUNKER_MK1,
                 b -> b.highAltitude(280.0).cruiseSpeed(4.0).health(70.0f)
                         .diveAngleRange(82.0, 90.0).attackStage(controlledDive())
                         .evasion(0.5f).turnRate(0.55).accuracy(10.0)
                         .accel(0.15, 0.1).fuel(MissileEntity.FuelType.LIQUID, 3000));
 
         BUNKER_BUSTER_HEAVY = missile("bunker_buster_heavy", "Heavy Bunker Buster Missile",
-                MissileModels.rl("heavy"), WFWarheads.BUNKER_MK2,
+                MissileModels.rl("carrier"), WFWarheads.BUNKER_MK2,
                 b -> b.highAltitude(280.0).cruiseSpeed(4.5).health(90.0f)
                         .diveAngleRange(82.0, 90.0).attackStage(controlledDive())
                         .evasion(0.6f).turnRate(0.6).accuracy(2.5)
@@ -240,7 +240,7 @@ public class WFMissiles {
         // Tunneller (final tier): near-vertical so the shaft drives straight down; bores in up to 15 blocks and
         // detonates inside. Family apex → most accurate (~1-block CEP), toughest, but still short-ranged/sluggish.
         BUNKER_TUNNELLER = missile("bunker_tunneller", "Tunneller Bunker Buster Missile",
-                MissileModels.rl("heavy"), WFWarheads.TUNNELLER,
+                MissileModels.rl("huge_bunker"), WFWarheads.TUNNELLER,
                 b -> b.highAltitude(280.0).cruiseSpeed(4.5).health(110.0f)
                         .diveAngleRange(86.0, 90.0).attackStage(controlledDive())
                         .evasion(0.6f).turnRate(0.6).accuracy(1.0)
@@ -250,14 +250,14 @@ public class WFMissiles {
         // Anti-entity area coverage, little-to-no ground damage. The airburst offset lets bomblets rain.
 
         CLUSTER = missile("cluster", "Cluster Munition Missile",
-                MissileModels.rl("strong"), WarheadRegistry.rl("fragmentation"),
+                MissileModels.rl("v2_cluster"), WarheadRegistry.rl("fragmentation"),
                 b -> b.highAltitude(280.0).cruiseSpeed(2.0).health(30.0f).fragmentCount(32)
                         .explosionOffset(24.0f)
                         .diveAngleRange(55.0, 75.0).attackStage(controlledDive())
                         .accel(0.3, 0.3).fuel(MissileEntity.FuelType.LIQUID, 12000));
 
         CLUSTER_FIRE = missile("cluster_fire", "Incendiary Cluster Missile",
-                MissileModels.rl("strong"), WFWarheads.FIRE_CLUSTER,
+                MissileModels.rl("v2_incendiary"), WFWarheads.FIRE_CLUSTER,
                 b -> b.highAltitude(280.0).cruiseSpeed(2.0).health(30.0f).fragmentCount(24)
                         .explosionOffset(24.0f).exhaustColor(0xFF7A1A)
                         .diveAngleRange(55.0, 75.0).attackStage(controlledDive())
@@ -265,7 +265,7 @@ public class WFMissiles {
 
         // Gas cluster: scattered small, short-lived mustard pools
         CLUSTER_GAS = missile("cluster_gas", "Chemical Cluster Missile",
-                MissileModels.rl("strong"), WFWarheads.GAS_SWISS,
+                MissileModels.rl("taint"), WFWarheads.GAS_SWISS,
                 b -> b.highAltitude(260.0).cruiseSpeed(1.8).health(30.0f)
                         .diveAngleRange(70.0, 88.0).attackStage(controlledDive())
                         .exhaustColor(0xB6C43A)
@@ -274,7 +274,7 @@ public class WFMissiles {
         // Fragmentation storm: bursts high into 9 small frag missiles spread over a wide area; each throws 4
         // low-yield bomblets.
         FRAG_STORM = missile("frag_storm", "Fragmentation Storm Missile",
-                MissileModels.rl("strong"), WFWarheads.FRAG_STORM,
+                MissileModels.rl("cluster"), WFWarheads.FRAG_STORM,
                 b -> b.highAltitude(300.0).cruiseSpeed(2.5).health(35.0f)
                         .explosionOffset(50.0f).exhaustColor(0xE0C060)
                         .diveAngleRange(70.0, 90.0).attackStage(controlledDive())
@@ -283,7 +283,7 @@ public class WFMissiles {
         // Skyfall (apex): bursts high (large airburst offset = fires almost as it enters the dive) and rains 9
         // submunitions, each seeking a distinct entity within ~100 blocks of the burst.
         SKYFALL = missile("skyfall", "Skyfall Cluster Missile",
-                MissileModels.rl("atlas"), WFWarheads.SKYFALL,
+                MissileModels.rl("huge_cluster"), WFWarheads.SKYFALL,
                 b -> b.highAltitude(320.0).cruiseSpeed(3.0).health(40.0f)
                         .explosionOffset(60.0f).exhaustColor(0xFFC24D)
                         .diveAngleRange(70.0, 90.0).attackStage(controlledDive())
@@ -308,7 +308,7 @@ public class WFMissiles {
 
         // Non-stealth EMP cluster: high airburst rains EMP bomblets over a wide area.
         EMP_CLUSTER = missile("emp_cluster", "EMP Cluster Missile",
-                MissileModels.rl("strong"), WFWarheads.EMP_CLUSTER,
+                MissileModels.rl("micro_bhole"), WFWarheads.EMP_CLUSTER,
                 b -> b.highAltitude(240.0).cruiseSpeed(2.0).health(30.0f).fragmentCount(16)
                         .explosionOffset(30.0f).exhaustColor(0x66C2FF)
                         .diveAngleRange(55.0, 75.0).attackStage(controlledDive())
@@ -317,7 +317,7 @@ public class WFMissiles {
         // EMP lance (penetrator): no terrain damage, a pinpoint 10-block ray down the dive that fries a target's
         // machinery. Fast and evasive rather than stealthy.
         EMP_LANCE = missile("emp_lance", "EMP Lance Missile",
-                MissileModels.rl("neon"), WFWarheads.EMP_RAY,
+                MissileModels.rl("micro_emp"), WFWarheads.EMP_RAY,
                 b -> b.highAltitude(300.0).cruiseSpeed(4.0).health(35.0f)
                         .evasion(0.6f).evasiveManeuver().exhaustColor(0x99DBFF)
                         .diveAngleRange(84.0, 90.0).attackStage(controlledDive())
