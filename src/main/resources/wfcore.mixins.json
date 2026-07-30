@@ -5,7 +5,6 @@
   "compatibilityLevel": "JAVA_17",
   "refmap": "mixins.wfcore.refmap.json",
   "mixins": [
-    "AmbientGunfireC2MEMixin",
     "BlockBehaviourAccessor",
     "SuperbWarfareInvMixin",
     "VectorToolChunkSafeClipMixin",

@@ -326,7 +326,7 @@ public final class WFWarheads {
                 return;
             }
             Vec3 axis = source.angle();
-            ExplosionAEF emp = new ExplosionAEF(level, pos.x, pos.y, pos.z, 10);
+            ExplosionAEF emp = new ExplosionAEF(level, pos.x, pos.y, pos.z, 20);
             emp.setBlockAllocator(new BlockAllocatorEMPRay(axis, EMP_RAY_LENGTH));
             emp.setBlockProcessor(empProcessor(EMP_FULL)); // lance only pauses/mallets, nothing else
             emp.bypassClaims(true);

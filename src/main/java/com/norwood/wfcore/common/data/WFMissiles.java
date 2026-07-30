@@ -49,8 +49,10 @@ import static com.norwood.wfcore.WFCore.WF_MACHINES;
  * <li><b>Interceptor</b> ({@link #INTERCEPTOR}, {@link #INTERCEPTOR_MK2}, {@link #INTERCEPTOR_ACE},
  *     {@link #INTERCEPTOR_CLUSTER}) — scale to match; the Ace is competitive with all but the top evasive round,
  *     the Cluster airbursts into small interceptors to blunt a barrage.</li>
- * <li><b>Drones</b> ({@link #STRIKE_DRONE}, {@link #GAS_DRONE}) — a separate, deliberately cheap class; kept
- *     as-is (constant-note moped loop, wide anti-personnel blast, tiny structural footprint).</li>
+ * <li><b>Drones</b> ({@link #STRIKE_DRONE}, {@link #GAS_DRONE}, {@link #LOITER_DRONE}) — a separate,
+ *     deliberately cheap class (constant-note moped loop, wide anti-personnel blast, tiny structural footprint).
+ *     The Loiter Drone is the odd one out: inert, long-legged, and it just orbits its objective until it runs
+ *     dry — a recon/decoy bird rather than a weapon.</li>
  * </ul>
  *
  * <p>Airframes/warheads are referenced by id; an unknown id silently falls back to a default, so keep them in
@@ -118,6 +120,7 @@ public class WFMissiles {
     // --- Drones (cheap, separate class) ---
     public static ItemEntry<MissileItem> STRIKE_DRONE;
     public static ItemEntry<MissileItem> GAS_DRONE;
+    public static ItemEntry<MissileItem> LOITER_DRONE;
 
     private WFMissiles() {}
 
@@ -126,6 +129,7 @@ public class WFMissiles {
         // must be registered before any preset below references them (presets build lazily in the item factory).
         WFWarheads.register();
         ControlledDiveStage.register();
+        LoiterUntilDryStage.register();
         WFDamageResponses.register();
 
         // =========================== DEMOLITION ===========================================================
@@ -370,6 +374,17 @@ public class WFMissiles {
                         .explosionOffset(1.0f).flightSound(WFSounds.MISSILE_JARTY.getId())
                         .flightSoundSpeedPitch(0.0).flightSoundRange(400.0)
                         .accel(0.15, 0.2).fuel(MissileEntity.FuelType.LIQUID, 12000));
+
+        // Loiter Drone: the same Jarty airframe/loop as the Gas Drone but INERT and long-legged. It flies to the
+        // aimpoint, then rides the endless-loiter cruise (LoiterUntilDryStage) orbiting on-station until the big
+        // tank runs dry — never diving — at which point it just falls harmlessly. A recon/decoy bird, not a weapon.
+        LOITER_DRONE = missile("loiter_drone", "Loitering Drone",
+                MissileModels.rl("shahedjarty"), WarheadRegistry.rl("inert"),
+                b -> b.highAltitude(200.0).cruiseSpeed(1.5).health(20.0f)
+                        .cruiseStage(FlightStageRegistry.rl(LoiterUntilDryStage.ID))
+                        .flightSound(WFSounds.MISSILE_JARTY.getId())
+                        .flightSoundSpeedPitch(0.0).flightSoundRange(1000.0)
+                        .accel(0.15, 0.2).fuel(MissileEntity.FuelType.LIQUID, 48000));
     }
 
     /**

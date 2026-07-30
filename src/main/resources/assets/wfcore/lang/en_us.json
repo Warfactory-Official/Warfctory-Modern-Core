@@ -449,6 +449,7 @@
   "item.wfcore.missile_long_range": "Long-Range Missile",
   "item.wfcore.missile_strike_drone": "Strike Drone",
   "item.wfcore.missile_gas_drone": "Gas Drone",
+  "item.wfcore.missile_loiter_drone": "Loitering Drone",
   "item.wfcore.missile_interceptor": "Interceptor Missile",
   "item.wfcore.missile_dummy": "Dummy Missile",
   "item.wfcore.missile_thermobaric": "Thermobaric Missile",
