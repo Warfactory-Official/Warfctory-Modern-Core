@@ -22,6 +22,7 @@ public final class WFSounds {
     /** Looping flight sound for the Gas Drone (Shahed-Jarty airframe). */
     public static final RegistryObject<SoundEvent> MISSILE_DRONE = register("missile_gas_drone");
     public static final RegistryObject<SoundEvent> MISSILE_JARTY = register("missile_jartydrone");
+    public static final RegistryObject<SoundEvent> MISSILE_EMP = register("missile_emp");
 
     private WFSounds() {}
 

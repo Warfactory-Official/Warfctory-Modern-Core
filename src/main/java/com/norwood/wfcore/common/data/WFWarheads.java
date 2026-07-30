@@ -1,6 +1,8 @@
 package com.norwood.wfcore.common.data;
 
 import com.norwood.wfcore.WFCore;
+import com.norwood.wfcore.common.sound.WFDelayedSounds;
+import com.norwood.wfcore.common.sound.WFSounds;
 import com.norwood.wfcore.common.warhead.BlockAllocatorEMPRay;
 import com.norwood.wfcore.common.warhead.BlockProcessorPulverize;
 import com.wf.wfballistics.MissileEntity;
@@ -9,6 +11,7 @@ import com.wf.wfballistics.ModEntities;
 import com.wf.wfballistics.aef.ExplosionAEF;
 import com.wf.wfballistics.aef.nuke.MiniNuke;
 import com.wf.wfballistics.aef.standard.*;
+import com.wf.wfballistics.client.fx.ClientSoundScheduler;
 import com.wf.wfballistics.entity.BombletEntity;
 import com.wf.wfballistics.entity.mist.GasCloud;
 import com.wf.wfballistics.flight.FlightStageRegistry;
@@ -20,13 +23,18 @@ import com.wf.wfballistics.swarm.SwarmManager;
 import com.wf.wfballistics.util.FragmentationUtil;
 import com.wf.wfballistics.warhead.BombletWarhead;
 import com.wf.wfballistics.warhead.WarheadRegistry;
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -37,6 +45,8 @@ import net.minecraft.world.phys.Vec3;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+
+import static com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialIconType.seed;
 
 /**
  * WFCore's custom missile warheads, registered into WF-Ballistics' {@link WarheadRegistry} so the
@@ -332,6 +342,7 @@ public final class WFWarheads {
             emp.explode();
             EMPCreator.compose(level, pos.x, pos.y, pos.z, 4);
             empRayBeam(level, pos, axis, EMP_RAY_LENGTH);
+            playEMP(pos,level);
         }, WarheadRegistry.STANDARD_INTERCEPT);
 
         // --- Interceptor ----------------------------------------------------------------------------------
@@ -344,6 +355,18 @@ public final class WFWarheads {
     // ------------------------------------------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------------------------------------------
+
+   private static void playEMP(Vec3 pos, Level level){
+       var rand = level.random;
+        for (ServerPlayer player : ((ServerLevel)level).players()) {
+            double dist = Math.sqrt(player.distanceToSqr(pos));
+            if (dist > 256f) {
+                continue;
+            }
+            WFDelayedSounds.schedule((ServerLevel) level, (int)(dist/ClientSoundScheduler.SPEED_OF_SOUND), player, pos.x, pos.y, pos.z,
+                    WFSounds.MISSILE_EMP.get(), SoundSource.BLOCKS, 1.0f, rand.nextFloat()+0.4f, 0L);
+        }
+   }
 
     /**
      * Runs one AEF blast: ray-march terrain destruction at {@code size} (no item drops), entity damage via the
@@ -493,6 +516,7 @@ public final class WFWarheads {
         emp.bypassClaims(true);
         emp.explode();
         EMPCreator.compose(level, pos.x, pos.y, pos.z, radius);
+        playEMP(pos,level);
     }
 
     /** Builds WF-B's EMP block processor from a wfcore {@link EmpEffect} profile. */

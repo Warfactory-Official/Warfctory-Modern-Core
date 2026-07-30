@@ -57,5 +57,15 @@
         "stream": false
       }
     ]
+  },
+  "missile_emp": {
+    "category": "hostile",
+    "subtitle": "wfcore.subtitle.missile_emp",
+    "sounds": [
+      {
+        "name": "wfcore:missile/emp",
+        "stream": false
+      }
+    ]
   }
 }
