@@ -823,12 +823,24 @@ public final class ResearchTreeGui {
             Research r = selected();
             return r == null ? Component.empty() :
                     Component.translatable("wfcore.gui.research.steps", r.getRunsRequired());
-        })).pos(INSET, 64).name("detail_steps"));
+        })).pos(INSET, 64).name("detail_steps"))
+                        .tooltip( richTooltip -> {
+                           richTooltip.addLine(Text.dynamic(() -> {
+                               Research r = selected();
+                               int  time = r == null ? 0 : r.getTicksPerRun() / 20;
+                               return Component.nullToEmpty(time + " seconds per run");
+                           }));
+                            richTooltip.addLine(Text.dynamic(() -> {
+                                Research r = selected();
+                                int  time = r == null ? 0 : (r.getTicksPerRun() / 20) * r.getRunsRequired();
+                                return Component.nullToEmpty(time + " seconds per run");
+                            }));
+                        });
 
         detail.child(new TextWidget<>(Text.dynamic(() -> {
             Research r = selected();
             return r == null ? Component.empty() :
-                    Component.translatable("wfcore.gui.research.cost_per_run", r.getCwuPerRun(), r.getEut());
+                    Component.translatable("wfcore.gui.research.cost_per_run", r.getCwuPerRun()/r.getTicksPerRun(), r.getEut());
         })).pos(INSET, 76).name("detail_cost"));
 
         detail.child(buildActionButton(mte, sync));

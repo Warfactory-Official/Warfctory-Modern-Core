@@ -144,6 +144,8 @@ public final class Research {
         return cwuPerRun;
     }
 
+
+
     /** Total energy across the whole research (eut * ticksPerRun * runsRequired). */
     public long getTotalEU() {
         return eut * (long) ticksPerRun * runsRequired;

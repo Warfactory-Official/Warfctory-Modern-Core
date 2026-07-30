@@ -10,6 +10,7 @@ import com.wf.wfballistics.MissileModels;
 import com.wf.wfballistics.ModEntities;
 import com.wf.wfballistics.aef.ExplosionAEF;
 import com.wf.wfballistics.aef.nuke.MiniNuke;
+import com.wf.wfballistics.aef.nuke.MiniNuke.MukeParams;
 import com.wf.wfballistics.aef.standard.*;
 import com.wf.wfballistics.client.fx.ClientSoundScheduler;
 import com.wf.wfballistics.entity.BombletEntity;
@@ -188,12 +189,20 @@ public final class WFWarheads {
             if (level.isClientSide) {
                 return;
             }
-            ExplosionAEF jet = new ExplosionAEF(level, pos.x, pos.y, pos.z, 50);
+            ExplosionAEF jet = new ExplosionAEF(level, pos.x, pos.y, pos.z, 60);
             jet.setBlockAllocator(new BlockAllocatorShapedCharge(source.angle(), 18.0f, 20.0f));
             jet.setBlockProcessor(new BlockProcessorStandard().setNoDrop());
             jet.setPlayerProcessor(new PlayerProcessorStandard());
             jet.explode();
-            MiniNuke.detonate(level, pos, MiniNuke.medium());
+            var muke = new MukeParams();
+            muke.blastRadius = 80;
+            muke.killRadius = 100;
+            muke.fire = false;
+            muke.resolution = 128;
+            muke.miniNuke = true;
+            MiniNuke.detonate(level,
+                    pos,
+                    muke);
         });
 
         // ICBM warheads: a compact, forceful top-attack punch — a narrow charge (low blast radius) with a lethal
