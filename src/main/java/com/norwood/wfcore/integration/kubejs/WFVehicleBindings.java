@@ -118,6 +118,7 @@ public class WFVehicleBindings {
         private int circuit = -1;
         private long eut = GTValues.VA[GTValues.MV];
         private int duration = 100;
+        private String research = null;
 
         private VehicleRecipe(ResourceLocation rid, ResourceLocation eid, String factory) {
             this.rid = rid;
@@ -186,6 +187,12 @@ public class WFVehicleBindings {
             return this;
         }
 
+
+        public VehicleRecipe research(String id) {
+            this.research = id;
+            return this;
+        }
+
         /** Assemble + serialize to the recipe JSON GTCEu emits; feed the result to {@code event.custom(...)}. */
         public JsonObject build() {
             GTRecipeBuilder b = VehicleFactoryRecipes.byName(factory).recipeBuilder(rid);
@@ -200,6 +207,9 @@ public class WFVehicleBindings {
             }
             if (circuit >= 0) {
                 b.circuitMeta(circuit);
+            }
+            if (research != null && !research.isBlank()) {
+                b.addCondition(new com.norwood.wfcore.common.recipe.condition.ResearchRecipeCondition(research));
             }
             b.outputItems(PackagedVehicleItem.of(eid)).EUt(eut).duration(duration);
             JsonObject[] json = new JsonObject[1];

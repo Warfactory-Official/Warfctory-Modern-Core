@@ -39,6 +39,7 @@
     "EditBoxCursorRecursionMixin",
     "GuiTextFieldGenericCursorMixin",
     "CubedFpvDroneRendererMixin",
+    "LucasDroneRendererMixin",
     "GuiHandlerMainMenuStabilityMixin",
     "ReplayPlaybackGateMixin",
     "PlayerTabRankMixin",

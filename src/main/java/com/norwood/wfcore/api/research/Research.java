@@ -1,6 +1,9 @@
 package com.norwood.wfcore.api.research;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
@@ -41,7 +44,7 @@ public final class Research {
     private final List<List<String>> anyOfGroups;
 
     private final int runsRequired;
-    private final List<ItemStack> itemsPerRun;
+    private final List<ResearchInput> itemInputs;
     private final List<FluidStack> fluidsPerRun;
     private final List<ItemStack> unlockedItems;
     private final long cwuPerRun;
@@ -64,7 +67,7 @@ public final class Research {
                 .map(g -> Collections.unmodifiableList(new ArrayList<>(g)))
                 .collect(Collectors.toUnmodifiableList());
         this.runsRequired = Math.max(1, b.runsRequired);
-        this.itemsPerRun = Collections.unmodifiableList(new ArrayList<>(b.itemsPerRun));
+        this.itemInputs = Collections.unmodifiableList(new ArrayList<>(b.itemInputs));
         this.fluidsPerRun = Collections.unmodifiableList(new ArrayList<>(b.fluidsPerRun));
         this.unlockedItems = Collections.unmodifiableList(new ArrayList<>(b.unlockedItems));
         this.cwuPerRun = Math.max(0, b.cwuPerRun);
@@ -127,8 +130,14 @@ public final class Research {
         return runsRequired;
     }
 
+    /** The raw item costs (each an exact item or a tag, with a count) matched against the input buses. */
+    public List<ResearchInput> getItemInputs() {
+        return itemInputs;
+    }
+
+    /** Representative display stacks for the research GUI (first tag member for tag costs). */
     public List<ItemStack> getItemsPerRun() {
-        return itemsPerRun;
+        return itemInputs.stream().map(ResearchInput::displayStack).collect(Collectors.toList());
     }
 
     /** Fluids consumed from an Import Fluid Hatch each run (empty if the research has no fluid cost). */
@@ -188,7 +197,7 @@ public final class Research {
         private final List<String> prerequisites = new ArrayList<>();
         private final List<List<String>> anyOfGroups = new ArrayList<>();
         private int runsRequired = 1;
-        private List<ItemStack> itemsPerRun = new ArrayList<>();
+        private List<ResearchInput> itemInputs = new ArrayList<>();
         private final List<FluidStack> fluidsPerRun = new ArrayList<>();
         private final List<ItemStack> unlockedItems = new ArrayList<>();
         private long cwuPerRun;
@@ -266,12 +275,30 @@ public final class Research {
         }
 
         public Builder itemsPerRun(@Nullable List<ItemStack> itemsPerRun) {
-            this.itemsPerRun = itemsPerRun == null ? new ArrayList<>() : new ArrayList<>(itemsPerRun);
+            this.itemInputs = new ArrayList<>();
+            if (itemsPerRun != null) {
+                for (ItemStack s : itemsPerRun) this.itemInputs.add(ResearchInput.of(s));
+            }
             return this;
         }
 
         public Builder itemPerRun(ItemStack item) {
-            this.itemsPerRun.add(item);
+            this.itemInputs.add(ResearchInput.of(item));
+            return this;
+        }
+
+        /**
+         * Adds a TAG item cost: any item in {@code tagId} (leading {@code #} optional, e.g.
+         * {@code 'gtceu:circuits/lv'}) satisfies it, {@code count} consumed per run. Use instead of hard-coding
+         * one specific circuit/plate item so any tier-appropriate variant works. The research GUI shows the
+         * first tag member as a representative icon.
+         */
+        public Builder itemTagPerRun(String tagId, int count) {
+            if (tagId != null && !tagId.isBlank()) {
+                String t = tagId.startsWith("#") ? tagId.substring(1) : tagId;
+                TagKey<Item> tag = TagKey.create(Registries.ITEM, new ResourceLocation(t));
+                this.itemInputs.add(ResearchInput.ofTag(tag, count));
+            }
             return this;
         }
 

@@ -1175,8 +1175,9 @@ public final class ResearchTreeGui {
     private static ItemStack inputPerRunAt(int i) {
         Research r = selected();
         if (r == null) return ItemStack.EMPTY;
-        List<ItemStack> items = r.getItemsPerRun();
-        return i < items.size() ? items.get(i) : ItemStack.EMPTY;
+        List<com.norwood.wfcore.api.research.ResearchInput> inputs = r.getItemInputs();
+        // cyclingStack rotates through all tag members (~1/s) for tag costs; a single stack for exact costs.
+        return i < inputs.size() ? inputs.get(i).cyclingStack() : ItemStack.EMPTY;
     }
 
     private static FluidStack fluidPerRunAt(int i) {

@@ -4,14 +4,18 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
+import net.minecraftforge.client.extensions.common.IClientItemExtensions;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.function.Consumer;
 
 /**
  * The "output" of a vehicle factory recipe: a marker item whose NBT carries the entity id of the
@@ -42,10 +46,33 @@ public class PackagedVehicleItem extends Item {
         return ResourceLocation.tryParse(tag.getString(ENTITY_TAG));
     }
 
+
+    @Override
+    public Component getName(ItemStack stack) {
+        ResourceLocation id = getEntityId(stack);
+        if (id != null) {
+            EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(id);
+            if (type != null) {
+                return type.getDescription();
+            }
+        }
+        return super.getName(stack);
+    }
+
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
-        ResourceLocation id = getEntityId(stack);
-        tooltip.add(Component.literal("Vehicle: " + (id == null ? "<none>" : id)).withStyle(ChatFormatting.AQUA));
+        tooltip.add(Component.literal("Packaged vehicle — deploy to spawn it").withStyle(ChatFormatting.AQUA));
         tooltip.add(Component.literal("Produced by a vehicle factory").withStyle(ChatFormatting.DARK_GRAY));
+    }
+
+
+    @Override
+    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
+        consumer.accept(new IClientItemExtensions() {
+            @Override
+            public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                return com.norwood.wfcore.client.render.vehicle.PackagedVehicleItemRenderer.instance();
+            }
+        });
     }
 }

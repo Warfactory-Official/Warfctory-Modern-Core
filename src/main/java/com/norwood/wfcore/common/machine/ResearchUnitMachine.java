@@ -54,6 +54,7 @@ import net.minecraftforge.items.IItemHandlerModifiable;
 
 import brachy.modularui.factory.BlockEntityUIFactory;
 import com.norwood.wfcore.api.research.Research;
+import com.norwood.wfcore.api.research.ResearchInput;
 import com.norwood.wfcore.api.research.ResearchDataItem;
 import com.norwood.wfcore.api.research.ResearchRegistry;
 import com.norwood.wfcore.api.research.ResearchState;
@@ -741,8 +742,8 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
 
     /** True if one run's full item and fluid cost is available right now across the input buses/hatches. */
     private boolean hasMaterials(Research research) {
-        for (ItemStack cost : research.getItemsPerRun()) {
-            if (countMaterial(cost) < cost.getCount()) return false;
+        for (ResearchInput cost : research.getItemInputs()) {
+            if (countMaterial(cost) < cost.count()) return false;
         }
         for (FluidStack cost : research.getFluidsPerRun()) {
             if (countFluid(cost) < cost.getAmount()) return false;
@@ -752,30 +753,30 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
 
     /** Extracts one run's items and fluids. Only call once {@link #hasMaterials} has confirmed availability. */
     private void consumeMaterials(Research research) {
-        for (ItemStack cost : research.getItemsPerRun()) {
-            extractMaterial(cost, cost.getCount());
+        for (ResearchInput cost : research.getItemInputs()) {
+            extractMaterial(cost, cost.count());
         }
         for (FluidStack cost : research.getFluidsPerRun()) {
             extractFluid(cost, cost.getAmount());
         }
     }
 
-    private int countMaterial(ItemStack target) {
+    private int countMaterial(ResearchInput target) {
         int count = 0;
         for (IItemHandlerModifiable inv : inputInventories) {
             for (int i = 0; i < inv.getSlots(); i++) {
                 ItemStack slot = inv.getStackInSlot(i);
-                if (!slot.isEmpty() && ItemStack.isSameItemSameTags(slot, target)) count += slot.getCount();
+                if (!slot.isEmpty() && target.test(slot)) count += slot.getCount();
             }
         }
         return count;
     }
 
-    private void extractMaterial(ItemStack target, int amount) {
+    private void extractMaterial(ResearchInput target, int amount) {
         for (IItemHandlerModifiable inv : inputInventories) {
             for (int i = 0; i < inv.getSlots() && amount > 0; i++) {
                 ItemStack slot = inv.getStackInSlot(i);
-                if (!slot.isEmpty() && ItemStack.isSameItemSameTags(slot, target)) {
+                if (!slot.isEmpty() && target.test(slot)) {
                     amount -= inv.extractItem(i, amount, false).getCount();
                 }
             }
