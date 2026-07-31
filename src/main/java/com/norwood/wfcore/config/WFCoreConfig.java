@@ -29,6 +29,14 @@ public final class WFCoreConfig {
     private static final boolean DEFAULT_REPLAY_RANK_REQUIRED = true;
     private static final boolean DEFAULT_SHOW_CHAT_TAGS = true;
     private static final boolean DEFAULT_SHOW_TAB_TAGS = true;
+    private static final boolean DEFAULT_DIAG_ENABLED = false;
+    private static final int DEFAULT_DIAG_AUTO_INTERVAL_SECONDS = 0;
+    private static final int DEFAULT_DIAG_MAX_IMAGE_EDGE = 2560;
+    private static final int DEFAULT_DIAG_JPEG_QUALITY = 70;
+    private static final int DEFAULT_DIAG_MAX_IMAGE_BYTES = 20 * 1024 * 1024;
+    private static final int DEFAULT_DIAG_CAPTURE_TIMEOUT_SECONDS = 15;
+    private static final int DEFAULT_DIAG_CHUNK_SIZE = 262144;
+    private static final double DEFAULT_DIAG_MIN_VARIANCE = 6.0;
 
     // -------------------------------------------------------------------------
     // Volatile cache fields — pre-initialised to defaults so getters are safe
@@ -53,6 +61,14 @@ public final class WFCoreConfig {
     private static volatile boolean replayRankRequired = DEFAULT_REPLAY_RANK_REQUIRED;
     private static volatile boolean showChatTags = DEFAULT_SHOW_CHAT_TAGS;
     private static volatile boolean showTabTags = DEFAULT_SHOW_TAB_TAGS;
+    private static volatile boolean diagEnabled = DEFAULT_DIAG_ENABLED;
+    private static volatile int diagAutoIntervalSeconds = DEFAULT_DIAG_AUTO_INTERVAL_SECONDS;
+    private static volatile int diagMaxImageEdge = DEFAULT_DIAG_MAX_IMAGE_EDGE;
+    private static volatile int diagJpegQuality = DEFAULT_DIAG_JPEG_QUALITY;
+    private static volatile int diagMaxImageBytes = DEFAULT_DIAG_MAX_IMAGE_BYTES;
+    private static volatile int diagCaptureTimeoutSeconds = DEFAULT_DIAG_CAPTURE_TIMEOUT_SECONDS;
+    private static volatile int diagChunkSize = DEFAULT_DIAG_CHUNK_SIZE;
+    private static volatile double diagMinVariance = DEFAULT_DIAG_MIN_VARIANCE;
 
     // -------------------------------------------------------------------------
     // ForgeConfigSpec handles
@@ -70,6 +86,14 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.BooleanValue REPLAY_RANK_REQUIRED;
     private static final ForgeConfigSpec.BooleanValue SHOW_CHAT_TAGS;
     private static final ForgeConfigSpec.BooleanValue SHOW_TAB_TAGS;
+    private static final ForgeConfigSpec.BooleanValue DIAG_ENABLED;
+    private static final ForgeConfigSpec.IntValue DIAG_AUTO_INTERVAL_SECONDS;
+    private static final ForgeConfigSpec.IntValue DIAG_MAX_IMAGE_EDGE;
+    private static final ForgeConfigSpec.IntValue DIAG_JPEG_QUALITY;
+    private static final ForgeConfigSpec.IntValue DIAG_MAX_IMAGE_BYTES;
+    private static final ForgeConfigSpec.IntValue DIAG_CAPTURE_TIMEOUT_SECONDS;
+    private static final ForgeConfigSpec.IntValue DIAG_CHUNK_SIZE;
+    private static final ForgeConfigSpec.DoubleValue DIAG_MIN_VARIANCE;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MIN;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MAX;
     private static final ForgeConfigSpec.BooleanValue DEPOSIT_WORLDGEN_ENABLED;
@@ -186,6 +210,43 @@ public final class WFCoreConfig {
 
         builder.pop();
 
+        builder.comment("Server-directed client render-target sampling used for integrity review.")
+                .push("diagnostics");
+
+        DIAG_ENABLED = builder
+                .comment("Master switch. When off, no samples are requested and inbound samples are ignored.")
+                .define("enabled", DEFAULT_DIAG_ENABLED);
+
+        DIAG_AUTO_INTERVAL_SECONDS = builder
+                .comment("Automatically request a sample from a random online player every N seconds. 0 disables automatic sampling (manual /wfcore_diag capture still works).")
+                .defineInRange("autoIntervalSeconds", DEFAULT_DIAG_AUTO_INTERVAL_SECONDS, 0, Integer.MAX_VALUE);
+
+        DIAG_MAX_IMAGE_EDGE = builder
+                .comment("Longest edge (pixels) of the returned image; larger frames are downscaled to fit. Also the server-side rejection cap.")
+                .defineInRange("maxImageEdge", DEFAULT_DIAG_MAX_IMAGE_EDGE, 256, 8192);
+
+        DIAG_JPEG_QUALITY = builder
+                .comment("JPEG quality (1-100). Lower is smaller.")
+                .defineInRange("jpegQuality", DEFAULT_DIAG_JPEG_QUALITY, 1, 100);
+
+        DIAG_MAX_IMAGE_BYTES = builder
+                .comment("Hard ceiling (bytes) for a returned image. Anything larger is rejected.")
+                .defineInRange("maxImageBytes", DEFAULT_DIAG_MAX_IMAGE_BYTES, 64 * 1024, 20 * 1024 * 1024);
+
+        DIAG_CAPTURE_TIMEOUT_SECONDS = builder
+                .comment("How long (seconds) to wait for a client to return a requested sample before flagging it.")
+                .defineInRange("captureTimeoutSeconds", DEFAULT_DIAG_CAPTURE_TIMEOUT_SECONDS, 1, 300);
+
+        DIAG_CHUNK_SIZE = builder
+                .comment("Transfer chunk size (bytes) for the returned image.")
+                .defineInRange("chunkSize", DEFAULT_DIAG_CHUNK_SIZE, 4096, 1048576);
+
+        DIAG_MIN_VARIANCE = builder
+                .comment("Minimum luminance variance a returned image must have; near-uniform frames are rejected.")
+                .defineInRange("minVariance", DEFAULT_DIAG_MIN_VARIANCE, 0.0, 65025.0);
+
+        builder.pop();
+
         SPEC = builder.build();
     }
 
@@ -286,6 +347,38 @@ public final class WFCoreConfig {
         return showTabTags;
     }
 
+    public static boolean isDiagEnabled() {
+        return diagEnabled;
+    }
+
+    public static int getDiagAutoIntervalSeconds() {
+        return diagAutoIntervalSeconds;
+    }
+
+    public static int getDiagMaxImageEdge() {
+        return diagMaxImageEdge;
+    }
+
+    public static int getDiagJpegQuality() {
+        return diagJpegQuality;
+    }
+
+    public static int getDiagMaxImageBytes() {
+        return diagMaxImageBytes;
+    }
+
+    public static int getDiagCaptureTimeoutSeconds() {
+        return diagCaptureTimeoutSeconds;
+    }
+
+    public static int getDiagChunkSize() {
+        return diagChunkSize;
+    }
+
+    public static double getDiagMinVariance() {
+        return diagMinVariance;
+    }
+
     // -------------------------------------------------------------------------
     // Bake — called by WFCore on ModConfigEvent
     // -------------------------------------------------------------------------
@@ -304,6 +397,14 @@ public final class WFCoreConfig {
         replayRankRequired = REPLAY_RANK_REQUIRED.get();
         showChatTags = SHOW_CHAT_TAGS.get();
         showTabTags = SHOW_TAB_TAGS.get();
+        diagEnabled = DIAG_ENABLED.get();
+        diagAutoIntervalSeconds = DIAG_AUTO_INTERVAL_SECONDS.get();
+        diagMaxImageEdge = DIAG_MAX_IMAGE_EDGE.get();
+        diagJpegQuality = DIAG_JPEG_QUALITY.get();
+        diagMaxImageBytes = DIAG_MAX_IMAGE_BYTES.get();
+        diagCaptureTimeoutSeconds = DIAG_CAPTURE_TIMEOUT_SECONDS.get();
+        diagChunkSize = DIAG_CHUNK_SIZE.get();
+        diagMinVariance = DIAG_MIN_VARIANCE.get();
         depositYieldMin = DEPOSIT_YIELD_MIN.get();
         depositYieldMax = Math.max(DEPOSIT_YIELD_MAX.get(), depositYieldMin);
         depositWorldgenEnabled = DEPOSIT_WORLDGEN_ENABLED.get();

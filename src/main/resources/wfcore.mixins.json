@@ -23,7 +23,8 @@
     "ProspectorOreDepositMixin",
     "EntityKineticBulletAccessor",
     "NoBrewingMixin",
-    "WFBallisticsGasMaskMixin"
+    "WFBallisticsGasMaskMixin",
+    "AmmoConsumerToItemMixin"
   ],
   "client": [
     "NamePlateMixin",

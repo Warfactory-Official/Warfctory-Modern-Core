@@ -65,9 +65,12 @@ import java.util.function.Supplier;
 public final class ResearchTreeGui {
 
     // Sized to fit a 1080p screen at GUI scale 3 (640x360 effective) while staying centred clear of the
-    // JEI/EMI side panels: ~96px of margin remains on each side at that scale.
+    // JEI/EMI side panels: ~96px of margin remains on each side at that scale. PANEL_H is the design MINIMUM:
+    // a smaller GUI scale frees up vertical space, and the panel grows into it (up to MAX_PANEL_H) with every
+    // pixel of the gained height poured into the tree pane - see ResearchGuiClient.panelHeight and Layout.
     private static final int PANEL_W = 448;
     private static final int PANEL_H = 340;
+    private static final int MAX_PANEL_H = 520;
 
     /**
      * Gap between sections (and the panel's outer margin).
@@ -94,7 +97,7 @@ public final class ResearchTreeGui {
     private static final int TITLE_W = 140;
 
     private static final int DETAIL_W = 280;
-    private static final int DETAIL_H = 120;
+    private static final int DETAIL_H = 126;
 
     // title: a TAB_TOP-textured nameplate (block icon + name) attached to the top-left of the tree pane
     private static final int TITLE_X = PAD;
@@ -106,21 +109,13 @@ public final class ResearchTreeGui {
     private static final int QUEUE_W = PANEL_W - PAD - QUEUE_X - POWER_SIZE - PAD;
     private static final int SCREEN_X = QUEUE_X;
     private static final int SCREEN_W = PANEL_W - PAD - SCREEN_X;
-    private static final int BOTTOM_Y = PANEL_H - PAD - DETAIL_H;
-    // category tabs run along the bottom of the tree pane (GT-style PageButtons; TAB_BOTTOM is 28x32)
-    private static final int TAB_Y = BOTTOM_Y - 2 - TAB_TEX_H;
-    private static final int TREE_H = TAB_Y + TAB_INSET - TREE_Y;
-    private static final int QUEUE_Y = TREE_Y + TREE_H + PAD;
-    // two stacked 18px buttons in the right column: the working toggle, then the library opener below it
-    private static final int WORKING_Y = QUEUE_Y + 4;
-    private static final int LIBRARY_Y = WORKING_Y + POWER_SIZE + 2;
-    private static final int SCREEN_Y = QUEUE_Y + QUEUE_H + PAD;
-    private static final int SCREEN_H = PANEL_H - PAD - SCREEN_Y;
     // tree pane: from just under the attached title (its inset overlaps the title) down to where tabs connect
     private static final int TREE_X = PAD;
     private static final int TREE_W = PANEL_W - 2 * PAD;
     // right column: a shortened queue with the GT power button to its right, status screen filling below them
     private static final int POWER_X = PANEL_W - PAD - POWER_SIZE;
+    // Every height-dependent vertical position (detail/queue/screen top, the tab row, the tree height and the
+    // two right-column buttons) is derived from the CHOSEN panel height in Layout, since that height is dynamic.
     private static final int NODE = 26;
     private static final int COL_SPACING = 46;
     private static final int ROW_SPACING = 40;
@@ -169,6 +164,27 @@ public final class ResearchTreeGui {
 
     private ResearchTreeGui() {}
 
+    /**
+     * Every vertical position that depends on the (now dynamic) panel height, computed once per open from the
+     * chosen height. Widths and the top-anchored title stay fixed constants; only the height flexes, and all of
+     * the gained height lands in the tree pane ({@link #treeH}) - the bottom block (detail/queue/screen) keeps
+     * its fixed size and simply slides down.
+     */
+    private record Layout(int panelH, int bottomY, int tabY, int treeH, int queueY,
+                          int workingY, int libraryY, int screenY, int screenH) {
+        static Layout of(int panelH) {
+            int bottomY = panelH - PAD - DETAIL_H;
+            int tabY = bottomY - 2 - TAB_TEX_H;
+            int treeH = tabY + TAB_INSET - TREE_Y;
+            int queueY = TREE_Y + treeH + PAD;
+            int workingY = queueY + 4;
+            int libraryY = workingY + POWER_SIZE + 2;
+            int screenY = queueY + QUEUE_H + PAD;
+            int screenH = panelH - PAD - screenY;
+            return new Layout(panelH, bottomY, tabY, treeH, queueY, workingY, libraryY, screenY, screenH);
+        }
+    }
+
     public static ModularPanel<?> build(ResearchUnitMachine mte, PosGuiData data,
                                         PanelSyncManager syncManager, UISettings settings) {
         // Unformed (or a passive SLAVE) has no research tree to present; hand back a compact, self-explanatory
@@ -177,16 +193,22 @@ public final class ResearchTreeGui {
             return buildInfoPanel(mte);
         }
 
-        ModularPanel<?> panel = ModularPanel.defaultPanel("research_unit", PANEL_W, PANEL_H);
+        // A smaller GUI scale frees up vertical space; grow the panel into it (client-only read) and pour the
+        // gained height into the tree pane. The server keeps the design height - sync handlers key off widget
+        // names, not geometry, so the two sides needn't agree on the exact size.
+        int panelH = data.isClient() ? ResearchGuiClient.panelHeight(PANEL_H, MAX_PANEL_H) : PANEL_H;
+        Layout layout = Layout.of(panelH);
+
+        ModularPanel<?> panel = ModularPanel.defaultPanel("research_unit", PANEL_W, panelH);
         panel.invisible();
         // Tree first so the title (added next) draws over the tree's top-left edge and merges into it.
-        buildTabsAndTree(panel, mte, syncManager);
+        buildTabsAndTree(panel, mte, syncManager, layout);
         panel.child(buildTitle(mte));
-        panel.child(buildWorkingButton(mte, syncManager));
-        panel.child(buildLibraryButton(mte, syncManager));
-        panel.child(buildScreen(mte));
-        panel.child(buildDetail(mte, syncManager));
-        panel.child(buildQueue(mte, syncManager));
+        panel.child(buildWorkingButton(mte, syncManager, layout));
+        panel.child(buildLibraryButton(mte, syncManager, layout));
+        panel.child(buildScreen(mte, layout));
+        panel.child(buildDetail(mte, syncManager, layout));
+        panel.child(buildQueue(mte, syncManager, layout));
         return panel;
     }
 
@@ -289,7 +311,7 @@ public final class ResearchTreeGui {
     /**
      * GT-style power button to the right of the queue: lit while working is enabled, dim while paused.
      */
-    private static ButtonWidget<?> buildWorkingButton(ResearchUnitMachine mte, PanelSyncManager sync) {
+    private static ButtonWidget<?> buildWorkingButton(ResearchUnitMachine mte, PanelSyncManager sync, Layout layout) {
         InteractionSyncHandler toggle = new InteractionSyncHandler()
                 .setOnMousePressed(d -> mte.toggleWorkingEnabled());
         sync.syncValue("working_enabled", 0, toggle);
@@ -299,7 +321,7 @@ public final class ResearchTreeGui {
 
         ButtonWidget<?> button = new ButtonWidget<>();
         button.name("working_toggle");
-        button.pos(POWER_X, WORKING_Y).size(POWER_SIZE, POWER_SIZE).syncHandler("working_enabled", 0);
+        button.pos(POWER_X, layout.workingY()).size(POWER_SIZE, POWER_SIZE).syncHandler("working_enabled", 0);
         button.background((ctx, x, y, w, h, theme) -> (mte.isWorkingEnabled() ? on : off).draw(ctx, x, y, w, h, theme));
 
         button.tooltipDynamic(t -> t.addLine(Text.lang(mte.isWorkingEnabled() ?
@@ -315,13 +337,13 @@ public final class ResearchTreeGui {
      * player has obtained, a slot for a data item/paper, and two actions on that item - Read imports the item's
      * blueprints into this unit's database, Write imprints the picked blueprint onto the item.
      */
-    private static ButtonWidget<?> buildLibraryButton(ResearchUnitMachine mte, PanelSyncManager sync) {
+    private static ButtonWidget<?> buildLibraryButton(ResearchUnitMachine mte, PanelSyncManager sync, Layout layout) {
         IPanelHandler library = sync.syncedPanel("research_library", true,
                 (mgr, handler) -> buildLibraryPanel(mte, mgr));
 
         ButtonWidget<?> button = new ButtonWidget<>();
         button.name("library_button");
-        button.pos(POWER_X, LIBRARY_Y).size(POWER_SIZE, POWER_SIZE);
+        button.pos(POWER_X, layout.libraryY()).size(POWER_SIZE, POWER_SIZE);
         button.background(mcBackground(() -> COLOR_PANEL));
         button.overlay(new ItemDrawable(new ItemStack(GTItems.TOOL_DATA_ORB.asItem())).asIcon().size(14));
         button.onMousePressed((context, btn) -> {
@@ -528,26 +550,28 @@ public final class ResearchTreeGui {
 
     /// ///////////////// tabs + per-category trees ////////////////////
 
-    private static void buildTabsAndTree(ModularPanel<?> panel, ResearchUnitMachine mte, PanelSyncManager sync) {
+    private static void buildTabsAndTree(ModularPanel<?> panel, ResearchUnitMachine mte, PanelSyncManager sync,
+                                         Layout layout) {
         List<ResearchCategory> categories = categories();
         int[] nodeCounter = { 0 };
 
+        int treeH = layout.treeH();
         PagedWidget.Controller controller = new PagedWidget.Controller();
         PagedWidget<?> paged = new PagedWidget<>();
         paged.name("tree_paged");
         paged.background(GuiTextures.MC_BACKGROUND);
         paged.controller(controller);
-        paged.pos(TREE_X, TREE_Y).size(TREE_W, TREE_H);
+        paged.pos(TREE_X, TREE_Y).size(TREE_W, treeH);
 
         // Each page is a fixed-size parent the size of the paged area; the canvas is inset by INSET on every
         // side so the scroll viewport sits inside a clean frame and never spills onto the tabs/panels (the old
         // coverChildren + padding wrapper grew the page past the paged area, which caused the overlap).
         int viewW = TREE_W - 2 * INSET;
-        int viewH = TREE_H - 2 * INSET;
+        int viewH = treeH - 2 * INSET;
         for (ResearchCategory category : categories) {
             paged.addPage(new ParentWidget<>()
                     .name("tree_page_" + category.getId())
-                    .size(TREE_W, TREE_H)
+                    .size(TREE_W, treeH)
                     .child(buildCategoryCanvas(mte, category, sync, nodeCounter, viewW, viewH)));
         }
         paged.initialPage(0);
@@ -556,7 +580,7 @@ public final class ResearchTreeGui {
         int n = categories.size();
         for (int i = 0; i < n; i++) {
             int location = n == 1 ? 0 : i == 0 ? -1 : i == n - 1 ? 1 : 0;
-            panel.child(buildTab(controller, categories.get(i), i, location));
+            panel.child(buildTab(controller, categories.get(i), i, location, layout.tabY()));
         }
     }
 
@@ -566,11 +590,11 @@ public final class ResearchTreeGui {
      * handles the page switch itself; {@code location} is the strip position: -1 start cap, 0 middle, +1 end.
      */
     private static PageButton buildTab(PagedWidget.Controller controller, ResearchCategory category,
-                                       int index, int location) {
+                                       int index, int location, int tabY) {
         PageButton tab = new PageButton(index, controller);
         tab.name("tab_" + category.getId());
         tab.tab(GuiTextures.TAB_BOTTOM, location);          // sets the 28x32 size + active/inactive backgrounds
-        tab.pos(TREE_X + index * TAB_W, TAB_Y);             // flush, so the start/middle/end caps form one strip
+        tab.pos(TREE_X + index * TAB_W, tabY);              // flush, so the start/middle/end caps form one strip
         tab.overlay(new ItemDrawable(tabIcon(category)).asIcon().size(16));
         tab.tooltipBuilder(t -> t.addLine(Text.lang(category.getNameKey())));
         return tab;
@@ -791,65 +815,93 @@ public final class ResearchTreeGui {
 
     /// ///////////////// bottom-left detail panel ////////////////////
 
-    private static ParentWidget<?> buildDetail(ResearchUnitMachine mte, PanelSyncManager sync) {
+    private static ParentWidget<?> buildDetail(ResearchUnitMachine mte, PanelSyncManager sync, Layout layout) {
         int innerW = DETAIL_W - 2 * INSET;
         ParentWidget<?> detail = new ParentWidget<>();
         detail.name("detail");
-        detail.pos(DETAIL_X, BOTTOM_Y).size(DETAIL_W, DETAIL_H);
+        detail.pos(DETAIL_X, layout.bottomY()).size(DETAIL_W, DETAIL_H);
         detail.background(GuiTextures.MC_BACKGROUND);
         // Only visible while a research node is selected.
         detail.setEnabledIf(w -> selected() != null);
 
-        detail.child(new TextWidget<>(Text.dynamic(() -> {
+        // Title: a TAB_TOP nameplate (research icon + name) matching the category tabs and the main title, its
+        // connecting lip merging down into the detail body below it.
+        ParentWidget<?> nameplate = new ParentWidget<>();
+        nameplate.name("detail_nameplate");
+        nameplate.pos(PAD, 0).size(DETAIL_W - 2 * PAD, 18);
+        nameplate.background(titleTabBackground());
+        nameplate.child(itemIcon(() -> {
+            Research r = selected();
+            return r == null ? ItemStack.EMPTY : r.getIcon();
+        }, 14).pos(INSET, 2).name("detail_icon"));
+        nameplate.child(new TextWidget<>(Text.dynamic(() -> {
             Research r = selected();
             return r == null ? Component.empty() : Component.translatable(r.getNameKey());
-        })).pos(INSET, 3).name("detail_name"));
+        })).pos(INSET + 17, 5).name("detail_name"));
+        detail.child(nameplate);
 
         RichTextWidget description = new RichTextWidget();
         description.name("detail_description");
-        description.pos(INSET, 13).size(innerW, 30);
+        description.pos(INSET, 21).size(innerW, 27);
         description.autoUpdate(true);
+        // DARK_GRAY (not GRAY) so the wrapped body reads with more contrast against the light MC background.
         description.textBuilder(rt -> {
             Research r = selected();
-            if (r != null) rt.add(Component.translatable(r.getDescKey()).withStyle(net.minecraft.ChatFormatting.GRAY));
+            if (r != null) rt.add(Component.translatable(r.getDescKey())
+                    .withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
         });
         detail.child(description);
 
         // per-run inputs: up to 4 item costs, then up to 3 fluid costs on the same row (before the unlocks column)
-        addItemRow(detail, INSET, 46, ResearchTreeGui::inputPerRunAt, 4, "input_item");
-        addFluidRow(detail, INSET + 4 * 17, 46, 3);
+        addItemRow(detail, INSET, 50, ResearchTreeGui::inputPerRunAt, 4, "input_item");
+        addFluidRow(detail, INSET + 4 * 17, 50, 3);
 
+        // "Steps: N" - hover for the length of one step and of the whole research, in seconds.
         detail.child(new TextWidget<>(Text.dynamic(() -> {
             Research r = selected();
             return r == null ? Component.empty() :
                     Component.translatable("wfcore.gui.research.steps", r.getRunsRequired());
-        })).pos(INSET, 64).name("detail_steps"))
-                        .tooltip( richTooltip -> {
-                           richTooltip.addLine(Text.dynamic(() -> {
-                               Research r = selected();
-                               int  time = r == null ? 0 : r.getTicksPerRun() / 20;
-                               return Component.nullToEmpty(time + " seconds per run");
-                           }));
-                            richTooltip.addLine(Text.dynamic(() -> {
-                                Research r = selected();
-                                int  time = r == null ? 0 : (r.getTicksPerRun() / 20) * r.getRunsRequired();
-                                return Component.nullToEmpty(time + " seconds per run");
-                            }));
-                        });
+        })).pos(INSET, 68).name("detail_steps")
+                .tooltipDynamic(t -> {
+                    Research r = selected();
+                    if (r == null) return;
+                    int per = r.getTicksPerRun();
+                    t.addLine(Text.lang("wfcore.gui.research.tip_step_length", formatDuration(per)));
+                    t.addLine(Text.lang("wfcore.gui.research.tip_total_length",
+                            formatDuration(per * r.getRunsRequired())));
+                }).tooltipAutoUpdate(true));
+
+        // Cost is split so each metric carries its own "total per step" tooltip: compute (CWU/t) and power (EU/t).
+        detail.child(new TextWidget<>(Text.dynamic(() -> {
+            Research r = selected();
+            return r == null ? Component.empty() : Component.translatable("wfcore.gui.research.cwu_per_tick",
+                    r.getCwuPerRun() / Math.max(1, r.getTicksPerRun()));
+        })).pos(INSET, 80).name("detail_cwu")
+                .tooltipDynamic(t -> {
+                    Research r = selected();
+                    if (r == null) return;
+                    t.addLine(Text.lang("wfcore.gui.research.tip_cwu_total", r.getCwuPerRun()));
+                }).tooltipAutoUpdate(true));
 
         detail.child(new TextWidget<>(Text.dynamic(() -> {
             Research r = selected();
             return r == null ? Component.empty() :
-                    Component.translatable("wfcore.gui.research.cost_per_run", r.getCwuPerRun()/r.getTicksPerRun(), r.getEut());
-        })).pos(INSET, 76).name("detail_cost"));
+                    Component.translatable("wfcore.gui.research.eu_per_tick", r.getEut());
+        })).pos(INSET + 96, 80).name("detail_eut")
+                .tooltipDynamic(t -> {
+                    Research r = selected();
+                    if (r == null) return;
+                    t.addLine(Text.lang("wfcore.gui.research.tip_eu_total", r.getEut() * r.getTicksPerRun()));
+                }).tooltipAutoUpdate(true));
 
         detail.child(buildActionButton(mte, sync));
 
         detail.child(
-                new TextWidget<>(Text.lang("wfcore.gui.research.unlocks")).pos(INSET + 140, 46).name("unlocks_label"));
-        addItemRow(detail, INSET + 140, 57, ResearchTreeGui::unlockedAt, 4, "unlock_item");
+                new TextWidget<>(Text.lang("wfcore.gui.research.unlocks")).pos(INSET + 140, 50).name("unlocks_label"));
+        // Unlocks are clickable: a click opens the recipe viewer (JEI) page for that item.
+        addItemRow(detail, INSET + 140, 61, ResearchTreeGui::unlockedAt, 4, "unlock_item", true);
 
-        addProgressBar(detail, mte, INSET, 110, innerW, 6);
+        addProgressBar(detail, mte, INSET, 116, innerW, 6);
         return detail;
     }
 
@@ -864,7 +916,7 @@ public final class ResearchTreeGui {
 
         ButtonWidget<?> button = new ButtonWidget<>();
         button.name("action_button");
-        button.pos(INSET, 90).size(108, 16).syncHandler("research_action", 0);
+        button.pos(INSET, 94).size(108, 16).syncHandler("research_action", 0);
         button.background(new Rectangle().color(COLOR_BUTTON_DISABLED));
 
         ParentWidget<?> activeFill = new ParentWidget<>();
@@ -971,10 +1023,10 @@ public final class ResearchTreeGui {
 
     /// ///////////////// bottom-right queue strip ////////////////////
 
-    private static ParentWidget<?> buildQueue(ResearchUnitMachine mte, PanelSyncManager sync) {
+    private static ParentWidget<?> buildQueue(ResearchUnitMachine mte, PanelSyncManager sync, Layout layout) {
         ParentWidget<?> queue = new ParentWidget<>();
         queue.name("queue");
-        queue.pos(QUEUE_X, QUEUE_Y).size(QUEUE_W, QUEUE_H);
+        queue.pos(QUEUE_X, layout.queueY()).size(QUEUE_W, QUEUE_H);
         queue.background(GuiTextures.MC_BACKGROUND);
         queue.child(new TextWidget<>(Text.lang("wfcore.gui.research.queue")).pos(INSET, 4).name("queue_label"));
 
@@ -1012,10 +1064,10 @@ public final class ResearchTreeGui {
      * The dark GT "display" screen below the queue, showing the controller's live machine status: available
      * compute, parallel job capacity, how many jobs are active, and a coloured working/idling/paused line.
      */
-    private static ParentWidget<?> buildScreen(ResearchUnitMachine mte) {
+    private static ParentWidget<?> buildScreen(ResearchUnitMachine mte, Layout layout) {
         ParentWidget<?> screen = new ParentWidget<>();
         screen.name("status_screen");
-        screen.pos(SCREEN_X, SCREEN_Y).size(SCREEN_W, SCREEN_H);
+        screen.pos(SCREEN_X, layout.screenY()).size(SCREEN_W, layout.screenH());
         screen.background(GuiTextures.DISPLAY);
 
         int lh = 12;
@@ -1096,16 +1148,68 @@ public final class ResearchTreeGui {
 
     private static void addItemRow(ParentWidget<?> detail, int x, int y, IntFunction<ItemStack> provider, int count,
                                    String nameTag) {
+        addItemRow(detail, x, y, provider, count, nameTag, false);
+    }
+
+    /**
+     * A row of {@code count} item sprites, each with a full vanilla-style tooltip. When {@code viewRecipeOnClick}
+     * is set they're clickable buttons that open the recipe-viewer (JEI) page for the hovered item and hint as
+     * much in their tooltip; otherwise they're plain (non-interactive) cost sprites.
+     */
+    private static void addItemRow(ParentWidget<?> detail, int x, int y, IntFunction<ItemStack> provider, int count,
+                                   String nameTag, boolean viewRecipeOnClick) {
         for (int i = 0; i < count; i++) {
             final int idx = i;
-            ParentWidget<?> sprite = itemIcon(() -> provider.apply(idx), 16);
-            sprite.name(nameTag + "_" + idx).pos(x + i * 17, y);
-            sprite.tooltipDynamic(t -> {
+            if (!viewRecipeOnClick) {
+                ParentWidget<?> sprite = itemIcon(() -> provider.apply(idx), 16);
+                sprite.name(nameTag + "_" + idx).pos(x + i * 17, y);
+                sprite.tooltipDynamic(t -> appendItemTooltip(t, provider.apply(idx), false)).tooltipAutoUpdate(true);
+                detail.child(sprite);
+                continue;
+            }
+            ButtonWidget<?> btn = new ButtonWidget<>();
+            btn.name(nameTag + "_" + idx).pos(x + i * 17, y).size(16, 16);
+            btn.background(clickableHighlight(btn));
+            btn.overlay(itemIconDrawable(() -> provider.apply(idx)).asIcon().size(16));
+            btn.tooltipDynamic(t -> appendItemTooltip(t, provider.apply(idx), true)).tooltipAutoUpdate(true);
+            btn.onMousePressed((context, button) -> {
                 ItemStack s = provider.apply(idx);
-                if (!s.isEmpty()) t.addLine(Text.of(s.getHoverName()));
-            }).tooltipAutoUpdate(true);
-            detail.child(sprite);
+                if (s.isEmpty()) return false;
+                RecipeViewerBridge.showRecipes(s);
+                return true;
+            });
+            detail.child(btn);
         }
+    }
+
+    /**
+     * Adds a stack's full vanilla-style tooltip (name, per-run count, and the item's own description lines) to a
+     * research cost/unlock icon, so hovering a material or an unlock reads exactly like hovering the real item.
+     * When {@code viewRecipe} is set a "click to view recipe" hint is appended.
+     */
+    private static void appendItemTooltip(RichTooltip t, ItemStack stack, boolean viewRecipe) {
+        if (stack.isEmpty()) return;
+        List<Component> lines = ResearchGuiClient.itemTooltip(stack);
+        for (int i = 0; i < lines.size(); i++) {
+            Component line = lines.get(i);
+            if (i == 0 && stack.getCount() > 1) {
+                line = line.copy().append(Component.literal("  ×" + stack.getCount())
+                        .withStyle(net.minecraft.ChatFormatting.GRAY));
+            }
+            t.addLine(Text.of(line));
+        }
+        if (viewRecipe) {
+            t.spaceLine(2);
+            t.addLine(Text.lang("wfcore.gui.research.view_recipe_hint"));
+        }
+    }
+
+    /** A transparent background that only lights up (translucent white) while the widget is hovered. */
+    private static IDrawable clickableHighlight(IWidget widget) {
+        Rectangle hover = new Rectangle().color(COLOR_NODE_HOVER);
+        return (ctx, x, y, w, h, theme) -> {
+            if (widget.isHovering()) hover.draw(ctx, x, y, w, h, theme);
+        };
     }
 
     /** A row of {@code count} fluid-cost sprites for the selected research, each with a name + amount tooltip. */
@@ -1165,6 +1269,12 @@ public final class ResearchTreeGui {
         return Math.min(99, (int) Math.round(progress * 100.0));
     }
 
+    /** Formats a tick duration as a compact "Xs" or "Ym Zs" string for the step-length tooltips. */
+    private static String formatDuration(int ticks) {
+        int secs = Math.max(0, ticks) / 20;
+        return secs < 60 ? secs + "s" : (secs / 60) + "m " + (secs % 60) + "s";
+    }
+
     private static ItemStack queueIcon(ResearchUnitMachine mte, int slot) {
         List<String> q = mte.getClientQueue();
         if (slot >= q.size()) return ItemStack.EMPTY;
@@ -1175,9 +1285,17 @@ public final class ResearchTreeGui {
     private static ItemStack inputPerRunAt(int i) {
         Research r = selected();
         if (r == null) return ItemStack.EMPTY;
-        List<com.norwood.wfcore.api.research.ResearchInput> inputs = r.getItemInputs();
+        List<ResearchInput> inputs = r.getItemInputs();
+        if (i >= inputs.size()) return ItemStack.EMPTY;
+        ResearchInput in = inputs.get(i);
         // cyclingStack rotates through all tag members (~1/s) for tag costs; a single stack for exact costs.
-        return i < inputs.size() ? inputs.get(i).cyclingStack() : ItemStack.EMPTY;
+        ItemStack stack = in.cyclingStack();
+        if (stack.isEmpty()) return ItemStack.EMPTY;
+        // Copy so the registry's display stack isn't mutated, then stamp the per-run count so it shows on the
+        // icon and in the tooltip.
+        ItemStack shown = stack.copy();
+        shown.setCount(in.count());
+        return shown;
     }
 
     private static FluidStack fluidPerRunAt(int i) {

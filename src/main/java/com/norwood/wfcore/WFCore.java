@@ -100,6 +100,7 @@ public class WFCore {
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.loot.WFLootEvents());
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.ballistics.BallisticsEvents());
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.integration.superbwarfare.DroneUpgradeBay.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.diagnostics.server.DiagnosticsService.INSTANCE);
 
         WF_MACHINES.registerRegistrate();
 
@@ -152,6 +153,7 @@ public class WFCore {
                     com.norwood.wfcore.common.tool.BoltGunConversions.size());
             // com.norwood.wfcore.common.research.WFResearches.registerTest();
             WFRecipeConditions.init();
+            com.norwood.wfcore.diagnostics.DiagNet.register();
             TaczBallisticsIntegration.register();
             SbwBallisticsIntegration.register();
             com.norwood.wfcore.integration.superbwarfare.DroneUpgradeBay.registerOverrides();

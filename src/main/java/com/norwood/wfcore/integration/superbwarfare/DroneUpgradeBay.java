@@ -17,7 +17,6 @@ import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.norwood.wfcore.SuperbOverrides;
 import com.norwood.wfcore.WFCore;
 
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -42,6 +41,15 @@ public final class DroneUpgradeBay {
     private static final String LUCAS_DRONE = DRONE_MOD_ID + ":lucas_drone";
     private static final int SLOTS = 6;
 
+
+    private static final int LUCAS_FUEL_CAPACITY = 4000;
+    private static final Map<ResourceLocation, Float> LUCAS_FUELS = Map.of(
+            new ResourceLocation("gtceu", "gasoline"), 1.5f,
+            new ResourceLocation("gtceu", "high_octane_gasoline"), 2.0f,
+            new ResourceLocation("gtceu", "diesel"), 1.0f,
+            new ResourceLocation("gtceu", "bio_diesel"), 1.0f,
+            new ResourceLocation("gtceu", "light_fuel"), 0.8f);
+
     /** Items a drone upgrade bay accepts (see {@code data/wfcore/tags/items/drone_upgrades.json}). */
     public static final TagKey<Item> DRONE_UPGRADES = TagKey.create(Registries.ITEM, WFCore.id("drone_upgrades"));
 
@@ -55,12 +63,11 @@ public final class DroneUpgradeBay {
         if (!ModList.get().isLoaded(DRONE_MOD_ID)) {
             return;
         }
-        for (String id : List.of(FPV_DRONE, LUCAS_DRONE)) {
-            // No fuel override (empty fluid map): drones keep their own energy; we only add filtered storage.
-            SuperbOverrides.registerOverride(id,
-                    new SuperbOverrides.OverrideData(0, Map.of(), SLOTS, SLOTS, DRONE_UPGRADES));
-        }
-        WFCore.LOGGER.info("Registered {}-slot drone upgrade bay for FPV + LUCAS drones", SLOTS);
+        SuperbOverrides.registerOverride(FPV_DRONE,
+                new SuperbOverrides.OverrideData(0, Map.of(), SLOTS, SLOTS, DRONE_UPGRADES));
+        SuperbOverrides.registerOverride(LUCAS_DRONE,
+                new SuperbOverrides.OverrideData(LUCAS_FUEL_CAPACITY, LUCAS_FUELS, SLOTS, SLOTS, null));
+        WFCore.LOGGER.info("Registered drone bays: FPV (energy, upgrades-only), LUCAS (fuel override, open bay)");
     }
 
     /**
@@ -83,9 +90,8 @@ public final class DroneUpgradeBay {
             return;
         }
         ResourceLocation key = ForgeRegistries.ENTITY_TYPES.getKey(target.getType());
-        SuperbOverrides.OverrideData override = key == null ? null : SuperbOverrides.getOverride(key.toString());
-        // Only vehicles configured with an upgrade-bay (a storage filter) open this way — i.e. the drones.
-        if (override == null || !override.hasStorageFilter()) {
+        String id = key == null ? null : key.toString();
+        if (!FPV_DRONE.equals(id) && !LUCAS_DRONE.equals(id)) {
             return;
         }
         if (!player.level().isClientSide) {
