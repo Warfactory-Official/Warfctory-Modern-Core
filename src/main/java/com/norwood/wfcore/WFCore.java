@@ -101,6 +101,7 @@ public class WFCore {
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.ballistics.BallisticsEvents());
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.integration.superbwarfare.DroneUpgradeBay.INSTANCE);
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.diagnostics.server.DiagnosticsService.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.diagnostics.server.ModAuditService.INSTANCE);
 
         WF_MACHINES.registerRegistrate();
 

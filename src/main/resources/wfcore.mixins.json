@@ -24,7 +24,8 @@
     "EntityKineticBulletAccessor",
     "NoBrewingMixin",
     "WFBallisticsGasMaskMixin",
-    "AmmoConsumerToItemMixin"
+    "AmmoConsumerToItemMixin",
+    "DronePayloadVehicleDetectionMixin"
   ],
   "client": [
     "NamePlateMixin",

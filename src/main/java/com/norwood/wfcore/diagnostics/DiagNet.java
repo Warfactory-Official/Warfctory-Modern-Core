@@ -45,9 +45,21 @@ public final class DiagNet {
         CHANNEL.registerMessage(2, DiagChunkMessage.class,
                 DiagChunkMessage::write, DiagChunkMessage::read, DiagChunkMessage::handle,
                 Optional.of(NetworkDirection.PLAY_TO_SERVER));
+
+        CHANNEL.registerMessage(3, ModListRequestMessage.class,
+                ModListRequestMessage::write, ModListRequestMessage::read, ModListRequestMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+        CHANNEL.registerMessage(4, ModReportMessage.class,
+                ModReportMessage::write, ModReportMessage::read, ModReportMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
     }
 
     public static void sendToClient(ServerPlayer player, DiagRequestMessage message) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    public static void sendModListRequest(ServerPlayer player, ModListRequestMessage message) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
     }
 }

@@ -37,6 +37,10 @@ public final class WFCoreConfig {
     private static final int DEFAULT_DIAG_CAPTURE_TIMEOUT_SECONDS = 15;
     private static final int DEFAULT_DIAG_CHUNK_SIZE = 262144;
     private static final double DEFAULT_DIAG_MIN_VARIANCE = 6.0;
+    private static final boolean DEFAULT_MOD_AUDIT_ENABLED = false;
+    private static final String DEFAULT_MOD_AUDIT_WEBHOOK_URL = "";
+    private static final int DEFAULT_MOD_AUDIT_TIMEOUT_SECONDS = 20;
+    private static final boolean DEFAULT_MOD_AUDIT_FLAG_MISSING = false;
 
     // -------------------------------------------------------------------------
     // Volatile cache fields — pre-initialised to defaults so getters are safe
@@ -69,6 +73,10 @@ public final class WFCoreConfig {
     private static volatile int diagCaptureTimeoutSeconds = DEFAULT_DIAG_CAPTURE_TIMEOUT_SECONDS;
     private static volatile int diagChunkSize = DEFAULT_DIAG_CHUNK_SIZE;
     private static volatile double diagMinVariance = DEFAULT_DIAG_MIN_VARIANCE;
+    private static volatile boolean modAuditEnabled = DEFAULT_MOD_AUDIT_ENABLED;
+    private static volatile String modAuditWebhookUrl = DEFAULT_MOD_AUDIT_WEBHOOK_URL;
+    private static volatile int modAuditTimeoutSeconds = DEFAULT_MOD_AUDIT_TIMEOUT_SECONDS;
+    private static volatile boolean modAuditFlagMissing = DEFAULT_MOD_AUDIT_FLAG_MISSING;
 
     // -------------------------------------------------------------------------
     // ForgeConfigSpec handles
@@ -94,6 +102,10 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.IntValue DIAG_CAPTURE_TIMEOUT_SECONDS;
     private static final ForgeConfigSpec.IntValue DIAG_CHUNK_SIZE;
     private static final ForgeConfigSpec.DoubleValue DIAG_MIN_VARIANCE;
+    private static final ForgeConfigSpec.BooleanValue MOD_AUDIT_ENABLED;
+    private static final ForgeConfigSpec.ConfigValue<String> MOD_AUDIT_WEBHOOK_URL;
+    private static final ForgeConfigSpec.IntValue MOD_AUDIT_TIMEOUT_SECONDS;
+    private static final ForgeConfigSpec.BooleanValue MOD_AUDIT_FLAG_MISSING;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MIN;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MAX;
     private static final ForgeConfigSpec.BooleanValue DEPOSIT_WORLDGEN_ENABLED;
@@ -247,6 +259,31 @@ public final class WFCoreConfig {
 
         builder.pop();
 
+        builder.comment(
+                "Soft client-mod integrity audit. On join the server asks the client to hash its mods-folder jars and",
+                "compares them to config/wfcore-modmanifest.json (fileName -> sha256, regenerated per pack build).",
+                "Anything unknown or modified is FLAGGED (log + operator message + optional Discord webhook) but NEVER",
+                "kicked - a newer build is plausible, so an admin reviews. Hard mod validation stays with the anticheat.")
+                .push("clientModAudit");
+
+        MOD_AUDIT_ENABLED = builder
+                .comment("Master switch. When off, no request is sent on join and inbound reports are ignored.")
+                .define("enabled", DEFAULT_MOD_AUDIT_ENABLED);
+
+        MOD_AUDIT_WEBHOOK_URL = builder
+                .comment("Discord webhook URL for flag notifications. Leave blank to log + notify in-game operators only.")
+                .define("webhookUrl", DEFAULT_MOD_AUDIT_WEBHOOK_URL);
+
+        MOD_AUDIT_TIMEOUT_SECONDS = builder
+                .comment("How long (seconds) to wait for a client's mod report before flagging that it never arrived.")
+                .defineInRange("reportTimeoutSeconds", DEFAULT_MOD_AUDIT_TIMEOUT_SECONDS, 1, 300);
+
+        MOD_AUDIT_FLAG_MISSING = builder
+                .comment("Also flag manifest jars a client did NOT report (stripped mods). Off by default to reduce noise.")
+                .define("flagMissing", DEFAULT_MOD_AUDIT_FLAG_MISSING);
+
+        builder.pop();
+
         SPEC = builder.build();
     }
 
@@ -379,6 +416,26 @@ public final class WFCoreConfig {
         return diagMinVariance;
     }
 
+    /** Master switch for the soft client-mod integrity audit (hash report vs manifest, flag-only). */
+    public static boolean isModAuditEnabled() {
+        return modAuditEnabled;
+    }
+
+    /** Discord webhook URL for mod-audit flags, or blank to log + notify in-game operators only. */
+    public static String getModAuditWebhookUrl() {
+        return modAuditWebhookUrl;
+    }
+
+    /** How long (seconds) to wait for a client's mod report before flagging its absence. */
+    public static int getModAuditTimeoutSeconds() {
+        return modAuditTimeoutSeconds;
+    }
+
+    /** When true, also flag manifest jars a client did not report (stripped mods). */
+    public static boolean isModAuditFlagMissing() {
+        return modAuditFlagMissing;
+    }
+
     // -------------------------------------------------------------------------
     // Bake — called by WFCore on ModConfigEvent
     // -------------------------------------------------------------------------
@@ -405,6 +462,10 @@ public final class WFCoreConfig {
         diagCaptureTimeoutSeconds = DIAG_CAPTURE_TIMEOUT_SECONDS.get();
         diagChunkSize = DIAG_CHUNK_SIZE.get();
         diagMinVariance = DIAG_MIN_VARIANCE.get();
+        modAuditEnabled = MOD_AUDIT_ENABLED.get();
+        modAuditWebhookUrl = MOD_AUDIT_WEBHOOK_URL.get();
+        modAuditTimeoutSeconds = MOD_AUDIT_TIMEOUT_SECONDS.get();
+        modAuditFlagMissing = MOD_AUDIT_FLAG_MISSING.get();
         depositYieldMin = DEPOSIT_YIELD_MIN.get();
         depositYieldMax = Math.max(DEPOSIT_YIELD_MAX.get(), depositYieldMin);
         depositWorldgenEnabled = DEPOSIT_WORLDGEN_ENABLED.get();
