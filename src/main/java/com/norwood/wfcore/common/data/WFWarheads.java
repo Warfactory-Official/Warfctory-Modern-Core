@@ -150,10 +150,10 @@ public final class WFWarheads {
     private record EmpEffect(int chargeLockSeconds, boolean drainEnergy, boolean pauseWork, boolean breakMaintenance) {}
 
     // Full-spectrum disable for the area/cluster EMPs: drain energy, pause work, break maintenance, 10s charge lock.
-    private static final EmpEffect EMP_FULL = new EmpEffect(10, true, true, true);
+    private static final EmpEffect EMP_FULL = new EmpEffect(90, true, true, true);
     // The lance ONLY pauses ("mallets") the machine — no energy drain, no maintenance break, no charge lock.
-    private static final EmpEffect EMP_STANDARD = new EmpEffect(10, true, false, false);
-    private static final EmpEffect EMP_LONG = new EmpEffect(20, true, false, true);
+    private static final EmpEffect EMP_STANDARD = new EmpEffect(30, true, false, false);
+    private static final EmpEffect EMP_LONG = new EmpEffect(60, true, false, true);
 
     // A small EMP burst carried by each emp-cluster bomblet (registered so it survives bomblet save/load).
     private static final WarheadRegistry.Detonation EMP_BOMBLET_DET = (source, pos) -> empBlast(source.level(), pos, 10, EMP_STANDARD);

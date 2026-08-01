@@ -227,6 +227,9 @@ dependencies {
     modRuntimeOnly("curse.maven:geckolib-388172:8285794")
     modCompileOnly("curse.maven:geckolib-388172:8285794") { transitive = false }
     compileOnly files("libs/sbwdroneconfig-1.0.2.jar")
+    // True Darkness (client-only render mod, CurseForge 970641). Compile-only so the Mixin AP can resolve
+    // grondag.darkness.Darkness for DarknessConfigLockMixin; delivered at runtime by the pack, not this build.
+    compileOnly files("libs/darkness-forge-1.20.1-2.0.103-fork.jar")
     modCompileOnly("curse.maven:reforgedplay-mod-1018692:5637596") { transitive = false }
     if (project.hasProperty('replayTest')) {
         modRuntimeOnly("curse.maven:reforgedplay-mod-1018692:5637596") { transitive = false }

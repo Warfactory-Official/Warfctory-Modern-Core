@@ -46,7 +46,8 @@
     "ReplayPlaybackGateMixin",
     "PlayerTabRankMixin",
     "ForceFirstPersonCameraMixin",
-    "SodayoRocketShellBoundsMixin"
+    "SodayoRocketShellBoundsMixin",
+    "DarknessConfigLockMixin"
   ],
   "injectors": {
     "defaultRequire": 1

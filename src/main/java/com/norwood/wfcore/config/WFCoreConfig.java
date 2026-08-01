@@ -3,6 +3,11 @@ package com.norwood.wfcore.config;
 import net.minecraftforge.common.ForgeConfigSpec;
 
 import com.norwood.wfcore.WFCore;
+import com.norwood.wfcore.common.chat.FilterAction;
+import com.norwood.wfcore.common.darkness.DarknessEnforcement;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public final class WFCoreConfig {
 
@@ -41,6 +46,27 @@ public final class WFCoreConfig {
     private static final String DEFAULT_MOD_AUDIT_WEBHOOK_URL = "";
     private static final int DEFAULT_MOD_AUDIT_TIMEOUT_SECONDS = 20;
     private static final boolean DEFAULT_MOD_AUDIT_FLAG_MISSING = false;
+    private static final boolean DEFAULT_TRUE_DARKNESS_ENABLED = true;
+    private static final boolean DEFAULT_TRUE_DARKNESS_BLOCK_LIGHT_ONLY = false;
+    private static final boolean DEFAULT_TRUE_DARKNESS_IGNORE_MOON_PHASE = true;
+    private static final boolean DEFAULT_TRUE_DARKNESS_DARK_OVERWORLD = true;
+    private static final boolean DEFAULT_TRUE_DARKNESS_DARK_NETHER = true;
+    private static final boolean DEFAULT_TRUE_DARKNESS_DARK_END = true;
+    private static final boolean DEFAULT_TRUE_DARKNESS_DARK_DEFAULT = true;
+    private static final boolean DEFAULT_TRUE_DARKNESS_DARK_SKYLESS = false;
+    private static final double DEFAULT_TRUE_DARKNESS_NETHER_FOG = 0.5;
+    private static final double DEFAULT_TRUE_DARKNESS_END_FOG = 0.0;
+    private static final boolean DEFAULT_CHAT_MODERATION_ENABLED = true;
+    private static final boolean DEFAULT_CHAT_FILTER_ENABLED = true;
+    private static final FilterAction DEFAULT_CHAT_FILTER_ACTION = FilterAction.CENSOR;
+    private static final boolean DEFAULT_CHAT_FILTER_WHOLE_WORD = false;
+    private static final boolean DEFAULT_CHAT_FILTER_CASE_SENSITIVE = false;
+    private static final String DEFAULT_CHAT_CENSOR_CHAR = "*";
+    private static final boolean DEFAULT_CHAT_FILTER_NOTIFY_SENDER = true;
+    private static final boolean DEFAULT_CHAT_FILTER_EXEMPT_OPS = true;
+    private static final boolean DEFAULT_MAINTENANCE_ENABLED = false;
+    private static final String DEFAULT_MAINTENANCE_KICK_MESSAGE =
+            "The server is currently down for maintenance. Only operators can join right now.";
 
     // -------------------------------------------------------------------------
     // Volatile cache fields — pre-initialised to defaults so getters are safe
@@ -77,6 +103,27 @@ public final class WFCoreConfig {
     private static volatile String modAuditWebhookUrl = DEFAULT_MOD_AUDIT_WEBHOOK_URL;
     private static volatile int modAuditTimeoutSeconds = DEFAULT_MOD_AUDIT_TIMEOUT_SECONDS;
     private static volatile boolean modAuditFlagMissing = DEFAULT_MOD_AUDIT_FLAG_MISSING;
+    private static volatile boolean trueDarknessEnabled = DEFAULT_TRUE_DARKNESS_ENABLED;
+    private static volatile boolean trueDarknessBlockLightOnly = DEFAULT_TRUE_DARKNESS_BLOCK_LIGHT_ONLY;
+    private static volatile boolean trueDarknessIgnoreMoonPhase = DEFAULT_TRUE_DARKNESS_IGNORE_MOON_PHASE;
+    private static volatile boolean trueDarknessDarkOverworld = DEFAULT_TRUE_DARKNESS_DARK_OVERWORLD;
+    private static volatile boolean trueDarknessDarkNether = DEFAULT_TRUE_DARKNESS_DARK_NETHER;
+    private static volatile boolean trueDarknessDarkEnd = DEFAULT_TRUE_DARKNESS_DARK_END;
+    private static volatile boolean trueDarknessDarkDefault = DEFAULT_TRUE_DARKNESS_DARK_DEFAULT;
+    private static volatile boolean trueDarknessDarkSkyless = DEFAULT_TRUE_DARKNESS_DARK_SKYLESS;
+    private static volatile double trueDarknessNetherFog = DEFAULT_TRUE_DARKNESS_NETHER_FOG;
+    private static volatile double trueDarknessEndFog = DEFAULT_TRUE_DARKNESS_END_FOG;
+    private static volatile boolean chatModerationEnabled = DEFAULT_CHAT_MODERATION_ENABLED;
+    private static volatile boolean chatFilterEnabled = DEFAULT_CHAT_FILTER_ENABLED;
+    private static volatile FilterAction chatFilterAction = DEFAULT_CHAT_FILTER_ACTION;
+    private static volatile boolean chatFilterWholeWord = DEFAULT_CHAT_FILTER_WHOLE_WORD;
+    private static volatile boolean chatFilterCaseSensitive = DEFAULT_CHAT_FILTER_CASE_SENSITIVE;
+    private static volatile String chatCensorChar = DEFAULT_CHAT_CENSOR_CHAR;
+    private static volatile boolean chatFilterNotifySender = DEFAULT_CHAT_FILTER_NOTIFY_SENDER;
+    private static volatile boolean chatFilterExemptOps = DEFAULT_CHAT_FILTER_EXEMPT_OPS;
+    private static volatile List<String> chatBlacklist = List.of();
+    private static volatile boolean maintenanceEnabled = DEFAULT_MAINTENANCE_ENABLED;
+    private static volatile String maintenanceKickMessage = DEFAULT_MAINTENANCE_KICK_MESSAGE;
 
     // -------------------------------------------------------------------------
     // ForgeConfigSpec handles
@@ -106,12 +153,33 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.ConfigValue<String> MOD_AUDIT_WEBHOOK_URL;
     private static final ForgeConfigSpec.IntValue MOD_AUDIT_TIMEOUT_SECONDS;
     private static final ForgeConfigSpec.BooleanValue MOD_AUDIT_FLAG_MISSING;
+    private static final ForgeConfigSpec.BooleanValue TRUE_DARKNESS_ENABLED;
+    private static final ForgeConfigSpec.BooleanValue TRUE_DARKNESS_BLOCK_LIGHT_ONLY;
+    private static final ForgeConfigSpec.BooleanValue TRUE_DARKNESS_IGNORE_MOON_PHASE;
+    private static final ForgeConfigSpec.BooleanValue TRUE_DARKNESS_DARK_OVERWORLD;
+    private static final ForgeConfigSpec.BooleanValue TRUE_DARKNESS_DARK_NETHER;
+    private static final ForgeConfigSpec.BooleanValue TRUE_DARKNESS_DARK_END;
+    private static final ForgeConfigSpec.BooleanValue TRUE_DARKNESS_DARK_DEFAULT;
+    private static final ForgeConfigSpec.BooleanValue TRUE_DARKNESS_DARK_SKYLESS;
+    private static final ForgeConfigSpec.DoubleValue TRUE_DARKNESS_NETHER_FOG;
+    private static final ForgeConfigSpec.DoubleValue TRUE_DARKNESS_END_FOG;
+    private static final ForgeConfigSpec.BooleanValue CHAT_MODERATION_ENABLED;
+    private static final ForgeConfigSpec.BooleanValue CHAT_FILTER_ENABLED;
+    private static final ForgeConfigSpec.EnumValue<FilterAction> CHAT_FILTER_ACTION;
+    private static final ForgeConfigSpec.BooleanValue CHAT_FILTER_WHOLE_WORD;
+    private static final ForgeConfigSpec.BooleanValue CHAT_FILTER_CASE_SENSITIVE;
+    private static final ForgeConfigSpec.ConfigValue<String> CHAT_CENSOR_CHAR;
+    private static final ForgeConfigSpec.BooleanValue CHAT_FILTER_NOTIFY_SENDER;
+    private static final ForgeConfigSpec.BooleanValue CHAT_FILTER_EXEMPT_OPS;
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> CHAT_BLACKLIST;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MIN;
     private static final ForgeConfigSpec.IntValue DEPOSIT_YIELD_MAX;
     private static final ForgeConfigSpec.BooleanValue DEPOSIT_WORLDGEN_ENABLED;
     private static final ForgeConfigSpec.BooleanValue DEPOSIT_SCATTER;
     private static final ForgeConfigSpec.IntValue DEPOSIT_WORLDGEN_RARITY;
     private static final ForgeConfigSpec.BooleanValue DEPOSIT_LOG_PLACEMENTS;
+    private static final ForgeConfigSpec.BooleanValue MAINTENANCE_ENABLED;
+    private static final ForgeConfigSpec.ConfigValue<String> MAINTENANCE_KICK_MESSAGE;
 
     public static final ForgeConfigSpec SPEC;
 
@@ -284,6 +352,122 @@ public final class WFCoreConfig {
 
         builder.pop();
 
+        builder.comment(
+                "Server-enforced True Darkness (mod 'darkness'). True Darkness is a client-only render mod whose",
+                "settings a player could otherwise change via config/darkness.properties or its in-game config",
+                "screen. WFCore pins these values into the mod every frame and, on a server, pushes THIS section to",
+                "each client on join so the server's copy wins over the client's own. Editing darkness.properties or",
+                "the config screen then has no effect.")
+                .push("trueDarkness");
+
+        TRUE_DARKNESS_ENABLED = builder
+                .comment("Master switch. When off, WFCore stops enforcing and True Darkness falls back to its own config.")
+                .define("enabled", DEFAULT_TRUE_DARKNESS_ENABLED);
+
+        TRUE_DARKNESS_BLOCK_LIGHT_ONLY = builder
+                .comment("Only darken block light; areas lit by the sky stay lit. false = full darkness even under open sky at night.")
+                .define("blockLightOnly", DEFAULT_TRUE_DARKNESS_BLOCK_LIGHT_ONLY);
+
+        TRUE_DARKNESS_IGNORE_MOON_PHASE = builder
+                .comment("Night is fully dark regardless of moon phase. false = a full moon lightens the night.")
+                .define("ignoreMoonPhase", DEFAULT_TRUE_DARKNESS_IGNORE_MOON_PHASE);
+
+        TRUE_DARKNESS_DARK_OVERWORLD = builder
+                .comment("Enable the darkness effect in the Overworld.")
+                .define("darkOverworld", DEFAULT_TRUE_DARKNESS_DARK_OVERWORLD);
+
+        TRUE_DARKNESS_DARK_NETHER = builder
+                .comment("Enable the darkness effect in the Nether (moot while the Nether is disabled).")
+                .define("darkNether", DEFAULT_TRUE_DARKNESS_DARK_NETHER);
+
+        TRUE_DARKNESS_DARK_END = builder
+                .comment("Enable the darkness effect in The End.")
+                .define("darkEnd", DEFAULT_TRUE_DARKNESS_DARK_END);
+
+        TRUE_DARKNESS_DARK_DEFAULT = builder
+                .comment("Enable the darkness effect in modded dimensions that have a sky.")
+                .define("darkDefault", DEFAULT_TRUE_DARKNESS_DARK_DEFAULT);
+
+        TRUE_DARKNESS_DARK_SKYLESS = builder
+                .comment("Enable the darkness effect in modded dimensions with no sky. Off by default to avoid breaking mining/utility dimensions.")
+                .define("darkSkyless", DEFAULT_TRUE_DARKNESS_DARK_SKYLESS);
+
+        TRUE_DARKNESS_NETHER_FOG = builder
+                .comment("Nether fog brightness floor (0 = darkest, 1 = vanilla). Only applies while darkNether is on.")
+                .defineInRange("netherFog", DEFAULT_TRUE_DARKNESS_NETHER_FOG, 0.0, 1.0);
+
+        TRUE_DARKNESS_END_FOG = builder
+                .comment("End fog brightness floor (0 = darkest, 1 = vanilla). Only applies while darkEnd is on.")
+                .defineInRange("endFog", DEFAULT_TRUE_DARKNESS_END_FOG, 0.0, 1.0);
+
+        builder.pop();
+
+        builder.comment(
+                "Server-side chat moderation. Mutes are managed in-game with /wfcore_chat (op level 2) and persist",
+                "in the world save; the word blacklist below is merged with any words added via",
+                "/wfcore_chat filter add. Hooks player chat only - it does not touch /me, /say or /msg.")
+                .push("chatModeration");
+
+        CHAT_MODERATION_ENABLED = builder
+                .comment("Master switch. When off, chat is never intercepted: no mutes and no filtering apply.")
+                .define("enabled", DEFAULT_CHAT_MODERATION_ENABLED);
+
+        builder.comment("Blacklist word/phrase filter applied to every chat message.").push("filter");
+
+        CHAT_FILTER_ENABLED = builder
+                .comment("Enable the blacklist filter. Mutes still work when this is off.")
+                .define("enabled", DEFAULT_CHAT_FILTER_ENABLED);
+
+        CHAT_FILTER_ACTION = builder
+                .comment("What to do with a message that contains a blacklisted word:",
+                        "BLOCK = cancel the whole message; CENSOR = replace only the offending word(s).")
+                .defineEnum("action", DEFAULT_CHAT_FILTER_ACTION);
+
+        CHAT_BLACKLIST = builder
+                .comment("Blacklisted words/phrases. Example: blacklist = [\"badword\", \"a nasty phrase\"].",
+                        "Matched case-insensitively unless caseSensitive is true.")
+                .defineList("blacklist", List.of(), o -> o instanceof String);
+
+        CHAT_FILTER_WHOLE_WORD = builder
+                .comment("Match whole words only. true: \"ass\" ignores \"class\". false: substring match (more",
+                        "aggressive, catches embedded/leetspeak but risks false positives like Scunthorpe).")
+                .define("matchWholeWord", DEFAULT_CHAT_FILTER_WHOLE_WORD);
+
+        CHAT_FILTER_CASE_SENSITIVE = builder
+                .comment("Match case exactly. Usually false so BadWord and badword both trip the filter.")
+                .define("caseSensitive", DEFAULT_CHAT_FILTER_CASE_SENSITIVE);
+
+        CHAT_CENSOR_CHAR = builder
+                .comment("Character a censored word is replaced with (CENSOR action). First character is used.")
+                .define("censorChar", DEFAULT_CHAT_CENSOR_CHAR);
+
+        CHAT_FILTER_NOTIFY_SENDER = builder
+                .comment("Privately tell the sender when their message was blocked or censored.")
+                .define("notifySender", DEFAULT_CHAT_FILTER_NOTIFY_SENDER);
+
+        CHAT_FILTER_EXEMPT_OPS = builder
+                .comment("Players with op permission level >= 2 bypass the filter (mutes still apply to them).")
+                .define("exemptOps", DEFAULT_CHAT_FILTER_EXEMPT_OPS);
+
+        builder.pop(2);
+
+        builder.comment(
+                "Maintenance mode. While enabled, only server operators may be connected: non-operators are kicked",
+                "on join, and any non-operators already online are kicked the moment it is switched on. Toggle it",
+                "live with /wfcore maintenance on|off|status (op level 2). The 'enabled' flag below is written back",
+                "when toggled, so the lock survives a restart - the server stays locked until an operator turns it off.")
+                .push("maintenance");
+
+        MAINTENANCE_ENABLED = builder
+                .comment("Whether maintenance mode is currently active. Normally toggled via /wfcore maintenance, not edited by hand.")
+                .define("enabled", DEFAULT_MAINTENANCE_ENABLED);
+
+        MAINTENANCE_KICK_MESSAGE = builder
+                .comment("Disconnect message shown to non-operators kicked or refused while maintenance mode is active.")
+                .define("kickMessage", DEFAULT_MAINTENANCE_KICK_MESSAGE);
+
+        builder.pop();
+
         SPEC = builder.build();
     }
 
@@ -436,6 +620,130 @@ public final class WFCoreConfig {
         return modAuditFlagMissing;
     }
 
+    /** Master switch for server-enforced True Darkness. When off, True Darkness uses its own config. */
+    public static boolean isTrueDarknessEnabled() {
+        return trueDarknessEnabled;
+    }
+
+    /** When true, only block light is darkened; sky-lit areas stay lit. */
+    public static boolean isTrueDarknessBlockLightOnly() {
+        return trueDarknessBlockLightOnly;
+    }
+
+    /** When true, night is fully dark regardless of moon phase. */
+    public static boolean isTrueDarknessIgnoreMoonPhase() {
+        return trueDarknessIgnoreMoonPhase;
+    }
+
+    /** When true, the darkness effect applies in the Overworld. */
+    public static boolean isTrueDarknessDarkOverworld() {
+        return trueDarknessDarkOverworld;
+    }
+
+    /** When true, the darkness effect applies in the Nether. */
+    public static boolean isTrueDarknessDarkNether() {
+        return trueDarknessDarkNether;
+    }
+
+    /** When true, the darkness effect applies in The End. */
+    public static boolean isTrueDarknessDarkEnd() {
+        return trueDarknessDarkEnd;
+    }
+
+    /** When true, the darkness effect applies in modded dimensions with a sky. */
+    public static boolean isTrueDarknessDarkDefault() {
+        return trueDarknessDarkDefault;
+    }
+
+    /** When true, the darkness effect applies in modded dimensions with no sky. */
+    public static boolean isTrueDarknessDarkSkyless() {
+        return trueDarknessDarkSkyless;
+    }
+
+    /** Nether fog brightness floor (0 darkest .. 1 vanilla), used only while darkNether is on. */
+    public static double getTrueDarknessNetherFog() {
+        return trueDarknessNetherFog;
+    }
+
+    /** End fog brightness floor (0 darkest .. 1 vanilla), used only while darkEnd is on. */
+    public static double getTrueDarknessEndFog() {
+        return trueDarknessEndFog;
+    }
+
+    /** Master switch for server-side chat moderation (mutes + blacklist filter). */
+    public static boolean isChatModerationEnabled() {
+        return chatModerationEnabled;
+    }
+
+    /** When true, the blacklist word filter is applied to chat messages. */
+    public static boolean isChatFilterEnabled() {
+        return chatFilterEnabled;
+    }
+
+    /** Whether a blacklisted message is cancelled ({@link FilterAction#BLOCK}) or masked ({@link FilterAction#CENSOR}). */
+    public static FilterAction getChatFilterAction() {
+        return chatFilterAction;
+    }
+
+    /** When true, blacklist words match whole words only; when false, substring matches too. */
+    public static boolean isChatFilterWholeWord() {
+        return chatFilterWholeWord;
+    }
+
+    /** When true, blacklist matching is case-sensitive. */
+    public static boolean isChatFilterCaseSensitive() {
+        return chatFilterCaseSensitive;
+    }
+
+    /** The character a censored word is replaced with (first char of the configured string). */
+    public static String getChatCensorChar() {
+        return chatCensorChar;
+    }
+
+    /** When true, the sender is privately told their message was blocked or censored. */
+    public static boolean isChatFilterNotifySender() {
+        return chatFilterNotifySender;
+    }
+
+    /** When true, players with op permission level >= 2 bypass the blacklist filter. */
+    public static boolean isChatFilterExemptOps() {
+        return chatFilterExemptOps;
+    }
+
+    /** The static blacklist from {@code wfcore.toml} (merged with runtime words by the moderator). */
+    public static List<String> getChatBlacklist() {
+        return chatBlacklist;
+    }
+
+    /**
+     * When true, maintenance mode is active: only operators may be connected and everyone else is kicked on
+     * join. Toggled live via {@code /wfcore maintenance} and persisted to {@code wfcore.toml}.
+     */
+    public static boolean isMaintenanceEnabled() {
+        return maintenanceEnabled;
+    }
+
+    /** Disconnect message shown to non-operators kicked or refused while maintenance mode is active. */
+    public static String getMaintenanceKickMessage() {
+        return maintenanceKickMessage;
+    }
+
+    /**
+     * Toggle maintenance mode at runtime. Updates the cached value immediately and, when the config is
+     * loaded, writes the new state to {@code wfcore.toml} so it survives a restart. Persistence failures
+     * are logged but never block the in-memory change.
+     */
+    public static void setMaintenanceEnabled(boolean enabled) {
+        maintenanceEnabled = enabled;
+        try {
+            MAINTENANCE_ENABLED.set(enabled);
+            SPEC.save();
+        } catch (RuntimeException e) {
+            WFCore.LOGGER.warn("[wfcore-maintenance] could not persist maintenance state to wfcore.toml: {}",
+                    e.toString());
+        }
+    }
+
     // -------------------------------------------------------------------------
     // Bake — called by WFCore on ModConfigEvent
     // -------------------------------------------------------------------------
@@ -466,6 +774,36 @@ public final class WFCoreConfig {
         modAuditWebhookUrl = MOD_AUDIT_WEBHOOK_URL.get();
         modAuditTimeoutSeconds = MOD_AUDIT_TIMEOUT_SECONDS.get();
         modAuditFlagMissing = MOD_AUDIT_FLAG_MISSING.get();
+        trueDarknessEnabled = TRUE_DARKNESS_ENABLED.get();
+        trueDarknessBlockLightOnly = TRUE_DARKNESS_BLOCK_LIGHT_ONLY.get();
+        trueDarknessIgnoreMoonPhase = TRUE_DARKNESS_IGNORE_MOON_PHASE.get();
+        trueDarknessDarkOverworld = TRUE_DARKNESS_DARK_OVERWORLD.get();
+        trueDarknessDarkNether = TRUE_DARKNESS_DARK_NETHER.get();
+        trueDarknessDarkEnd = TRUE_DARKNESS_DARK_END.get();
+        trueDarknessDarkDefault = TRUE_DARKNESS_DARK_DEFAULT.get();
+        trueDarknessDarkSkyless = TRUE_DARKNESS_DARK_SKYLESS.get();
+        trueDarknessNetherFog = TRUE_DARKNESS_NETHER_FOG.get();
+        trueDarknessEndFog = TRUE_DARKNESS_END_FOG.get();
+        chatModerationEnabled = CHAT_MODERATION_ENABLED.get();
+        chatFilterEnabled = CHAT_FILTER_ENABLED.get();
+        chatFilterAction = CHAT_FILTER_ACTION.get();
+        chatFilterWholeWord = CHAT_FILTER_WHOLE_WORD.get();
+        chatFilterCaseSensitive = CHAT_FILTER_CASE_SENSITIVE.get();
+        chatCensorChar = CHAT_CENSOR_CHAR.get();
+        chatFilterNotifySender = CHAT_FILTER_NOTIFY_SENDER.get();
+        chatFilterExemptOps = CHAT_FILTER_EXEMPT_OPS.get();
+        maintenanceEnabled = MAINTENANCE_ENABLED.get();
+        maintenanceKickMessage = MAINTENANCE_KICK_MESSAGE.get();
+        List<String> blacklist = new ArrayList<>();
+        for (String word : CHAT_BLACKLIST.get()) {
+            blacklist.add(word);
+        }
+        chatBlacklist = List.copyOf(blacklist);
+        // Feed the client-side holder so single-player / no-server-support sessions still enforce locally.
+        // On a server the join packet (DarknessServerHandler) overrides this with the server's authoritative copy.
+        DarknessEnforcement.set(trueDarknessEnabled, trueDarknessBlockLightOnly, trueDarknessIgnoreMoonPhase,
+                trueDarknessDarkOverworld, trueDarknessDarkNether, trueDarknessDarkEnd, trueDarknessDarkDefault,
+                trueDarknessDarkSkyless, trueDarknessNetherFog, trueDarknessEndFog);
         depositYieldMin = DEPOSIT_YIELD_MIN.get();
         depositYieldMax = Math.max(DEPOSIT_YIELD_MAX.get(), depositYieldMin);
         depositWorldgenEnabled = DEPOSIT_WORLDGEN_ENABLED.get();
