@@ -44,7 +44,12 @@ import net.minecraft.world.phys.Vec3;
 
 import brachy.modularui.factory.BlockEntityUIFactory;
 import com.wf.wfballistics.MissileEntity;
+import com.wf.wfballistics.api.MissileData;
+import com.wf.wfballistics.api.MissileTelemetry;
+import com.wf.wfballistics.api.MissileTelemetryEvent;
+import com.wf.wfballistics.api.WFBallisticsAPI;
 import com.wf.wfballistics.compat.WarforgeCompat;
+import com.wf.wfballistics.flight.AttackProfile;
 import com.wf.wfballistics.item.MissileItem;
 import com.wf.wfballistics.item.MissilePreset;
 import org.jetbrains.annotations.Nullable;
@@ -93,6 +98,9 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     public static final float BASE_LIFT = 1.0f;
     /** Rise speed of the display missile during launch, blocks/tick (drives the exhaust trail's direction). */
     public static final double RISE_SPEED = (MUZZLE_HEIGHT - BASE_LIFT) / (double) ANIM_TICKS;
+    public static final int DEFAULT_APPROACH_JOIN_CAP = 1500;
+    public static final int MIN_APPROACH_JOIN_CAP = 64;
+    public static final int MAX_APPROACH_JOIN_CAP = 4000;
 
     public static final ManagedFieldHolder MANAGED_FIELD_HOLDER = new ManagedFieldHolder(
             MissileLauncherMachine.class, MultiblockControllerMachine.MANAGED_FIELD_HOLDER);
@@ -120,6 +128,7 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     @Persisted
     @DescSynced
     protected int targetZ;
+    @Persisted
     @DescSynced
     protected int cooldown;
     // The missile currently being launched (registry id of the consumed item), kept for the launch
@@ -131,6 +140,18 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     // Server-only: the real missile entity hasn't been spawned yet (the display is still animating up).
     @Persisted
     protected boolean pendingSpawn;
+    @Persisted
+    protected int pendingTargetX;
+    @Persisted
+    protected int pendingTargetY = Y_AUTO;
+    @Persisted
+    protected int pendingTargetZ;
+    @Persisted
+    protected String pendingAttackProfile = AttackProfile.SPEED.name();
+    @Persisted
+    protected String pendingAttackDirection = AttackDirection.AUTO.name();
+    @Persisted
+    protected int pendingApproachJoinCap = DEFAULT_APPROACH_JOIN_CAP;
     // True once the operator has picked a target (typed a coord or clicked the map). Lets the map open
     // centred on the target instead of the silo. Synced so the GUI sees it the moment it opens.
     @Persisted
@@ -142,12 +163,30 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     // colour the button and pick the status line without those fields.
     @DescSynced
     protected int displayState = LaunchState.UNFORMED.ordinal();
+    @Persisted
+    @DescSynced
+    protected String attackProfile = AttackProfile.SPEED.name();
+    @Persisted
+    @DescSynced
+    protected String attackDirection = AttackDirection.AUTO.name();
+    @Persisted
+    @DescSynced
+    protected int approachJoinCap = DEFAULT_APPROACH_JOIN_CAP;
+    @Persisted
+    @DescSynced
+    protected final TelemetrySync telemetry = new TelemetrySync();
+    @DescSynced
+    protected boolean creativeOverride;
+    @Nullable
+    protected UUID creativeOperatorId;
 
     // Stable per-silo identity stamped onto every missile it fires (its "control id"), so its own missiles
     // never intercept each other while still engaging other launchers'. Lazy-init + persisted by hand:
     // LDLib has no UUID field serializer.
     @Nullable
     protected UUID controlId;
+    @Nullable
+    protected UUID trackedMissileId;
 
     @Nullable
     protected EnergyContainerList energyContainer;
@@ -184,8 +223,43 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     //////////////////// structure lifecycle ////////////////////
 
     @Override
+    public void onLoad() {
+        super.onLoad();
+        if (!isRemote() && tickSub == null) {
+            tickSub = subscribeServerTick(this::tickLauncher);
+        }
+        if (!isRemote() && isFormed()) {
+            refreshStructureCapabilities();
+            if (getHolder().self() instanceof MissileLauncherBlockEntity blockEntity) {
+                blockEntity.registerMissileListener();
+            }
+        }
+    }
+
+    @Override
+    public void onUnload() {
+        super.onUnload();
+        if (tickSub != null) {
+            tickSub.unsubscribe();
+            tickSub = null;
+        }
+        creativeOverride = false;
+        creativeOperatorId = null;
+    }
+
+    @Override
     public void onStructureFormed() {
         super.onStructureFormed();
+        refreshStructureCapabilities();
+        if (!isRemote()) {
+            this.displayState = computeLaunchState().ordinal();
+            if (getHolder().self() instanceof MissileLauncherBlockEntity blockEntity) {
+                blockEntity.registerMissileListener();
+            }
+        }
+    }
+
+    private void refreshStructureCapabilities() {
         List<IEnergyContainer> containers = new ArrayList<>();
         this.maintenance = null;
         for (IMultiPart part : getParts()) {
@@ -202,11 +276,12 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
                         .forEach(containers::add);
             }
         }
-        this.energyContainer = new EnergyContainerList(containers);
-        this.voltageTier = GTUtil.getTierByVoltage(energyContainer.getInputVoltage());
-        if (!isRemote()) {
-            this.displayState = computeLaunchState().ordinal();
-            tickSub = subscribeServerTick(this::tickLauncher);
+        if (containers.isEmpty()) {
+            this.energyContainer = null;
+            this.voltageTier = -1;
+        } else {
+            this.energyContainer = new EnergyContainerList(containers);
+            this.voltageTier = GTUtil.getTierByVoltage(energyContainer.getInputVoltage());
         }
     }
 
@@ -217,13 +292,18 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
         this.maintenance = null;
         this.voltageTier = -1;
         this.displayState = LaunchState.UNFORMED.ordinal();
-        if (tickSub != null) {
-            tickSub.unsubscribe();
-            tickSub = null;
+        if (!isRemote() && getHolder().self() instanceof MissileLauncherBlockEntity blockEntity) {
+            blockEntity.deregisterMissileListener();
         }
     }
 
     protected void tickLauncher() {
+        // A creative test launch may continue after its operator closes the override through a normal click.
+        if (!isFormed() && !creativeOverride && cooldown <= 0) {
+            this.displayState = LaunchState.UNFORMED.ordinal();
+            return;
+        }
+        if (isFormed() && energyContainer == null) refreshStructureCapabilities();
         if (cooldown > 0) {
             cooldown--;
             if (maintenance != null) {
@@ -243,6 +323,7 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
         if (++availabilityTimer >= AVAILABILITY_INTERVAL) {
             availabilityTimer = 0;
             rebuildAvailability();
+            refreshTelemetry();
         }
         this.displayState = computeLaunchState().ordinal();
     }
@@ -278,6 +359,44 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     /** Whether a target has been dialed in (drives whether the map opens centred on it or on the silo). */
     public boolean hasTarget() {
         return hasTarget;
+    }
+
+    public String getAttackProfileName() {
+        return attackProfile;
+    }
+
+    public void setAttackProfileName(String name) {
+        if (name == null) return;
+        try {
+            attackProfile = AttackProfile.valueOf(name).name();
+        } catch (IllegalArgumentException ignored) {
+            // Reject malformed client values instead of silently changing the launch profile.
+        }
+    }
+
+    public String getAttackDirectionName() {
+        return attackDirection;
+    }
+
+    public void setAttackDirectionName(String name) {
+        if (name == null) return;
+        try {
+            attackDirection = AttackDirection.valueOf(name).name();
+        } catch (IllegalArgumentException ignored) {
+            // Reject malformed client values.
+        }
+    }
+
+    public int getApproachJoinCap() {
+        return approachJoinCap;
+    }
+
+    public void setApproachJoinCap(int blocks) {
+        approachJoinCap = Math.max(MIN_APPROACH_JOIN_CAP, Math.min(MAX_APPROACH_JOIN_CAP, blocks));
+    }
+
+    public CompoundTag getTelemetrySnapshot() {
+        return telemetry.tag;
     }
 
     /** Map-pick entry point: sets X/Z and resets Y to auto (the client has no height data for far chunks). */
@@ -366,9 +485,18 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
             return;
         }
         Map<String, Integer> merged = new LinkedHashMap<>();
-        List<MissileFactoryMachine> factories = resolveFactories();
-        for (MissileFactoryMachine factory : factories) {
-            factory.storedMissiles().forEach((id, count) -> merged.merge(id, count, Integer::sum));
+        if (creativeOverride) {
+            for (var item : BuiltInRegistries.ITEM) {
+                ItemStack stack = new ItemStack(item);
+                if (isLaunchableMissile(stack)) {
+                    merged.put(BuiltInRegistries.ITEM.getKey(item).toString(), 1);
+                }
+            }
+        } else {
+            List<MissileFactoryMachine> factories = resolveFactories();
+            for (MissileFactoryMachine factory : factories) {
+                factory.storedMissiles().forEach((id, count) -> merged.merge(id, count, Integer::sum));
+            }
         }
         // Auto-heal the selection: pick the first available type when none is selected or the selected
         // type ran out. Leave it empty only when nothing at all is available.
@@ -430,9 +558,14 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     }
 
     /** Extracts one of the selected missile from the first linked factory holding it, or EMPTY. */
-    protected ItemStack extractSelected() {
+    protected ItemStack extractSelected(boolean creativeAccess) {
         if (selectedMissileId.isEmpty()) {
             return ItemStack.EMPTY;
+        }
+        if (creativeAccess) {
+            var item = BuiltInRegistries.ITEM.get(ResourceLocation.tryParse(selectedMissileId));
+            ItemStack stack = new ItemStack(item);
+            return isLaunchableMissile(stack) ? stack : ItemStack.EMPTY;
         }
         for (MissileFactoryMachine factory : resolveFactories()) {
             ItemStack taken = factory.extractMissile(selectedMissileId);
@@ -496,15 +629,40 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
      * {@link #getDisplayState()} instead, which returns the synced result of this.
      */
     public LaunchState computeLaunchState() {
+        return computeLaunchState(creativeOverride);
+    }
+
+    public LaunchState computeLaunchState(Player player) {
+        return computeLaunchState(hasCreativeAccess(player));
+    }
+
+    private LaunchState computeLaunchState(boolean creativeAccess) {
+        if (creativeAccess) {
+            if (selectedMissileId.isEmpty() || !getAvailableMissiles().containsKey(selectedMissileId)) {
+                return LaunchState.NO_MISSILE;
+            }
+            if (!hasTarget) return LaunchState.NO_TARGET;
+            if (cooldown > 0) return LaunchState.COOLDOWN;
+            return LaunchState.READY;
+        }
         if (!isFormed()) return LaunchState.UNFORMED;
         if (voltageTier < MIN_TIER) return LaunchState.LOW_TIER;
         if (hasMaintenanceProblems()) return LaunchState.MAINTENANCE;
-        if (selectedMissileId.isEmpty() || !getAvailableMissiles().containsKey(selectedMissileId)) {
+        if (!selectedMissileAvailableInFactories()) {
             return LaunchState.NO_MISSILE;
         }
+        if (!hasTarget) return LaunchState.NO_TARGET;
         if (cooldown > 0) return LaunchState.COOLDOWN;
         if (!drainEnergy(true)) return LaunchState.NO_ENERGY;
         return LaunchState.READY;
+    }
+
+    private boolean selectedMissileAvailableInFactories() {
+        if (selectedMissileId.isEmpty()) return false;
+        for (MissileFactoryMachine factory : resolveFactories()) {
+            if (factory.storedMissiles().getOrDefault(selectedMissileId, 0) > 0) return true;
+        }
+        return false;
     }
 
     /** The synced launch state, safe to read on the client (drives the GUI button colour + status line). */
@@ -523,18 +681,25 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
      * sequence — the display missile streaks up the silo, then {@link #spawnLaunchedMissile()} releases the
      * real entity {@link #ANIM_TICKS} ticks later (see {@link #tickLauncher()}).
      */
-    public void requestLaunch() {
-        if (isRemote() || computeLaunchState() != LaunchState.READY ||
+    public void requestLaunch(Player player) {
+        boolean creativeAccess = hasCreativeAccess(player);
+        if (isRemote() || computeLaunchState(creativeAccess) != LaunchState.READY ||
                 !(getLevel() instanceof ServerLevel)) {
             return;
         }
         // Extract before draining energy, so a pull that races out from under us costs nothing.
-        ItemStack taken = extractSelected();
+        ItemStack taken = extractSelected(creativeAccess);
         if (!(taken.getItem() instanceof MissileItem)) {
             return;
         }
-        drainEnergy(false);
+        if (!creativeAccess) drainEnergy(false);
         launchedMissileId = BuiltInRegistries.ITEM.getKey(taken.getItem()).toString();
+        pendingTargetX = targetX;
+        pendingTargetY = targetY;
+        pendingTargetZ = targetZ;
+        pendingAttackProfile = attackProfile;
+        pendingAttackDirection = attackDirection;
+        pendingApproachJoinCap = approachJoinCap;
         pendingSpawn = true;
         cooldown = LAUNCH_COOLDOWN;
         rebuildAvailability();
@@ -549,19 +714,100 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
                 instanceof MissileItem missileItem)) {
             return;
         }
-        int y = targetY == Y_AUTO
-                ? serverLevel.getHeight(Heightmap.Types.WORLD_SURFACE, targetX, targetZ)
-                : targetY;
+        int y = pendingTargetY == Y_AUTO
+                ? serverLevel.getHeight(Heightmap.Types.WORLD_SURFACE, pendingTargetX, pendingTargetZ)
+                : pendingTargetY;
         MissilePreset preset = missileItem.preset();
-        MissileEntity missile = preset.build(serverLevel, new Vec3(targetX + 0.5, y, targetZ + 0.5));
+        MissileEntity missile = preset.build(serverLevel,
+                new Vec3(pendingTargetX + 0.5, y, pendingTargetZ + 0.5));
         missile.setControlId(controlId());
         // Own the missile for the WarForge faction claiming the silo's chunk, so friendly interceptor
         // batteries don't engage it. wfballistics' own compat no-ops safely without WarForge installed.
         missile.setTeamId(WarforgeCompat.factionClaiming(serverLevel, getPos()));
+        missile.setAttackProfile(AttackProfile.byName(pendingAttackProfile));
+        AttackDirection direction = AttackDirection.byName(pendingAttackDirection);
+        if (direction != AttackDirection.AUTO) {
+            missile.setAttackApproachDir(direction.vector());
+        }
+        missile.setApproachJoinCap(Math.max(MIN_APPROACH_JOIN_CAP,
+                Math.min(MAX_APPROACH_JOIN_CAP, pendingApproachJoinCap)));
 
         Vec3 muzzle = muzzlePos();
         missile.moveTo(muzzle.x, muzzle.y, muzzle.z, 0.0f, 0.0f);
-        serverLevel.addFreshEntity(missile);
+        if (serverLevel.addFreshEntity(missile)) {
+            trackedMissileId = missile.getUUID();
+            WFBallisticsAPI.openTelemetry(missile);
+            refreshTelemetry();
+        }
+    }
+
+    private void refreshTelemetry() {
+        if (!(getLevel() instanceof ServerLevel serverLevel)) return;
+        CompoundTag tag = new CompoundTag();
+        if (trackedMissileId != null) {
+            tag.putUUID("Id", trackedMissileId);
+            boolean sameTrackedMissile = telemetry.tag.hasUUID("Id") &&
+                    trackedMissileId.equals(telemetry.tag.getUUID("Id"));
+            MissileData data = WFBallisticsAPI.getMissileData(serverLevel, trackedMissileId);
+            if (data != null) {
+                tag.putBoolean("Active", true);
+                tag.putBoolean("Simulated", data.simulated());
+                tag.putString("Model", data.model());
+                tag.putString("Phase", data.phase());
+                tag.putDouble("X", data.pos().x);
+                tag.putDouble("Y", data.pos().y);
+                tag.putDouble("Z", data.pos().z);
+                tag.putDouble("Speed", data.speed());
+                tag.putInt("Fuel", data.fuel());
+                tag.putInt("FuelCapacity", data.fuelCapacity());
+                tag.putInt("Eta", data.etaTicks());
+                tag.putBoolean("CanReach", data.canReach());
+            }
+            MissileTelemetry missileTelemetry = WFBallisticsAPI.getTelemetry(trackedMissileId);
+            if (missileTelemetry == null && data != null) {
+                if (serverLevel.getEntity(trackedMissileId) instanceof MissileEntity missile) {
+                    missileTelemetry = WFBallisticsAPI.openTelemetry(missile);
+                } else {
+                    missileTelemetry = WFBallisticsAPI.openTelemetry(trackedMissileId, serverLevel.getGameTime());
+                }
+            }
+            if (missileTelemetry != null) {
+                List<MissileTelemetryEvent> events = missileTelemetry.events();
+                ListTag eventTags = sameTrackedMissile
+                        ? telemetry.tag.getList("Events", Tag.TAG_COMPOUND).copy()
+                        : new ListTag();
+                for (MissileTelemetryEvent event : events) {
+                    boolean present = false;
+                    for (int i = 0; i < eventTags.size(); i++) {
+                        CompoundTag old = eventTags.getCompound(i);
+                        if (old.getLong("Time") == event.gameTime() &&
+                                old.getString("Type").equals(event.type().name()) &&
+                                old.getDouble("X") == event.x() && old.getDouble("Y") == event.y() &&
+                                old.getDouble("Z") == event.z() && old.getBoolean("Simulated") == event.simulated() &&
+                                old.getString("Detail").equals(event.detail() == null ? "" : event.detail())) {
+                            present = true;
+                            break;
+                        }
+                    }
+                    if (!present) {
+                        CompoundTag eventTag = new CompoundTag();
+                        eventTag.putString("Type", event.type().name());
+                        eventTag.putLong("Time", event.gameTime());
+                        eventTag.putDouble("X", event.x());
+                        eventTag.putDouble("Y", event.y());
+                        eventTag.putDouble("Z", event.z());
+                        eventTag.putBoolean("Simulated", event.simulated());
+                        eventTag.putString("Detail", event.detail() == null ? "" : event.detail());
+                        eventTags.add(eventTag);
+                        if (eventTags.size() > 8) eventTags.remove(0);
+                    }
+                }
+                tag.put("Events", eventTags);
+            } else if (sameTrackedMissile) {
+                tag.put("Events", telemetry.tag.getList("Events", Tag.TAG_COMPOUND).copy());
+            }
+        }
+        if (!tag.equals(telemetry.tag)) telemetry.setTag(tag);
     }
 
     /**
@@ -641,6 +887,9 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
         if (controlId != null) {
             tag.putUUID("ControlId", controlId);
         }
+        if (trackedMissileId != null) {
+            tag.putUUID("TrackedMissileId", trackedMissileId);
+        }
         ListTag links = new ListTag();
         for (BlockPos pos : linkedFactories) {
             links.add(NbtUtils.writeBlockPos(pos));
@@ -653,6 +902,9 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
         super.loadCustomPersistedData(tag);
         if (tag.hasUUID("ControlId")) {
             controlId = tag.getUUID("ControlId");
+        }
+        if (tag.hasUUID("TrackedMissileId")) {
+            trackedMissileId = tag.getUUID("TrackedMissileId");
         }
         linkedFactories.clear();
         ListTag links = tag.getList("LinkedFactories", Tag.TAG_COMPOUND);
@@ -691,16 +943,51 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     @Override
     public InteractionResult onUse(BlockState blockState, Level level, BlockPos pos, Player player,
                                    InteractionHand hand, BlockHitResult hit) {
+        if (player.isShiftKeyDown() && player.isCreative()) {
+            if (!isRemote() && getHolder().self() instanceof MissileLauncherBlockEntity) {
+                beginCreativeAccess(player);
+                BlockEntityUIFactory.INSTANCE.open(player, pos);
+            }
+            return InteractionResult.SUCCESS;
+        }
         // Shift-click is reserved for the multiblock structure preview (empty hand + unformed), so hand it
         // back to the MultiblockControllerMachine/IMultiController default instead of swallowing it — that
         // default is what renders the in-world hologram. Returning PASS here (as before) short-circuited it.
         if (player.isShiftKeyDown()) return super.onUse(blockState, level, pos, player, hand, hit);
         if (!isRemote() && getHolder().self() instanceof MissileLauncherBlockEntity) {
+            endCreativeAccess(player);
             // open(player, BlockPos) — NOT open(player, blockEntity): the latter verifies against the
             // client player (MCHelper.getPlayer()) and throws a dimension mismatch when called server-side.
             BlockEntityUIFactory.INSTANCE.open(player, pos);
         }
         return InteractionResult.SUCCESS;
+    }
+
+    private void beginCreativeAccess(Player player) {
+        creativeOperatorId = player.getUUID();
+        creativeOverride = true;
+        rebuildAvailability();
+        displayState = computeLaunchState().ordinal();
+    }
+
+    public void endCreativeAccess(Player player) {
+        if (isRemote() || creativeOperatorId == null || !creativeOperatorId.equals(player.getUUID())) return;
+        creativeOperatorId = null;
+        creativeOverride = false;
+        rebuildAvailability();
+        displayState = computeLaunchState().ordinal();
+    }
+
+    private boolean hasCreativeAccess(Player player) {
+        if (player == null || !creativeOverride || creativeOperatorId == null ||
+                !creativeOperatorId.equals(player.getUUID())) {
+            return false;
+        }
+        if (!player.isCreative()) {
+            endCreativeAccess(player);
+            return false;
+        }
+        return true;
     }
 
     public enum LaunchState {
@@ -710,7 +997,40 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
         NO_ENERGY,
         COOLDOWN,
         READY,
-        MAINTENANCE
+        MAINTENANCE,
+        NO_TARGET
+    }
+
+    public enum AttackDirection {
+        AUTO(0, 0),
+        N(0, -1),
+        NE(1, -1),
+        E(1, 0),
+        SE(1, 1),
+        S(0, 1),
+        SW(-1, 1),
+        W(-1, 0),
+        NW(-1, -1);
+
+        private final int x;
+        private final int z;
+
+        AttackDirection(int x, int z) {
+            this.x = x;
+            this.z = z;
+        }
+
+        public Vec3 vector() {
+            return new Vec3(x, 0.0, z).normalize();
+        }
+
+        public static AttackDirection byName(String name) {
+            try {
+                return valueOf(name);
+            } catch (IllegalArgumentException | NullPointerException ignored) {
+                return AUTO;
+            }
+        }
     }
 
     /**
@@ -719,6 +1039,37 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
      * {@link #setTag} fires the content-change hook.
      */
     public static final class AvailabilitySync implements ITagSerializable<CompoundTag>, IContentChangeAware {
+
+        private CompoundTag tag = new CompoundTag();
+        private Runnable onContentsChanged = () -> {};
+
+        public void setTag(CompoundTag tag) {
+            this.tag = tag;
+            onContentsChanged.run();
+        }
+
+        @Override
+        public CompoundTag serializeNBT() {
+            return tag;
+        }
+
+        @Override
+        public void deserializeNBT(CompoundTag nbt) {
+            this.tag = nbt;
+        }
+
+        @Override
+        public void setOnContentsChanged(Runnable onContentsChanged) {
+            this.onContentsChanged = onContentsChanged;
+        }
+
+        @Override
+        public Runnable getOnContentsChanged() {
+            return onContentsChanged;
+        }
+    }
+
+    public static final class TelemetrySync implements ITagSerializable<CompoundTag>, IContentChangeAware {
 
         private CompoundTag tag = new CompoundTag();
         private Runnable onContentsChanged = () -> {};

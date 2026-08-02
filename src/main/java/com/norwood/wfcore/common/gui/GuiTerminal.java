@@ -11,6 +11,8 @@ import brachy.modularui.widget.ParentWidget;
 
 import java.util.function.IntSupplier;
 import java.util.function.Supplier;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * A reusable terminal-style status readout: a black CRT box with a green prompt, the status text typed out one
@@ -47,6 +49,15 @@ public final class GuiTerminal {
                 .background((ctx, bx, by, bw, bh, theme) -> draw(ctx, bx, by, bw, bh, st));
     }
 
+    /** A taller variant used for telemetry/event streams; explicit newlines and word wrapping are preserved. */
+    public static IWidget buildMultiline(int x, int y, int w, int h, IntSupplier stateKey,
+                                         Supplier<Component> status, IntSupplier color) {
+        Anim st = new Anim();
+        return new ParentWidget<>().name("multiline_terminal").pos(x, y).size(w, h)
+                .onUpdateListener(wd -> tick(st, stateKey, status, color))
+                .background((ctx, bx, by, bw, bh, theme) -> drawMultiline(ctx, bx, by, bw, bh, st));
+    }
+
     private static void tick(Anim st, IntSupplier stateKey, Supplier<Component> status, IntSupplier color) {
         String target = status.get().getString();
         int key = stateKey.getAsInt();
@@ -59,10 +70,87 @@ public final class GuiTerminal {
             st.revealed = target.length();
         }
         st.color = color.getAsInt();
-        if (st.revealed < 200) {
+        if (st.revealed < st.text.length()) {
             st.revealed += CHARS_PER_TICK;
         }
         st.blink++;
+    }
+
+    private static void drawMultiline(GuiContext ctx, int x, int y, int w, int h, Anim st) {
+        var g = ctx.getGraphics();
+        GuiDraw.drawRect(g, x, y, w, h, TERM_BG);
+        GuiDraw.drawRect(g, x, y, w, 1, TERM_BORDER);
+        GuiDraw.drawRect(g, x, y + h - 1, w, 1, TERM_BORDER);
+        GuiDraw.drawRect(g, x, y, 1, h, TERM_BORDER);
+        GuiDraw.drawRect(g, x + w - 1, y, 1, h, TERM_BORDER);
+
+        Font font = Minecraft.getInstance().font;
+        int pad = 4;
+        int promptW = font.width("> ");
+        int maxLines = Math.max(1, (h - 2 * pad) / 10);
+        // Reserve cursor width so a full line cannot paint the block cursor over the right frame.
+        List<String> lines = wrapLines(st.text, w - 2 * pad - 6, w - 2 * pad - promptW - 6, font, maxLines);
+        int visibleLength = lines.stream().mapToInt(String::length).sum() + Math.max(0, lines.size() - 1);
+        int remaining = Math.min(st.revealed, visibleLength);
+        int cursorX = x + pad + promptW;
+        int cursorY = y + pad;
+        boolean first = true;
+        for (int i = 0; i < lines.size(); i++) {
+            String line = lines.get(i);
+            int visible = Math.min(remaining, line.length());
+            String shown = line.substring(0, visible);
+            int lineX = x + pad + (first ? promptW : 0);
+            int lineY = y + pad + i * 10;
+            if (first) GuiDraw.drawText(g, "> ", x + pad, lineY, 1f, TERM_PROMPT, false);
+            GuiDraw.drawText(g, shown, lineX, lineY, 1f, st.color, false);
+            cursorX = lineX + font.width(shown);
+            cursorY = lineY;
+            remaining -= visible;
+            if (visible < line.length()) break;
+            // Account for the whitespace/newline that produced the next visual line.
+            if (remaining > 0) remaining--;
+            first = false;
+        }
+        boolean typing = st.revealed < visibleLength;
+        if (typing) {
+            GuiDraw.drawRect(g, cursorX + 1, cursorY - 1, 5, 9, st.color);
+        }
+    }
+
+    private static List<String> wrapLines(String text, int width, int firstWidth, Font font, int maxLines) {
+        List<String> out = new ArrayList<>();
+        for (String paragraph : text.split("\\n", -1)) {
+            if (paragraph.isEmpty()) {
+                out.add("");
+                if (out.size() >= maxLines) break;
+                continue;
+            }
+            String remaining = paragraph;
+            while (!remaining.isEmpty() && out.size() < maxLines) {
+                int lineWidth = out.isEmpty() ? firstWidth : width;
+                int end = 0;
+                int lastSpace = -1;
+                while (end < remaining.length()) {
+                    if (remaining.charAt(end) == ' ') lastSpace = end;
+                    if (font.width(remaining.substring(0, end + 1)) > lineWidth) break;
+                    end++;
+                }
+                if (end == 0) end = 1;
+                if (end < remaining.length() && lastSpace > 0) end = lastSpace;
+                out.add(remaining.substring(0, end));
+                remaining = remaining.substring(end).stripLeading();
+            }
+            if (out.size() >= maxLines) break;
+        }
+        int visibleLength = out.stream().mapToInt(String::length).sum() + Math.max(0, out.size() - 1);
+        if (out.size() == maxLines && visibleLength < text.length()) {
+            String last = out.get(maxLines - 1);
+            while (last.length() > 1 && font.width(last + "…") > width) {
+                last = last.substring(0, last.length() - 1);
+            }
+            out.set(maxLines - 1, last + "…");
+        }
+        return out;
     }
 
     private static void draw(GuiContext ctx, int x, int y, int w, int h, Anim st) {

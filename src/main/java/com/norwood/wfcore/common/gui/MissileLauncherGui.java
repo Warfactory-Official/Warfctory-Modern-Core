@@ -1,6 +1,9 @@
 package com.norwood.wfcore.common.gui;
 
 import net.minecraft.network.chat.Component;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
@@ -28,6 +31,8 @@ import com.norwood.wfcore.common.machine.MissileLauncherMachine;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 import com.norwood.wfcore.integration.warforge.gui.ChunkMapSection;
 
+import java.util.Locale;
+
 /**
  * Launch-silo GUI on the ModularUI (brachy) fork. Left column: the missile pick-list (everything stored
  * across the factories linked to this silo, with counts), X/Y/Z target fields (Y defaults to "auto" =
@@ -40,8 +45,8 @@ public final class MissileLauncherGui {
     // Root panel is invisible; content is grouped into separate MC_BACKGROUND panes (research-GUI style):
     // a missiles pane, a targeting pane and a launch/status pane down the left, the chunk map on the right,
     // with a GT-multiblock title tab attached over the top of the missiles pane.
-    private static final int PANEL_W = 384; // MARGIN + LEFT_W + GAP + MAP_PANE_W + MARGIN
-    private static final int PANEL_H = 268;
+    private static final int PANEL_W = 580;
+    private static final int PANEL_H = 300;
     private static final int MARGIN = 6; // panel outer margin
     private static final int GAP = 4;    // gap between adjacent panes
     private static final int INSET = 6;  // content inset inside a pane
@@ -77,13 +82,12 @@ public final class MissileLauncherGui {
     private static final int FIELD_W = 126;
     private static final int FIELD_H = 14;
 
-    // launch pane: the LAUNCH button + the terminal status readout
-    private static final int LP_Y = TGT_Y + TGT_H + GAP;
-    private static final int LP_H = 62;
-    private static final int LAUNCH_Y = LP_Y + INSET;
-    private static final int LAUNCH_H = 20;
-    private static final int STATUS_Y = LAUNCH_Y + LAUNCH_H + 4;
-    private static final int STATUS_H = 26; // two text lines of headroom
+    // guidance pane: attack profile, final approach bearing and the distance available to join that bearing
+    private static final int SETTINGS_Y = TGT_Y + TGT_H + GAP;
+    private static final int SETTINGS_H = 68;
+    private static final int SETTING_ROW_H = 18;
+    private static final int SETTING_VALUE_X = CONTENT_X + 64;
+    private static final int SETTING_VALUE_W = CONTENT_W - 64;
 
     // map pane (right column): its own "Map" title tab + hint line + drag-pannable chunk map, sized to fit
     // the 9x9 chunk grid (180px) snugly instead of stretching to the left column's full height.
@@ -94,6 +98,24 @@ public final class MissileLauncherGui {
     private static final int MAP_PANE_W = MAP_SIZE + 2 * INSET;
     private static final int MAP_PANE_H = MAP_HINT_H + MAP_SIZE + 2 * INSET;
     private static final int MAP_TAB_W = 56;
+
+    // launch pane: placed directly below the map, leaving the left controls as one clean-height stack
+    private static final int LP_X = MAP_PANE_X;
+    private static final int LP_Y = MAP_PANE_Y + MAP_PANE_H + GAP;
+    private static final int LP_W = MAP_PANE_W;
+    private static final int LP_H = 62;
+    private static final int LAUNCH_X = LP_X + INSET;
+    private static final int LAUNCH_W = LP_W - 2 * INSET;
+    private static final int LAUNCH_Y = LP_Y + INSET;
+    private static final int LAUNCH_H = 20;
+    private static final int STATUS_Y = LAUNCH_Y + LAUNCH_H + 4;
+    private static final int STATUS_H = 26; // two text lines of headroom
+
+    // telemetry pane: live state and the most recent WF-Ballistics lifecycle events for this silo's last launch
+    private static final int TELEMETRY_X = MAP_PANE_X + MAP_PANE_W + GAP;
+    private static final int TELEMETRY_Y = MISS_Y;
+    private static final int TELEMETRY_W = 192;
+    private static final int TELEMETRY_H = SETTINGS_Y + SETTINGS_H - TELEMETRY_Y;
 
     private static final int COLOR_BORDER = 0xFF101010;
     private static final int COLOR_FIELD_BG = 0xFF000000; // coordinate input fields: solid black
@@ -115,6 +137,7 @@ public final class MissileLauncherGui {
                                         PanelSyncManager sync, UISettings settings) {
         ModularPanel<?> panel = ModularPanel.defaultPanel("missile_launcher", PANEL_W, PANEL_H);
         panel.invisible(); // no single flat background; each section is its own MC_BACKGROUND pane
+        sync.addCloseListener(mte::endCreativeAccess);
         // No item slots here, so the JEI/EMI overlay (search + item list) is just clutter over the map.
         GuiRecipeViewer.hideOverlay(settings);
 
@@ -135,15 +158,17 @@ public final class MissileLauncherGui {
         // side-aware: on the client it echoes the cache so no C2S sync is ever attempted.
         int[] clientState = { mte.getDisplayState().ordinal() };
         IntSyncValue stateSync = new IntSyncValue(
-                () -> mte.isRemote() ? clientState[0] : mte.computeLaunchState().ordinal(),
+                () -> mte.isRemote() ? clientState[0] : mte.computeLaunchState(data.getPlayer()).ordinal(),
                 v -> clientState[0] = v);
         sync.syncValue("launch_state", 0, stateSync);
 
         // ---- section panes (added first so their content draws on top) ----
         panel.child(pane("pane_missiles", PANE_X, MISS_Y, LEFT_W, MISS_H));
         panel.child(pane("pane_target", PANE_X, TGT_Y, LEFT_W, TGT_H));
-        panel.child(pane("pane_launch", PANE_X, LP_Y, LEFT_W, LP_H));
+        panel.child(pane("pane_settings", PANE_X, SETTINGS_Y, LEFT_W, SETTINGS_H));
+        panel.child(pane("pane_launch", LP_X, LP_Y, LP_W, LP_H));
         panel.child(pane("pane_map", MAP_PANE_X, MAP_PANE_Y, MAP_PANE_W, MAP_PANE_H));
+        panel.child(pane("pane_telemetry", TELEMETRY_X, TELEMETRY_Y, TELEMETRY_W, TELEMETRY_H));
         // Tabs last of the backgrounds, so their 4px inset overlaps and merges into their pane's top edge.
         ItemStack block = mte.getDefinition().asStack();
         panel.child(tab("title", TITLE_X, TITLE_W, block, block.getHoverName()));
@@ -167,9 +192,13 @@ public final class MissileLauncherGui {
         panel.child(coordLabel("Z", COORDS_Y + 2 * ROW_H));
         panel.child(coordField("target_z", COORDS_Y + 2 * ROW_H));
 
+        // ---- terminal approach settings ----
+        buildGuidanceSettings(panel, mte, sync);
+
         // ---- launch button + terminal status readout ----
-        panel.child(buildLaunchButton(mte, sync, clientState));
+        panel.child(buildLaunchButton(mte, data, sync, clientState));
         panel.child(buildStatusTerminal(mte, clientState));
+        buildTelemetry(panel, mte);
 
         // ---- chunk map (WarForge only; all com.flansmod.* stays inside ChunkMapSection) ----
         if (WarforgeIntegration.isLoaded()) {
@@ -341,14 +370,15 @@ public final class MissileLauncherGui {
         return button;
     }
 
-    private static ButtonWidget<?> buildLaunchButton(MissileLauncherMachine mte, PanelSyncManager sync,
-                                                      int[] clientState) {
-        InteractionSyncHandler launch = new InteractionSyncHandler().setOnMousePressed(d -> mte.requestLaunch());
+    private static ButtonWidget<?> buildLaunchButton(MissileLauncherMachine mte, PosGuiData data,
+                                                       PanelSyncManager sync, int[] clientState) {
+        InteractionSyncHandler launch = new InteractionSyncHandler()
+                .setOnMousePressed(d -> mte.requestLaunch(data.getPlayer()));
         sync.syncValue("launch", 0, launch);
 
         ButtonWidget<?> button = new ButtonWidget<>();
         button.name("launch_button");
-        button.pos(CONTENT_X, LAUNCH_Y).size(CONTENT_W, LAUNCH_H).syncHandler("launch", 0);
+        button.pos(LAUNCH_X, LAUNCH_Y).size(LAUNCH_W, LAUNCH_H).syncHandler("launch", 0);
         // Paint the face with GuiDraw.drawRect (an explicit ARGB, NOT a Rectangle — Rectangle.draw
         // overwrites its colour with the widget theme's, which is why every red fill came out grey). This is
         // the exact call the map tiles use for their placeholder, so it's proven to render on a button face.
@@ -392,6 +422,8 @@ public final class MissileLauncherGui {
                     .withStyle(net.minecraft.ChatFormatting.GREEN);
             case MAINTENANCE -> Component.translatable("wfcore.gui.launcher.status_maintenance")
                     .withStyle(net.minecraft.ChatFormatting.RED);
+            case NO_TARGET -> Component.translatable("wfcore.gui.launcher.status_no_target")
+                    .withStyle(net.minecraft.ChatFormatting.YELLOW);
         };
     }
 
@@ -405,7 +437,7 @@ public final class MissileLauncherGui {
      * {@link Minecraft}/{@link Font} references never load server-side).
      */
     private static IWidget buildStatusTerminal(MissileLauncherMachine mte, int[] clientState) {
-        return GuiTerminal.build(CONTENT_X, STATUS_Y, CONTENT_W, STATUS_H,
+        return GuiTerminal.build(LAUNCH_X, STATUS_Y, LAUNCH_W, STATUS_H,
                 () -> shownState(clientState).ordinal(),
                 () -> statusText(mte, shownState(clientState)),
                 () -> terminalColor(shownState(clientState)));
@@ -414,9 +446,147 @@ public final class MissileLauncherGui {
     private static int terminalColor(MissileLauncherMachine.LaunchState state) {
         return switch (state) {
             case READY -> TERM_READY;
-            case COOLDOWN, NO_MISSILE -> TERM_WARN;
-            default -> TERM_ERROR; // UNFORMED / LOW_TIER / NO_ENERGY
+            case NO_TARGET, COOLDOWN, NO_MISSILE -> TERM_WARN;
+            default -> TERM_ERROR; // UNFORMED / LOW_TIER / NO_ENERGY / MAINTENANCE
         };
+    }
+
+    //////////////////// guidance settings ////////////////////
+
+    private static void buildGuidanceSettings(ModularPanel<?> panel, MissileLauncherMachine mte,
+                                              PanelSyncManager sync) {
+        StringSyncValue profile = new StringSyncValue(mte::getAttackProfileName, mte::setAttackProfileName);
+        profile.allowC2S();
+        sync.syncValue("attack_profile", 0, profile);
+        StringSyncValue direction = new StringSyncValue(mte::getAttackDirectionName, mte::setAttackDirectionName);
+        direction.allowC2S();
+        sync.syncValue("attack_direction", 0, direction);
+        IntSyncValue joinCap = new IntSyncValue(mte::getApproachJoinCap, mte::setApproachJoinCap).allowC2S();
+        sync.syncValue("approach_join_cap", 0, joinCap);
+
+        panel.child(settingLabel("wfcore.gui.launcher.attack_profile", SETTINGS_Y + 6));
+        panel.child(cycleButton("attack_profile", SETTINGS_Y + 4, profile,
+                new String[] { "SPEED", "BALANCED", "LOFT" },
+                () -> profileLabel(mte.getAttackProfileName()), "wfcore.gui.launcher.attack_profile_tip"));
+        panel.child(settingLabel("wfcore.gui.launcher.attack_direction", SETTINGS_Y + 6 + SETTING_ROW_H));
+        panel.child(cycleButton("attack_direction", SETTINGS_Y + 4 + SETTING_ROW_H, direction,
+                new String[] { "AUTO", "N", "NE", "E", "SE", "S", "SW", "W", "NW" },
+                () -> directionLabel(mte.getAttackDirectionName()), "wfcore.gui.launcher.attack_direction_tip"));
+        panel.child(settingLabel("wfcore.gui.launcher.approach_distance", SETTINGS_Y + 6 + 2 * SETTING_ROW_H));
+
+        TextFieldWidget distance = new TextFieldWidget();
+        distance.name("field_approach_join_cap").pos(SETTING_VALUE_X, SETTINGS_Y + 4 + 2 * SETTING_ROW_H)
+                .size(SETTING_VALUE_W, FIELD_H);
+        distance.setNumbers(MissileLauncherMachine.MIN_APPROACH_JOIN_CAP,
+                MissileLauncherMachine.MAX_APPROACH_JOIN_CAP);
+        distance.background(fieldBox()).hoverBackground(fieldBox()).syncHandler("approach_join_cap", 0);
+        distance.tooltipDynamic(t -> t.addLine(Text.lang("wfcore.gui.launcher.approach_distance_tip")))
+                .tooltipAutoUpdate(true);
+        panel.child(distance);
+    }
+
+    private static TextWidget<?> settingLabel(String key, int y) {
+        return new TextWidget<>(Text.lang(key)).pos(CONTENT_X, y).name("label_" + key);
+    }
+
+    private static ButtonWidget<?> cycleButton(String name, int y, StringSyncValue value, String[] values,
+                                                java.util.function.Supplier<Component> label, String tooltip) {
+        ButtonWidget<?> button = new ButtonWidget<>();
+        button.name(name).pos(SETTING_VALUE_X, y).size(SETTING_VALUE_W, FIELD_H);
+        button.background(fieldBox()).overlay(Text.dynamic(label));
+        button.tooltipDynamic(t -> t.addLine(Text.lang(tooltip))).tooltipAutoUpdate(true);
+        button.onMousePressed((context, mouseButton) -> {
+            String current = value.getStringValue();
+            int index = 0;
+            for (int i = 0; i < values.length; i++) {
+                if (values[i].equals(current)) {
+                    index = i;
+                    break;
+                }
+            }
+            int step = mouseButton == 1 ? values.length - 1 : 1;
+            value.setStringValue(values[(index + step) % values.length], true, true);
+            return true;
+        });
+        return button;
+    }
+
+    private static Component profileLabel(String name) {
+        return Component.translatable("wfcore.gui.launcher.profile_" + name.toLowerCase(Locale.ROOT));
+    }
+
+    private static Component directionLabel(String name) {
+        return Component.translatable("wfcore.gui.launcher.direction_" + name.toLowerCase(Locale.ROOT));
+    }
+
+    //////////////////// telemetry ////////////////////
+
+    private static void buildTelemetry(ModularPanel<?> panel, MissileLauncherMachine mte) {
+        int x = TELEMETRY_X + INSET;
+        int width = TELEMETRY_W - 2 * INSET;
+        panel.child(GuiTerminal.buildMultiline(x, TELEMETRY_Y + INSET, width,
+                TELEMETRY_H - 2 * INSET, () -> 0, () -> telemetryText(mte),
+                () -> telemetryColor(mte)));
+    }
+
+    private static int telemetryColor(MissileLauncherMachine mte) {
+        CompoundTag tag = mte.getTelemetrySnapshot();
+        return tag.getBoolean("Active") && !tag.getBoolean("CanReach") ? TERM_WARN : TERM_READY;
+    }
+
+    private static Component telemetryText(MissileLauncherMachine mte) {
+        StringBuilder text = new StringBuilder(Component.translatable("wfcore.gui.launcher.telemetry").getString());
+        for (int i = 0; i < 8; i++) {
+            String line = telemetryLine(mte, i).getString();
+            if (!line.isEmpty()) text.append('\n').append(line);
+        }
+        text.append("\n\n").append(Component.translatable("wfcore.gui.launcher.event_log").getString());
+        ListTag events = mte.getTelemetrySnapshot().getList("Events", Tag.TAG_COMPOUND);
+        if (events.isEmpty()) {
+            text.append('\n').append(Component.translatable("wfcore.gui.launcher.event_none").getString());
+        } else {
+            int first = Math.max(0, events.size() - 5);
+            for (int i = first; i < events.size(); i++) {
+                text.append("\n- ").append(eventLine(events.getCompound(i)).getString());
+            }
+        }
+        return Component.literal(text.toString());
+    }
+
+    private static Component telemetryLine(MissileLauncherMachine mte, int line) {
+        CompoundTag tag = mte.getTelemetrySnapshot();
+        if (!tag.hasUUID("Id")) {
+            return line == 0 ? Component.translatable("wfcore.gui.launcher.telemetry_idle") : Component.empty();
+        }
+        return switch (line) {
+            case 0 -> Component.literal("ID " + tag.getUUID("Id").toString().substring(0, 8));
+            case 1 -> tag.getBoolean("Active")
+                    ? Component.translatable(tag.getBoolean("Simulated")
+                            ? "wfcore.gui.launcher.telemetry_simulated" : "wfcore.gui.launcher.telemetry_real")
+                    : Component.translatable("wfcore.gui.launcher.telemetry_complete");
+            case 2 -> tag.getBoolean("Active") ? Component.literal("Phase: " + tag.getString("Phase"))
+                    : Component.empty();
+            case 3 -> tag.getBoolean("Active") ? Component.literal(String.format(Locale.ROOT, "Pos %.0f, %.0f, %.0f",
+                    tag.getDouble("X"), tag.getDouble("Y"), tag.getDouble("Z"))) : Component.empty();
+            case 4 -> tag.getBoolean("Active") ? Component.literal(String.format(Locale.ROOT, "Speed %.2f b/t",
+                    tag.getDouble("Speed"))) : Component.empty();
+            case 5 -> tag.getBoolean("Active") ? Component.literal("Fuel " + tag.getInt("Fuel") + "/" +
+                    tag.getInt("FuelCapacity")) : Component.empty();
+            case 6 -> tag.getBoolean("Active") && tag.getInt("Eta") >= 0
+                    ? Component.literal(String.format(Locale.ROOT, "ETA %.1fs", tag.getInt("Eta") / 20.0))
+                    : Component.empty();
+            case 7 -> tag.getBoolean("Active") && !tag.getBoolean("CanReach")
+                    ? Component.translatable("wfcore.gui.launcher.telemetry_unreachable") : Component.empty();
+            default -> Component.empty();
+        };
+    }
+
+    private static Component eventLine(CompoundTag event) {
+        String type = event.getString("Type").toLowerCase(Locale.ROOT);
+        String suffix = event.getBoolean("Simulated") ? " [sim]" : "";
+        String detail = event.getString("Detail");
+        Component message = Component.translatable("wfcore.gui.launcher.event_" + type);
+        return message.copy().append(suffix).append(detail.isEmpty() ? "" : ": " + detail);
     }
 
 }
