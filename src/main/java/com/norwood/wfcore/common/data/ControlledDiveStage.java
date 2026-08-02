@@ -27,12 +27,18 @@ public final class ControlledDiveStage implements FlightStage {
     /** Stage ids. WF-B namespaces its own ({@code wfballistics:...}); the {@code wfcore_} prefix keeps these ours. */
     public static final String ID = "wfcore_controlled_dive";
     public static final String ICBM_ID = "wfcore_icbm_dive";
+    public static final String MEDIUM_ID = "wfcore_medium_dive";
+    public static final String WEAK_ID = "wfcore_weak_dive";
 
     private static final double DEFAULT_APPROACH = 5.0;
     private static final double ICBM_APPROACH = 12.0;
+    private static final double MEDIUM_APPROACH = 10.0;
+    private static final double WEAK_APPROACH = 8.0;
 
     public static final ControlledDiveStage INSTANCE = new ControlledDiveStage(ID, DEFAULT_APPROACH);
     public static final ControlledDiveStage ICBM = new ControlledDiveStage(ICBM_ID, ICBM_APPROACH);
+    public static final ControlledDiveStage MEDIUM = new ControlledDiveStage(MEDIUM_ID, MEDIUM_APPROACH);
+    public static final ControlledDiveStage WEAK = new ControlledDiveStage(WEAK_ID, WEAK_APPROACH);
 
     // Carrot distance ahead along the approach line for the angled pure-pursuit run (matches AttackStage).
     private static final double LOOKAHEAD = 12.0;
@@ -51,6 +57,8 @@ public final class ControlledDiveStage implements FlightStage {
     public static void register() {
         FlightStageRegistry.register(MissileEntity.Phase.ATTACK, INSTANCE);
         FlightStageRegistry.register(MissileEntity.Phase.ATTACK, ICBM);
+        FlightStageRegistry.register(MissileEntity.Phase.ATTACK, MEDIUM);
+        FlightStageRegistry.register(MissileEntity.Phase.ATTACK, WEAK);
     }
 
     @Override

@@ -193,6 +193,8 @@ public class WFMachines {
         COPPER_HEATSINK = WF_MACHINES.machine("copper_heatsink", holder -> new CoolingPartMachine(holder, false))
                 .langValue("Copper Heatsink")
                 .rotationState(RotationState.ALL)
+                .allowCoverOnFront(true)
+                .allowExtendedFacing(false)
                 .abilities(WFPartAbility.GPC_COOLER)
                 .tooltips(Component.translatable("wfcore.machine.copper_heatsink.tooltip1"),
                         Component.translatable("wfcore.machine.copper_heatsink.tooltip2"),

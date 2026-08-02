@@ -84,6 +84,14 @@ public class WFMissiles {
         return FlightStageRegistry.rl(ControlledDiveStage.ICBM_ID);
     }
 
+    private static ResourceLocation mediumDive() {
+        return FlightStageRegistry.rl(ControlledDiveStage.MEDIUM_ID);
+    }
+
+    private static ResourceLocation weakDive() {
+        return FlightStageRegistry.rl(ControlledDiveStage.WEAK_ID);
+    }
+
     // --- Demolition ---
     public static ItemEntry<MissileItem> HE;
     public static ItemEntry<MissileItem> DUMMY;
@@ -176,21 +184,20 @@ public class WFMissiles {
         PENETRATOR = missile("penetrator", "Penetrator Missile",
                 MissileModels.rl("neon"), WFWarheads.HE,
                 b -> b.highAltitude(300.0).cruiseSpeed(3.0).health(45.0f)
-                        .diveAngleRange(80.0, 90.0).attackStage(controlledDive())
-                        .evasion(0.55f)
+                        .diveAngleRange(80.0, 90.0).attackStage(mediumDive())
                         .accel(1.0, 1.0).fuel(MissileEntity.FuelType.LIQUID, 12000));
 
         PENETRATOR_SUPERSONIC = missile("penetrator_supersonic", "Supersonic Penetrator Missile",
                 MissileModels.rl("atlas"), WFWarheads.HE,
                 b -> b.highAltitude(300.0).cruiseSpeed(4.5).health(45.0f)
-                        .diveAngleRange(80.0, 90.0).attackStage(controlledDive())
-                        .evasion(0.7f).evasiveManeuver()
+                        .diveAngleRange(80.0, 90.0).attackStage(mediumDive())
+                        .evasion(0.5f).evasiveManeuver()
                         .accel(1.2, 1.2).fuel(MissileEntity.FuelType.LIQUID, 15000));
 
         PENETRATOR_HYPERSONIC = missile("penetrator_hypersonic", "Hypersonic Penetrator Missile",
                 MissileModels.rl("atlas"), WFWarheads.HE,
                 b -> b.highAltitude(300.0).cruiseSpeed(7.0).turnRate(0.5).health(40.0f)
-                        .diveAngleRange(80.0, 90.0).attackStage(controlledDive())
+                        .diveAngleRange(80.0, 90.0).attackStage(icbmDive())
                         .evasion(0.9f).evasiveManeuver().exhaustColor(0x66E0FF)
                         .accel(1.5, 1.2).fuel(MissileEntity.FuelType.LIQUID, 18000));
 
@@ -207,14 +214,14 @@ public class WFMissiles {
                 MissileModels.rl("atlas"), WFWarheads.ICBM,
                 b -> b.highAltitude(340.0).cruiseSpeed(5.0).turnRate(0.6).health(120.0f)
                         .damageResponse(WFDamageResponses.HARDENED_ICBM_ID)
-                        .attackAngle(90.0).attackStage(icbmDive())
+                        .attackAngle(90.0).attackStage(mediumDive())
                         .accel(1.5, 1.5).fuel(MissileEntity.FuelType.SOLID, 40000));
 
         ICBM_HEAVY = missile("icbm_heavy", "Heavy ICBM",
                 MissileModels.rl("atlas"), WFWarheads.ICBM_HEAVY,
                 b -> b.highAltitude(360.0).cruiseSpeed(6.0).turnRate(0.6).health(160.0f)
                         .damageResponse(WFDamageResponses.HARDENED_ICBM_ID)
-                        .attackAngle(90.0).attackStage(icbmDive()).exhaustColor(0xF0F0FF)
+                        .attackAngle(90.0).attackStage(mediumDive()).exhaustColor(0xF0F0FF)
                         .accel(1.8, 1.8).fuel(MissileEntity.FuelType.SOLID, 60000));
 
         // =========================== BUNKER BUSTER =========================================================
@@ -226,15 +233,15 @@ public class WFMissiles {
         BUNKER_BUSTER = missile("bunker_buster", "Bunker Buster Missile",
                 MissileModels.rl("v2_bunker"), WFWarheads.BUNKER_MK1,
                 b -> b.highAltitude(280.0).cruiseSpeed(4.0).health(70.0f)
-                        .diveAngleRange(82.0, 90.0).attackStage(controlledDive())
-                        .evasion(0.5f).turnRate(0.55).accuracy(10.0)
+                        .diveAngleRange(82.0, 90.0).attackStage(weakDive())
+                        .turnRate(0.55).accuracy(10.0)
                         .accel(0.15, 0.1).fuel(MissileEntity.FuelType.LIQUID, 3000));
 
         BUNKER_BUSTER_HEAVY = missile("bunker_buster_heavy", "Heavy Bunker Buster Missile",
                 MissileModels.rl("carrier"), WFWarheads.BUNKER_MK2,
                 b -> b.highAltitude(280.0).cruiseSpeed(4.5).health(90.0f)
-                        .diveAngleRange(82.0, 90.0).attackStage(controlledDive())
-                        .evasion(0.6f).turnRate(0.6).accuracy(2.5)
+                        .diveAngleRange(82.0, 90.0).attackStage(weakDive())
+                        .turnRate(0.6).accuracy(2.5)
                         .accel(0.18, 0.12).fuel(MissileEntity.FuelType.LIQUID, 3500));
 
         // Tunneller (final tier): near-vertical so the shaft drives straight down; bores in up to 15 blocks and
@@ -242,8 +249,8 @@ public class WFMissiles {
         BUNKER_TUNNELLER = missile("bunker_tunneller", "Tunneller Bunker Buster Missile",
                 MissileModels.rl("huge_bunker"), WFWarheads.TUNNELLER,
                 b -> b.highAltitude(280.0).cruiseSpeed(4.5).health(110.0f)
-                        .diveAngleRange(86.0, 90.0).attackStage(controlledDive())
-                        .evasion(0.6f).turnRate(0.6).accuracy(1.0)
+                        .diveAngleRange(86.0, 90.0).attackStage(weakDive())
+                        .turnRate(0.6).accuracy(1.0)
                         .accel(0.18, 0.12).fuel(MissileEntity.FuelType.LIQUID, 4000));
 
         // =========================== FRAG / CLUSTER ========================================================
@@ -277,7 +284,7 @@ public class WFMissiles {
                 MissileModels.rl("cluster"), WFWarheads.FRAG_STORM,
                 b -> b.highAltitude(300.0).cruiseSpeed(2.5).health(35.0f)
                         .explosionOffset(50.0f).exhaustColor(0xE0C060)
-                        .diveAngleRange(70.0, 90.0).attackStage(controlledDive())
+                        .diveAngleRange(70.0, 90.0).attackStage(weakDive())
                         .accel(0.35, 0.35).fuel(MissileEntity.FuelType.LIQUID, 14000));
 
         // Skyfall (apex): bursts high (large airburst offset = fires almost as it enters the dive) and rains 9
@@ -286,7 +293,7 @@ public class WFMissiles {
                 MissileModels.rl("huge_cluster"), WFWarheads.SKYFALL,
                 b -> b.highAltitude(320.0).cruiseSpeed(3.0).health(40.0f)
                         .explosionOffset(60.0f).exhaustColor(0xFFC24D)
-                        .diveAngleRange(70.0, 90.0).attackStage(controlledDive())
+                        .diveAngleRange(70.0, 90.0).attackStage(weakDive())
                         .accel(0.4, 0.4).fuel(MissileEntity.FuelType.LIQUID, 16000));
 
         // =========================== EMP ===================================================================
@@ -319,8 +326,8 @@ public class WFMissiles {
         EMP_LANCE = missile("emp_lance", "EMP Lance Missile",
                 MissileModels.rl("micro_emp"), WFWarheads.EMP_RAY,
                 b -> b.highAltitude(300.0).cruiseSpeed(4.0).health(35.0f)
-                        .evasion(0.6f).evasiveManeuver().exhaustColor(0x99DBFF)
-                        .diveAngleRange(84.0, 90.0).attackStage(controlledDive())
+                        .evasion(0.3f).evasiveManeuver().exhaustColor(0x99DBFF)
+                        .diveAngleRange(84.0, 90.0).attackStage(icbmDive())
                         .accel(0.5, 0.5).fuel(MissileEntity.FuelType.LIQUID, 14000));
 
         // =========================== INTERCEPTORS ==========================================================
