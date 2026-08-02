@@ -299,7 +299,7 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
 
     protected void tickLauncher() {
         // A creative test launch may continue after its operator closes the override through a normal click.
-        if (!isFormed() && !creativeOverride && cooldown <= 0) {
+        if (!isFormed() && !creativeOverride && cooldown <= 0 && !hasActiveTrackedMissile()) {
             this.displayState = LaunchState.UNFORMED.ordinal();
             return;
         }
@@ -397,6 +397,18 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
 
     public CompoundTag getTelemetrySnapshot() {
         return telemetry.tag;
+    }
+
+    public boolean hasActiveTrackedMissile() {
+        return telemetry.tag.getBoolean("Active");
+    }
+
+    public int getTrackedMissileX() {
+        return (int) Math.floor(telemetry.tag.getDouble("X"));
+    }
+
+    public int getTrackedMissileZ() {
+        return (int) Math.floor(telemetry.tag.getDouble("Z"));
     }
 
     /** Map-pick entry point: sets X/Z and resets Y to auto (the client has no height data for far chunks). */

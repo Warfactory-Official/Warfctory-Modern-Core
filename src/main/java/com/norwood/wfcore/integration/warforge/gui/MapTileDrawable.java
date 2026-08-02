@@ -40,6 +40,8 @@ final class MapTileDrawable implements IDrawable {
     private static final int PLACEHOLDER = 0xFF2A2A2A;
     private static final int GRID = 0x33FFFFFF;
     private static final int TARGET = 0x66FF4040;
+    private static final int MISSILE = 0xFFFFFF38;
+    private static final int MISSILE_BORDER = 0xFF101010;
     private static final int SELF = 0x8040A0FF;
     private static final int CURSOR = 0x66FFFFFF;
 
@@ -49,19 +51,26 @@ final class MapTileDrawable implements IDrawable {
     private final IntSupplier targetBlockX;
     private final IntSupplier targetBlockZ;
     private final BooleanSupplier hasTarget;
+    private final IntSupplier missileBlockX;
+    private final IntSupplier missileBlockZ;
+    private final BooleanSupplier hasMissile;
     private final BooleanSupplier isSelfChunk;
     /** Shared out-holder: world block (x, z) under the mouse, written by whichever tile is hovered. */
     private final int[] hoverBlock;
 
     MapTileDrawable(String namespace, IntSupplier chunkX, IntSupplier chunkZ,
-                    IntSupplier targetBlockX, IntSupplier targetBlockZ, BooleanSupplier hasTarget,
-                    BooleanSupplier isSelfChunk, int[] hoverBlock) {
+                     IntSupplier targetBlockX, IntSupplier targetBlockZ, BooleanSupplier hasTarget,
+                     IntSupplier missileBlockX, IntSupplier missileBlockZ, BooleanSupplier hasMissile,
+                     BooleanSupplier isSelfChunk, int[] hoverBlock) {
         this.namespace = namespace;
         this.chunkX = chunkX;
         this.chunkZ = chunkZ;
         this.targetBlockX = targetBlockX;
         this.targetBlockZ = targetBlockZ;
         this.hasTarget = hasTarget;
+        this.missileBlockX = missileBlockX;
+        this.missileBlockZ = missileBlockZ;
+        this.hasMissile = hasMissile;
         this.isSelfChunk = isSelfChunk;
         this.hoverBlock = hoverBlock;
     }
@@ -106,6 +115,17 @@ final class MapTileDrawable implements IDrawable {
             float bz = y + (tz & 15) * px;
             GuiDraw.drawRect(context.getGraphics(), bx, y + 1, Math.max(1f, px), height - 1, TARGET);
             GuiDraw.drawRect(context.getGraphics(), x + 1, bz, width - 1, Math.max(1f, px), TARGET);
+        }
+
+        // Active missile marker: a high-contrast 5x5 beacon centred on its block. The suppliers read the
+        // launcher telemetry snapshot, which remains live while WF-Ballistics offloads the missile to sim.
+        int missileX = missileBlockX.getAsInt();
+        int missileZ = missileBlockZ.getAsInt();
+        if (hasMissile.getAsBoolean() && (missileX >> 4) == cx && (missileZ >> 4) == cz) {
+            float markerX = x + (missileX & 15) * px + px * 0.5f;
+            float markerY = y + (missileZ & 15) * px + px * 0.5f;
+            GuiDraw.drawRect(context.getGraphics(), markerX - 3, markerY - 3, 6, 6, MISSILE_BORDER);
+            GuiDraw.drawRect(context.getGraphics(), markerX - 2, markerY - 2, 4, 4, MISSILE);
         }
 
         // hover: publish the exact world block under the cursor and draw a block cursor. This mouse-vs-draw

@@ -175,6 +175,9 @@ public final class ChunkMapSection {
                 mte::getTargetX,
                 mte::getTargetZ,
                 mte::hasTarget,
+                mte::getTrackedMissileX,
+                mte::getTrackedMissileZ,
+                mte::hasActiveTrackedMissile,
                 () -> (silo.getX() >> 4) == center[0] + gx - RADIUS &&
                         (silo.getZ() >> 4) == center[1] + gz - RADIUS,
                 hoverBlock));

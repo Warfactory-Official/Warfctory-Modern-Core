@@ -54,8 +54,15 @@ public final class GuiTerminal {
                                          Supplier<Component> status, IntSupplier color) {
         Anim st = new Anim();
         return new ParentWidget<>().name("multiline_terminal").pos(x, y).size(w, h)
-                .onUpdateListener(wd -> tick(st, stateKey, status, color))
+                .onUpdateListener(wd -> tickMultiline(st, stateKey, status, color))
                 .background((ctx, bx, by, bw, bh, theme) -> drawMultiline(ctx, bx, by, bw, bh, st));
+    }
+
+    private static void tickMultiline(Anim st, IntSupplier stateKey, Supplier<Component> status,
+                                      IntSupplier color) {
+        tick(st, stateKey, status, color);
+        // One normal character every tick plus one extra every other tick = exactly 1.5x typing speed.
+        if ((st.blink & 1) == 0 && st.revealed < st.text.length()) st.revealed++;
     }
 
     private static void tick(Anim st, IntSupplier stateKey, Supplier<Component> status, IntSupplier color) {
