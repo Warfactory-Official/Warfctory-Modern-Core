@@ -29,6 +29,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL33;
 
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -110,14 +111,22 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
 
 
 
+
         GL13.glActiveTexture(GL13.GL_TEXTURE2);
+        final int prevSampler2 = GL11.glGetInteger(GL33.GL_SAMPLER_BINDING);
+        GL33.glBindSampler(2, 0);
         final int prevTexture2 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         final int lightTex = worldLightLightmap(be);
 
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        final int prevSampler1 = GL11.glGetInteger(GL33.GL_SAMPLER_BINDING);
+        GL33.glBindSampler(1, 0);
         final int prevTexture1 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, lightTex);
+
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
+        final int prevSampler0 = GL11.glGetInteger(GL33.GL_SAMPLER_BINDING);
+        GL33.glBindSampler(0, 0);
 
 
         GL30.glVertexAttribI4i(RenderedGltfModel.vaUV1, 0, 0, 0, 0);
@@ -137,7 +146,8 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
             WFCore.LOGGER.error("Failed to render GLTF model {}", model.getModelLocation(), e);
         } finally {
             restoreGlState(prevVao, prevArrayBuffer, prevElementArrayBuffer,
-                    prevCullFace, prevDepthTest, prevBlend, prevTexture1, prevTexture2);
+                    prevCullFace, prevDepthTest, prevBlend, prevTexture1, prevTexture2,
+                    prevSampler0, prevSampler1, prevSampler2);
         }
     }
 
@@ -166,12 +176,19 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
 
     private static void restoreGlState(int prevVao, int prevArrayBuffer, int prevElementArrayBuffer,
                                        boolean prevCullFace, boolean prevDepthTest, boolean prevBlend,
-                                       int prevTexture1, int prevTexture2) {
+                                       int prevTexture1, int prevTexture2,
+                                       int prevSampler0, int prevSampler1, int prevSampler2) {
         GL13.glActiveTexture(GL13.GL_TEXTURE2);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture2);
         GL13.glActiveTexture(GL13.GL_TEXTURE1);
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture1);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
+
+        // Hand the sampler units back exactly as we found them (see render()); glBindSampler takes an explicit
+        // unit, so no glActiveTexture dance is needed. prev* are 0 outside Embeddium, making these no-ops.
+        GL33.glBindSampler(0, prevSampler0);
+        GL33.glBindSampler(1, prevSampler1);
+        GL33.glBindSampler(2, prevSampler2);
 
         if (!prevDepthTest) GL11.glDisable(GL11.GL_DEPTH_TEST);
         if (!prevBlend) GL11.glDisable(GL11.GL_BLEND);

@@ -538,7 +538,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         }
 
 
-        animAdvancing = !slaveMode && isWorkingEnabled && !jobs.isEmpty() && !hasMaintenanceProblems();
+        animAdvancing = (status == RunStatus.WORKING);
         this.runStatus = status.ordinal();
         if (changed || tickCounter % 10 == 0) pushResearchSync();
     }

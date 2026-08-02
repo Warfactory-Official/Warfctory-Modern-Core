@@ -91,25 +91,25 @@ public class WFMachines {
     // ' ' = air. Stage 1 = core only, stage 2 = core + left flue, stage 3 = core + both. The chamber's
     // solid side walls are present in every stage, so an unbuilt flue leaves a wall, not a hole.
     private static final String[][] PBF_SHAPE_STAGE1 = {
-            { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+            { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
             { "   PPP   ", "  P   P  ", "  P   P  ", "  P   P  ", "   PPP   ", "    P    ", "    P    ", "    P    ", "   PPP   " },
             { "  PPPPP  ", "  P   P  ", "  P   P  ", "  P   P  ", "  PP PP  ", "   P P   ", "   P P   ", "   P P   ", "   P P   " },
             { "   PPP   ", "  P   P  ", "  P   P  ", "  P   P  ", "   PPP   ", "    P    ", "    P    ", "    P    ", "   PPP   " },
-            { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+            { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
     };
     private static final String[][] PBF_SHAPE_STAGE2 = {
-            { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+            { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
             { "   PPP F ", "  P   PP ", "  P   PP ", "  P   PP ", "   PPP P ", "  P P PPP", "    P    ", "    P    ", "   PPP   " },
             { "  PPPPPFP", "  P   P P", "  P   P P", "  P   P P", "  PP PP P", "  PP PP P", "   P P   ", "   P P   ", "   P P   " },
             { "   PPP F ", "  P   PP ", "  P   PP ", "  P   PP ", "   PPP P ", "  P P PPP", "    P    ", "    P    ", "   PPP   " },
-            { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+            { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
     };
     private static final String[][] PBF_SHAPE_STAGE3 = {
-            { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+            { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
             { " F PPP F ", " PP   PP ", " PP   PP ", " PP   PP ", " P PPP P ", "PPP P PPP", "    P    ", "    P    ", "   PPP   " },
             { "PFPPPPPFP", "P P   P P", "P P   P P", "P P   P P", "P PP PP P", "P PP PP P", "   P P   ", "   P P   ", "   P P   " },
             { " F PPP F ", " PP   PP ", " PP   PP ", " PP   PP ", " P PPP P ", "PPP P PPP", "    P    ", "    P    ", "   PPP   " },
-            { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+            { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
     };
 
     private static MultiblockShapeInfo largeBlastFurnaceShape(MultiblockMachineDefinition definition, String[][] aisles) {
@@ -211,11 +211,11 @@ public class WFMachines {
                 .addOutputLimit(ItemRecipeCapability.CAP, 1)
                 .appearanceBlock(GTBlocks.BRONZE_HULL)
                 .pattern(definition -> FactoryBlockPattern.start(
-                                RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
-                        .aisle("CCCCCCC", "BWWWBWB", "ABBBBBA")
+                                RelativeDirection.RIGHT, RelativeDirection.UP, RelativeDirection.BACK)
+                        .aisle("CCCCCCC", "BWWWBKB", "ABBBBBA")
                         .aisle("CCCCCCC", "BGGGGGB", "BBBBBBB")
                         .aisle("CCCCCCC", "BGGGGGB", "BBBBBBB")
-                        .aisle("CCCCCCC", "BCCCCKB", "ABBBBBA")
+                        .aisle("CCCCCCC", "BCCCCWB", "ABBBBBA")
                         .where('C', blocks(GTBlocks.BRONZE_HULL.get()))
                         .where('B', blocks(GTBlocks.CASING_BRONZE_BRICKS.get())
                                 .or(abilities(PartAbility.IMPORT_ITEMS).setPreviewCount(1))
@@ -882,7 +882,7 @@ public class WFMachines {
                                     .or(abilities(PartAbility.DATA_ACCESS))) // gtceu:titanium_turbine_casing x107
                             .where('C', blocks(GTBlocks.LIGHT_CONCRETE.get())) // gtceu:light_concrete x880
                             .where('E', frames(WFMaterials.GalvanizedSteel)) // wfcore:galvanized_steel_frame x36
-                            .where('F', blocks(GCYMBlocks.CASING_ATOMIC.get())) // gtceu:atomic_casing x92
+                            .where('F', blocks(GTBlocks.CASING_TITANIUM_GEARBOX.get())) // gtceu:atomic_casing x92
                             .where('G', frames(GTMaterials.BlackSteel)) // gtceu:black_steel_frame x20
                             // Titanium-frame diamond box-lattice roof (the "boxes on top").
                             .where('T', frames(GTMaterials.Titanium)) // gtceu:titanium_frame x261

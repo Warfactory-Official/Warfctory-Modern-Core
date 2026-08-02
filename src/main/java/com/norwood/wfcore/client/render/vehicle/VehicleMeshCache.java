@@ -1,5 +1,6 @@
 package com.norwood.wfcore.client.render.vehicle;
 
+import com.atsuishio.superbwarfare.client.RenderHelper;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.norwood.wfcore.WFCore;
@@ -134,6 +135,9 @@ public final class VehicleMeshCache {
             WFCore.LOGGER.info("[WF] vehicle preview: {} is not a GeckoLib entity - using crate", id);
             return null;
         }
+
+
+        RenderHelper.markGuiRenderTimestamp();
 
         BakedGeoModel model;
         RenderType rt;
