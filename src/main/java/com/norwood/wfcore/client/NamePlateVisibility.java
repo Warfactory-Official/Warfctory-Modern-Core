@@ -5,6 +5,7 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
@@ -22,6 +23,26 @@ public final class NamePlateVisibility {
     private static final double AIM_SLACK = 0.05D;
     private static final int COVER_SCAN = 3;
 
+    /** Beyond this range a player nameplate is only visible to their own WarForge faction. */
+    private static final double VISIBLE_RANGE = 20.0D;
+    private static final double VISIBLE_RANGE_SQ = VISIBLE_RANGE * VISIBLE_RANGE;
+
+
+
+    public static boolean isHidden(Entity entity) {
+
+        if (!WarforgeIntegration.isLoaded() || !(entity instanceof Player)) {
+            return false;
+        }
+        Entity camera = Minecraft.getInstance().getCameraEntity();
+        if (camera == null || camera == entity) {
+            return false;
+        }
+        if (Minecraft.getInstance().getEntityRenderDispatcher().distanceToSqr(entity) <= VISIBLE_RANGE_SQ) {
+            return false;
+        }
+        return !FactionTeammateCache.isTeammate(entity);
+    }
 
     public static Font.DisplayMode displayMode(Entity entity) {
         // WarForge teammates always show through walls; everyone else needs the aim/cover/line-of-sight gate.

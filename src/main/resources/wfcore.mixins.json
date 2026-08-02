@@ -25,7 +25,14 @@
     "NoBrewingMixin",
     "WFBallisticsGasMaskMixin",
     "AmmoConsumerToItemMixin",
-    "DronePayloadVehicleDetectionMixin"
+    "DronePayloadVehicleDetectionMixin",
+    "MEStorageMenuWirelessWithdrawMixin",
+    "WarforgeFobWarpGuardMixin",
+    "AdvancedWirelessItemCoverWeightMixin",
+    "WirelessItemCoverWeightMixin",
+    "EnderItemLinkCoverWeightMixin",
+    "LongDistanceItemPipeWeightMixin",
+    "P2PItemTunnelWeightMixin"
   ],
   "client": [
     "NamePlateMixin",

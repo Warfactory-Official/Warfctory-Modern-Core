@@ -230,6 +230,15 @@ dependencies {
     // True Darkness (client-only render mod, CurseForge 970641). Compile-only so the Mixin AP can resolve
     // grondag.darkness.Darkness for DarknessConfigLockMixin; delivered at runtime by the pack, not this build.
     compileOnly files("libs/darkness-forge-1.20.1-2.0.103-fork.jar")
+    // Warfactory: Ultimate Weight (modid `ultimateweight`). Compile-only so WeightGate can call its public
+    // API directly (WeightViews1201 / UltimateWeightCapabilities1201); delivered at runtime by the pack.
+    compileOnly files("libs/wfweight-1.20.1-Forge-1.2.0.jar")
+    // Applied Energistics 2. Compile-only so MEStorageMenuWirelessWithdrawMixin can reference the terminal
+    // menu / wireless host / AEKey types; delivered at runtime by the pack, not this build.
+    compileOnly files("libs/appliedenergistics2-forge-15.4.10.jar")
+    // gtmthings (GregTech Modern Things). Compile-only so the Mixin AP can resolve the wireless item
+    // transfer cover classes targeted by the Wireless*ItemCoverWeightMixins; delivered at runtime by the pack.
+    compileOnly files("libs/gtmthings-1.6.0.jar")
     modCompileOnly("curse.maven:reforgedplay-mod-1018692:5637596") { transitive = false }
     if (project.hasProperty('replayTest')) {
         modRuntimeOnly("curse.maven:reforgedplay-mod-1018692:5637596") { transitive = false }
