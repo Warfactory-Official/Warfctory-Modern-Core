@@ -69,7 +69,7 @@ public class WFRecipeTypes {
         GTRegistries.register(BuiltInRegistries.RECIPE_TYPE, missileId, MISSILE_FACTORY);
         GTRegistries.register(BuiltInRegistries.RECIPE_SERIALIZER, missileId, new GTRecipeSerializer());
         GTRegistries.RECIPE_TYPES.register(missileId, MISSILE_FACTORY);
-        MISSILE_FACTORY.setMaxIOSize(6, 1, 2, 0)
+        MISSILE_FACTORY.setMaxIOSize(9, 1, 2, 0)
                 .setProgressBar(GuiTextures.PROGRESS_BAR_ARROW, ProgressTexture.FillDirection.LEFT_TO_RIGHT)
                 .setMaxTooltips(1)
                 .setSound(GTSoundEntries.ASSEMBLER);
