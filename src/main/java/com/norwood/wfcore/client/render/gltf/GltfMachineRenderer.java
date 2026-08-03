@@ -11,6 +11,7 @@ import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 
 import com.modularmods.mcgltf.MCglTF;
@@ -23,6 +24,8 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.debug.ModelTransformDebug;
 import com.norwood.wfcore.client.render.mask.RenderMaskManager;
 import com.norwood.wfcore.mixin.LightTextureAccessor;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
@@ -43,9 +46,15 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
 
     private final MachineGltfModel model;
     private final Map<T, AnimationController> controllers = new WeakHashMap<>();
+    private final GltfMachineLightSampler lightSampler;
 
-    public GltfMachineRenderer(MachineGltfModel model) {
+    public GltfMachineRenderer(MachineGltfModel model, BlockPos... lightOffsets) {
+        this(model,lightOffsets.length == 0 ? new GltfMachineLightSampler(BlockPos.ZERO) : new GltfMachineLightSampler(lightOffsets));
+    }
+
+    public GltfMachineRenderer(MachineGltfModel model, @NotNull GltfMachineLightSampler lightSampler) {
         this.model = model;
+        this.lightSampler = lightSampler;
     }
 
     @Override
@@ -154,13 +163,13 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
     private static DynamicTexture worldLightTexture;
 
 
-    private static int worldLightLightmap(MetaMachineBlockEntity be) {
+    private int worldLightLightmap(MetaMachineBlockEntity be) {
         if (worldLightTexture == null) {
             worldLightTexture = new DynamicTexture(new NativeImage(1, 1, false));
         }
         int color = 0xFFFFFFFF;
         if (be.getLevel() != null) {
-            int packed = LevelRenderer.getLightColor(be.getLevel(), be.getBlockPos().above(15));
+            int packed = lightSampler.getLightLevel(be);
             NativeImage pixels = ((LightTextureAccessor) Minecraft.getInstance().gameRenderer.lightTexture())
                     .wfcore$getLightPixels();
             if (pixels != null) {
@@ -172,7 +181,6 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         worldLightTexture.getPixels().upload(0, 0, 0, false);
         return worldLightTexture.getId();
     }
-
 
     private static void restoreGlState(int prevVao, int prevArrayBuffer, int prevElementArrayBuffer,
                                        boolean prevCullFace, boolean prevDepthTest, boolean prevBlend,

@@ -1,6 +1,7 @@
 package com.norwood.wfcore.client;
 
 import com.norwood.wfcore.common.rank.PlayerRankUtil;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.EntityRenderersEvent;
@@ -60,19 +61,19 @@ public class WFClientEvents {
     public static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(
                 (BlockEntityType<RadarBlockEntity>) WFMachines.RADAR.getBlockEntityType(),
-                ctx -> new GltfMachineRenderer<>(RADAR_MODEL));
+                ctx -> new GltfMachineRenderer<>(RADAR_MODEL,new BlockPos(0,15,0)));
         event.registerBlockEntityRenderer(
                 (BlockEntityType<DrillRigBlockEntity>) WFMachines.DRILL_RIG.getBlockEntityType(),
-                ctx -> new GltfMachineRenderer<>(DRILL_RIG_MODEL));
+                ctx -> new GltfMachineRenderer<>(DRILL_RIG_MODEL,new BlockPos(0,-2,1)));
         event.registerBlockEntityRenderer(
                 (BlockEntityType<ResearchUnitBlockEntity>) WFMachines.RESEARCH_UNIT.getBlockEntityType(),
-                ctx -> new GltfMachineRenderer<>(RESEARCH_MODEL));
+                ctx -> new GltfMachineRenderer<>(RESEARCH_MODEL,new BlockPos(4,0,3)));
         event.registerBlockEntityRenderer(
                 (BlockEntityType<MissileLauncherBlockEntity>) WFMachines.MISSILE_LAUNCHER.getBlockEntityType(),
                 MissileLauncherRenderer::new);
         event.registerBlockEntityRenderer(
                 (BlockEntityType<InterceptorBlockEntity>) WFMachines.INTERCEPTOR.getBlockEntityType(),
-                ctx -> new GltfMachineRenderer<>(IRON_DOME_MODEL));
+                ctx -> new GltfMachineRenderer<>(IRON_DOME_MODEL,new BlockPos(0,1,1),new BlockPos(0,1,3),new BlockPos(0,3,6)));
         event.registerBlockEntityRenderer(WFBlocks.DEPOSIT_BE.get(), DepositBlockEntityRenderer::new);
         event.registerBlockEntityRenderer(WFBlocks.FOUNDRY_CASTING_BE.get(), FoundryCastingRenderer::new);
     }
