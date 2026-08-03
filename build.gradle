@@ -234,7 +234,7 @@ dependencies {
     // .IrisConfig for IrisConfigShaderLockMixin and OculusBridge can call Iris.reload(); delivered at runtime by
     // the pack. See the shader lock in common/shader (companion to True Darkness enforcement).
     compileOnly files("libs/oculus-mc1.20.1-1.8.0.jar")
-    // Warfactory: Ultimate Weight (modid `ultimateweight`). NOT on CurseForge (ModDirector-delivered), so it
+    // Warfactory: Ultimate Weight (modid `wfweight`). NOT on CurseForge (ModDirector-delivered), so it
     // stays a local libs/ jar. Compile-only so WeightGate can call its public API directly (WeightViews1201 /
     // UltimateWeightCapabilities1201); delivered at runtime by the pack.
     compileOnly files("libs/wfweight-1.20.1-Forge-1.2.0.jar")

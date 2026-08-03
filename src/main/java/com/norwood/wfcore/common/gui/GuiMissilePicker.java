@@ -36,8 +36,8 @@ import java.util.function.Supplier;
 public final class GuiMissilePicker {
 
     public static final int ROW_H = 16;
-    /** Fixed row-widget pool size; entries beyond this never show (far above any realistic missile mix). */
-    public static final int MAX_ROWS = 16;
+    /** Fixed row-widget pool size; creative silo access exposes the complete missile registry. */
+    public static final int MAX_ROWS = 64;
 
     private static final int COLOR_BORDER = 0xFF101010;
     private static final int COLOR_ROW = 0xFF1A1A1E;

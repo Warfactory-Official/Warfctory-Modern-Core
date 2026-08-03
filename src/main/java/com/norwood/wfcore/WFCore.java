@@ -32,6 +32,7 @@ import net.minecraft.world.item.Items;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.data.event.GatherDataEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
@@ -162,7 +163,9 @@ public class WFCore {
             com.norwood.wfcore.diagnostics.DiagNet.register();
             TaczBallisticsIntegration.register();
             SbwBallisticsIntegration.register();
-            com.norwood.wfcore.integration.wfweight.SbwWeightIntegration.register();
+            if (ModList.get().isLoaded("wfweight") && ModList.get().isLoaded("superbwarfare")) {
+                com.norwood.wfcore.integration.wfweight.SbwWeightIntegration.register();
+            }
             com.norwood.wfcore.integration.superbwarfare.DroneUpgradeBay.registerOverrides();
             UIFactory.register(VehicleUIFactory.INSTANCE);
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");

@@ -147,7 +147,7 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     @Persisted
     protected int pendingTargetZ;
     @Persisted
-    protected String pendingAttackProfile = AttackProfile.SPEED.name();
+    protected String pendingAttackProfile = "AUTO";
     @Persisted
     protected String pendingAttackDirection = AttackDirection.AUTO.name();
     @Persisted
@@ -165,7 +165,7 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     protected int displayState = LaunchState.UNFORMED.ordinal();
     @Persisted
     @DescSynced
-    protected String attackProfile = AttackProfile.SPEED.name();
+    protected String attackProfile = "AUTO";
     @Persisted
     @DescSynced
     protected String attackDirection = AttackDirection.AUTO.name();
@@ -367,6 +367,10 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
 
     public void setAttackProfileName(String name) {
         if (name == null) return;
+        if (name.equals("AUTO")) {
+            attackProfile = "AUTO";
+            return;
+        }
         try {
             attackProfile = AttackProfile.valueOf(name).name();
         } catch (IllegalArgumentException ignored) {
@@ -736,7 +740,9 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
         // Own the missile for the WarForge faction claiming the silo's chunk, so friendly interceptor
         // batteries don't engage it. wfballistics' own compat no-ops safely without WarForge installed.
         missile.setTeamId(WarforgeCompat.factionClaiming(serverLevel, getPos()));
-        missile.setAttackProfile(AttackProfile.byName(pendingAttackProfile));
+        if (!pendingAttackProfile.equals("AUTO")) {
+            missile.setAttackProfile(AttackProfile.byName(pendingAttackProfile));
+        }
         AttackDirection direction = AttackDirection.byName(pendingAttackDirection);
         if (direction != AttackDirection.AUTO) {
             missile.setAttackApproachDir(direction.vector());

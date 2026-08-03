@@ -466,7 +466,7 @@ public final class MissileLauncherGui {
 
         panel.child(settingLabel("wfcore.gui.launcher.attack_profile", SETTINGS_Y + 6));
         panel.child(cycleButton("attack_profile", SETTINGS_Y + 4, profile,
-                new String[] { "SPEED", "BALANCED", "LOFT" },
+                new String[] { "AUTO", "SPEED", "BALANCED", "LOFT" },
                 () -> profileLabel(mte.getAttackProfileName()), "wfcore.gui.launcher.attack_profile_tip"));
         panel.child(settingLabel("wfcore.gui.launcher.attack_direction", SETTINGS_Y + 6 + SETTING_ROW_H));
         panel.child(cycleButton("attack_direction", SETTINGS_Y + 4 + SETTING_ROW_H, direction,
