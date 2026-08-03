@@ -25,6 +25,7 @@
     "NoBrewingMixin",
     "WFBallisticsGasMaskMixin",
     "AmmoConsumerToItemMixin",
+    "AmmoResupplyDisableMixin",
     "DronePayloadVehicleDetectionMixin",
     "MEStorageMenuWirelessWithdrawMixin",
     "WarforgeFobWarpGuardMixin",

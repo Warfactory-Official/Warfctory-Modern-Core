@@ -161,6 +161,7 @@ public class WFCore {
             com.norwood.wfcore.diagnostics.DiagNet.register();
             TaczBallisticsIntegration.register();
             SbwBallisticsIntegration.register();
+            com.norwood.wfcore.integration.wfweight.SbwWeightIntegration.register();
             com.norwood.wfcore.integration.superbwarfare.DroneUpgradeBay.registerOverrides();
             UIFactory.register(VehicleUIFactory.INSTANCE);
             LOGGER.info("Hello from common setup! This is *after* registries are done, so we can do this:");

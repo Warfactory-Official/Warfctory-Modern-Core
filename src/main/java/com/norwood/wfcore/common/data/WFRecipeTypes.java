@@ -126,7 +126,7 @@ public class WFRecipeTypes {
         GTRegistries.register(BuiltInRegistries.RECIPE_TYPE, mobFarmerId, MOB_FARMER);
         GTRegistries.register(BuiltInRegistries.RECIPE_SERIALIZER, mobFarmerId, new GTRecipeSerializer());
         GTRegistries.RECIPE_TYPES.register(mobFarmerId, MOB_FARMER);
-        MOB_FARMER.setMaxIOSize(2, 6, 0, 0)
+        MOB_FARMER.setMaxIOSize(2, 6, 1, 0)
                 .setProgressBar(GuiTextures.PROGRESS_BAR_ARROW, ProgressTexture.FillDirection.LEFT_TO_RIGHT)
                 .setMaxTooltips(1)
                 .setSound(GTSoundEntries.MACERATOR);
