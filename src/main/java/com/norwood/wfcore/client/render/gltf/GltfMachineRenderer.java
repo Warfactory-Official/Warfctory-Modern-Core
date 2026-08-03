@@ -181,11 +181,6 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         worldLightTexture.getPixels().upload(0, 0, 0, false);
         return worldLightTexture.getId();
     }
-    //getHighestLightLevel(be);
-    //public static int getHighestLightLevel(MetaMachineBlockEntity be) {
-    //    be.getMetaMachine().
-    //}
-
 
     private static void restoreGlState(int prevVao, int prevArrayBuffer, int prevElementArrayBuffer,
                                        boolean prevCullFace, boolean prevDepthTest, boolean prevBlend,
