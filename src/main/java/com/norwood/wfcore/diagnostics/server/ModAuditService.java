@@ -1,9 +1,5 @@
 package com.norwood.wfcore.diagnostics.server;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
-
 import com.mojang.brigadier.context.CommandContext;
 
 import com.norwood.wfcore.WFCore;
@@ -28,13 +24,16 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.loading.FMLPaths;
 import net.minecraftforge.server.ServerLifecycleHooks;
 
+import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,18 +45,10 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Server half of the soft client-mod integrity audit. On join it asks the client (via {@link DiagNet}) to hash
- * its mods-folder jars, then matches the reply against {@code config/wfcore-modmanifest.json}. Unknown or modified
- * jars are FLAGGED - logged, shown to online operators, and posted to a Discord webhook if configured - but the
- * player is never kicked (a newer legitimate build is plausible; an admin decides). Hard mod validation stays with
- * the anticheat; this layer covers the client-only mods the anticheat is told to ignore.
- */
+
 public final class ModAuditService {
 
     public static final ModAuditService INSTANCE = new ModAuditService();
-
-    private static final String MANIFEST_FILE = "wfcore-modmanifest.json";
 
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
@@ -75,7 +66,7 @@ public final class ModAuditService {
     private final Long2ObjectMap<Pending> pending = new Long2ObjectOpenHashMap<>();
     private final Random random = new Random();
 
-    /** fileName -> lower-case sha-256 hex, loaded lazily and reloadable via command; empty = audit inactive. */
+    /** fileName -> lower-case sha-256 hex, scanned lazily from mods/ + client_mods/ and reloadable via command. */
     private volatile Map<String, String> manifest;
 
     private ModAuditService() {}
@@ -165,9 +156,7 @@ public final class ModAuditService {
 
         Map<String, String> mf = manifest();
         if (mf.isEmpty()) {
-            // No manifest on disk -> nothing to compare against. Fail open (do not flag) but note it once.
-            WFCore.LOGGER.warn("[wfcore-modaudit] no {} on the server; mod report from {} not checked.",
-                    MANIFEST_FILE, name);
+            WFCore.LOGGER.warn("[wfcore-modaudit] reference hash table is empty; mod report from {} not checked.", name);
             return;
         }
 
@@ -245,12 +234,11 @@ public final class ModAuditService {
                     body.append("\n• ").append(escape(finding));
                     shown++;
                 }
-                JsonObject payload = new JsonObject();
-                payload.addProperty("content", body.toString());
+                String payload = "{\"content\":" + jsonString(body.toString()) + "}";
                 HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                         .timeout(Duration.ofSeconds(15))
                         .header("Content-Type", "application/json")
-                        .POST(HttpRequest.BodyPublishers.ofString(payload.toString(), StandardCharsets.UTF_8))
+                        .POST(HttpRequest.BodyPublishers.ofString(payload, StandardCharsets.UTF_8))
                         .build();
                 HttpResponse<Void> response = HTTP.send(request, HttpResponse.BodyHandlers.discarding());
                 if (response.statusCode() / 100 != 2) {
@@ -276,30 +264,50 @@ public final class ModAuditService {
     }
 
     private Map<String, String> loadManifest() {
-        Path file = FMLPaths.CONFIGDIR.get().resolve(MANIFEST_FILE);
         Map<String, String> out = new HashMap<>();
-        try {
-            if (!Files.isRegularFile(file)) {
-                return out;
-            }
-            JsonElement root = JsonParser.parseString(Files.readString(file, StandardCharsets.UTF_8));
-            if (!root.isJsonObject()) {
-                return out;
-            }
-            JsonObject obj = root.getAsJsonObject();
-            JsonObject mods = obj.has("mods") && obj.get("mods").isJsonObject()
-                    ? obj.getAsJsonObject("mods")
-                    : obj;
-            for (Map.Entry<String, JsonElement> e : mods.entrySet()) {
-                if (e.getValue().isJsonPrimitive()) {
-                    out.put(e.getKey(), e.getValue().getAsString().trim().toLowerCase());
+        Path gameDir = FMLPaths.GAMEDIR.get();
+        int shared = scanJarDir(gameDir.resolve("mods"), out);
+        int clientOnly = scanJarDir(gameDir.resolve("client_mods"), out);
+        WFCore.LOGGER.info("[wfcore-modaudit] hashed {} shared + {} client-only jar(s) as reference",
+                shared, clientOnly);
+        return out;
+    }
+
+    private static int scanJarDir(Path dir, Map<String, String> out) {
+        if (!Files.isDirectory(dir)) {
+            return 0;
+        }
+        int count = 0;
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(dir, "*.jar")) {
+            for (Path p : stream) {
+                if (!Files.isRegularFile(p)) {
+                    continue;
+                }
+                String hex = sha256hex(p);
+                if (hex != null) {
+                    out.put(p.getFileName().toString(), hex);
+                    count++;
                 }
             }
-            WFCore.LOGGER.info("[wfcore-modaudit] loaded {} manifest entries from {}", out.size(), MANIFEST_FILE);
         } catch (Throwable t) {
-            WFCore.LOGGER.warn("[wfcore-modaudit] failed to read {}: {}", MANIFEST_FILE, t.toString());
+            WFCore.LOGGER.warn("[wfcore-modaudit] failed to scan {}: {}", dir, t.toString());
         }
-        return out;
+        return count;
+    }
+
+    private static String sha256hex(Path file) {
+        try (InputStream in = Files.newInputStream(file)) {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] buf = new byte[1 << 16];
+            int read;
+            while ((read = in.read(buf)) != -1) {
+                md.update(buf, 0, read);
+            }
+            return toHex(md.digest());
+        } catch (Throwable t) {
+            WFCore.LOGGER.warn("[wfcore-modaudit] could not hash {}: {}", file, t.toString());
+            return null;
+        }
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -319,7 +327,7 @@ public final class ModAuditService {
     private int commandReload(CommandContext<CommandSourceStack> ctx) {
         Map<String, String> reloaded = loadManifest();
         manifest = reloaded;
-        ctx.getSource().sendSuccess(() -> Component.literal("Reloaded mod manifest: " + reloaded.size() + " entr(ies)."), true);
+        ctx.getSource().sendSuccess(() -> Component.literal("Rescanned mods/ + client_mods/: " + reloaded.size() + " jar(s)."), true);
         return reloaded.size();
     }
 
@@ -336,8 +344,18 @@ public final class ModAuditService {
         return sb.toString();
     }
 
-    /** Neutralise Discord markdown / mention control chars in untrusted file names. */
     private static String escape(String s) {
         return s.replaceAll("[`*_~@|<>]", "");
+    }
+
+    private static String jsonString(String s) {
+        StringBuilder sb = new StringBuilder(s.length() + 2).append('"');
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c == '"' || c == '\\') sb.append('\\').append(c);
+            else if (c < 0x20) sb.append(String.format("\\u%04x", (int) c));
+            else sb.append(c);
+        }
+        return sb.append('"').toString();
     }
 }
