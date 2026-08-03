@@ -60,4 +60,4 @@ jobs:
         gh release create latest "${{ steps.jar.outputs.path }}" \
           --title "Latest build (${GITHUB_SHA::7})" \
           --notes "Automated build of \`main\` @ ${GITHUB_SHA}" \
-          --latest
+          --latest=false
