@@ -332,7 +332,7 @@ public final class WFCoreConfig {
 
         builder.comment(
                 "Soft client-mod integrity audit. On join the server asks the client to hash its mods-folder jars and",
-                "compares them to config/wfcore-modmanifest.json (fileName -> sha256, regenerated per pack build).",
+                "compares them to the sha256 of the server's own mods/ + client_mods/ jars (scanned live, no manifest file).",
                 "Anything unknown or modified is FLAGGED (log + operator message + optional Discord webhook) but NEVER",
                 "kicked - a newer build is plausible, so an admin reviews. Hard mod validation stays with the anticheat.")
                 .push("clientModAudit");

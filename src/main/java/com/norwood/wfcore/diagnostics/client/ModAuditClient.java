@@ -5,12 +5,10 @@ import com.norwood.wfcore.diagnostics.DiagNet;
 import com.norwood.wfcore.diagnostics.ModListRequestMessage;
 import com.norwood.wfcore.diagnostics.ModReportMessage;
 
-import net.minecraftforge.fml.ModList;
 import net.minecraftforge.fml.loading.FMLPaths;
-import net.minecraftforge.forgespi.language.IModFileInfo;
-import net.minecraftforge.forgespi.locating.IModFile;
 
 import java.io.InputStream;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
@@ -21,12 +19,7 @@ import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-/**
- * Client half of the soft mod audit. On a {@link ModListRequestMessage} it hashes every jar the client actually
- * loaded from its mods folder and replies with a {@link ModReportMessage}. Hashing is done off the render thread
- * (~hundreds of MB of jars); only physical mods-folder files are hashed, so jar-in-jar / library entries and the
- * minecraft & forge jars are skipped, matching how the server-side manifest is generated.
- */
+
 public final class ModAuditClient {
 
     private static final ExecutorService WORKER = Executors.newSingleThreadExecutor(r -> {
@@ -49,44 +42,27 @@ public final class ModAuditClient {
         });
     }
 
-    private static List<ModReportMessage.Entry> collect() {
-        Path modsDir;
-        try {
-            modsDir = FMLPaths.MODSDIR.get().toAbsolutePath().normalize();
-        } catch (Throwable t) {
-            modsDir = null;
+    private static List<ModReportMessage.Entry> collect() throws Exception {
+        Path modsDir = FMLPaths.MODSDIR.get();
+        if (!Files.isDirectory(modsDir)) {
+            return List.of();
         }
 
-        // Dedup by file name: a jar that ships several mods appears once in getModFiles(), but be defensive.
+        // Hash every jar physically present in the main mods folder. Dedup by file name defensively.
         Map<String, byte[]> byName = new LinkedHashMap<>();
-        for (IModFileInfo info : ModList.get().getModFiles()) {
-            IModFile file = info == null ? null : info.getFile();
-            if (file == null) {
-                continue;
-            }
-            Path path;
-            try {
-                path = file.getFilePath();
-            } catch (Throwable t) {
-                continue;
-            }
-            if (path == null) {
-                continue;
-            }
-            Path norm = path.toAbsolutePath().normalize();
-            if (modsDir != null && !norm.startsWith(modsDir)) {
-                continue; // library jar, the game jar, or a jar-in-jar union path -> not a mods-folder file
-            }
-            if (!Files.isRegularFile(norm)) {
-                continue;
-            }
-            String name = norm.getFileName().toString();
-            if (byName.containsKey(name)) {
-                continue;
-            }
-            byte[] digest = sha256(norm);
-            if (digest != null) {
-                byName.put(name, digest);
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(modsDir, "*.jar")) {
+            for (Path p : stream) {
+                if (!Files.isRegularFile(p)) {
+                    continue;
+                }
+                String name = p.getFileName().toString();
+                if (byName.containsKey(name)) {
+                    continue;
+                }
+                byte[] digest = sha256(p);
+                if (digest != null) {
+                    byName.put(name, digest);
+                }
             }
         }
 

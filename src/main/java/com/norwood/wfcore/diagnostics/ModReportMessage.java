@@ -10,11 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
-/**
- * Client -> server: the sha-256 of every jar the client loaded from its mods folder, keyed by file name.
- * The server matches these against {@code config/wfcore-modmanifest.json}; the payload is untrusted, so read
- * caps every field (entry count, name length, digest length) defensively.
- */
 public record ModReportMessage(long nonce, List<Entry> entries) {
 
     /** One mods-folder jar: its file name and 32-byte sha-256. */
