@@ -13,7 +13,7 @@ import com.warfactory.ultimateweight.v1201.WeightViews1201;
 
 public final class WeightGate {
 
-    private static final String MOD_ID = "ultimateweight";
+    private static final String MOD_ID = "wfweight";
     private static Boolean loaded;
 
     private WeightGate() {}

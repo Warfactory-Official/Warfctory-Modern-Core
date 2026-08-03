@@ -35,7 +35,7 @@ public abstract class MEStorageMenuWirelessWithdrawMixin {
         }
         if (key instanceof AEItemKey itemKey && WeightGate.isWeighted(itemKey.toStack())) {
             player.displayClientMessage(
-                    Component.literal("§cToo heavy to move through a wireless terminal — haul it physically."),
+                    Component.literal("§cToo heavy to move through a wireless terminal, haul it physically."),
                     true);
             ci.cancel();
         }
