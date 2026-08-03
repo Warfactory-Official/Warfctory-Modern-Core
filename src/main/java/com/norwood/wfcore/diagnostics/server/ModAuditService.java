@@ -168,6 +168,11 @@ public final class ModAuditService {
             }
         }
 
+        if (reported.isEmpty()) {
+            flag(server, name, List.of("returned no usable mod entries"));
+            return;
+        }
+
         List<String> findings = new ArrayList<>();
         for (Map.Entry<String, String> e : reported.entrySet()) {
             String expectedHex = mf.get(e.getKey());

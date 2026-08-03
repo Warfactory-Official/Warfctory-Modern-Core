@@ -185,6 +185,8 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     // LDLib has no UUID field serializer.
     @Nullable
     protected UUID controlId;
+    protected final List<UUID> trackedMissileIds = new ArrayList<>();
+    protected final Map<UUID, Integer> trackedMissileMisses = new LinkedHashMap<>();
     @Nullable
     protected UUID trackedMissileId;
 
@@ -299,7 +301,7 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
 
     protected void tickLauncher() {
         // A creative test launch may continue after its operator closes the override through a normal click.
-        if (!isFormed() && !creativeOverride && cooldown <= 0 && !hasActiveTrackedMissile()) {
+        if (!isFormed() && !creativeOverride && cooldown <= 0 && trackedMissileIds.isEmpty()) {
             this.displayState = LaunchState.UNFORMED.ordinal();
             return;
         }
@@ -754,6 +756,7 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
         missile.moveTo(muzzle.x, muzzle.y, muzzle.z, 0.0f, 0.0f);
         if (serverLevel.addFreshEntity(missile)) {
             trackedMissileId = missile.getUUID();
+            trackedMissileIds.add(trackedMissileId);
             WFBallisticsAPI.openTelemetry(missile);
             refreshTelemetry();
         }
@@ -762,6 +765,40 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
     private void refreshTelemetry() {
         if (!(getLevel() instanceof ServerLevel serverLevel)) return;
         CompoundTag tag = new CompoundTag();
+        ListTag activeTags = new ListTag();
+        Iterator<UUID> tracked = trackedMissileIds.iterator();
+        while (tracked.hasNext()) {
+            UUID id = tracked.next();
+            MissileData data = WFBallisticsAPI.getMissileData(serverLevel, id);
+            if (data == null) {
+                MissileTelemetry missingTelemetry = WFBallisticsAPI.getTelemetry(id);
+                int misses = trackedMissileMisses.merge(id, 1, Integer::sum);
+                if (isTerminalTelemetry(missingTelemetry) || misses >= 12) {
+                    tracked.remove();
+                    trackedMissileMisses.remove(id);
+                } else {
+                    CompoundTag previous = previousActiveMissile(id);
+                    if (previous != null) activeTags.add(previous.copy());
+                }
+                continue;
+            }
+            trackedMissileMisses.remove(id);
+            CompoundTag activeTag = new CompoundTag();
+            activeTag.putUUID("Id", id);
+            activeTag.putBoolean("Simulated", data.simulated());
+            activeTag.putString("Model", data.model());
+            activeTag.putString("Phase", data.phase());
+            activeTag.putDouble("X", data.pos().x);
+            activeTag.putDouble("Y", data.pos().y);
+            activeTag.putDouble("Z", data.pos().z);
+            activeTags.add(activeTag);
+        }
+        tag.put("TrackedMissiles", activeTags);
+
+        if (!trackedMissileIds.isEmpty()) {
+            trackedMissileId = trackedMissileIds.get(trackedMissileIds.size() - 1);
+        }
+
         if (trackedMissileId != null) {
             tag.putUUID("Id", trackedMissileId);
             boolean sameTrackedMissile = telemetry.tag.hasUUID("Id") &&
@@ -826,6 +863,24 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
             }
         }
         if (!tag.equals(telemetry.tag)) telemetry.setTag(tag);
+    }
+
+    @Nullable
+    private CompoundTag previousActiveMissile(UUID id) {
+        ListTag previous = telemetry.tag.getList("TrackedMissiles", Tag.TAG_COMPOUND);
+        for (int i = 0; i < previous.size(); i++) {
+            CompoundTag entry = previous.getCompound(i);
+            if (entry.hasUUID("Id") && id.equals(entry.getUUID("Id"))) return entry;
+        }
+        return null;
+    }
+
+    private static boolean isTerminalTelemetry(@Nullable MissileTelemetry missileTelemetry) {
+        if (missileTelemetry == null || missileTelemetry.latest() == null) return false;
+        return switch (missileTelemetry.latest().type()) {
+            case INTERCEPTED, DESTROYED, IMPACTED, DETONATED -> true;
+            default -> false;
+        };
     }
 
     /**
@@ -908,6 +963,13 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
         if (trackedMissileId != null) {
             tag.putUUID("TrackedMissileId", trackedMissileId);
         }
+        ListTag trackedMissiles = new ListTag();
+        for (UUID id : trackedMissileIds) {
+            CompoundTag entry = new CompoundTag();
+            entry.putUUID("Id", id);
+            trackedMissiles.add(entry);
+        }
+        tag.put("TrackedMissiles", trackedMissiles);
         ListTag links = new ListTag();
         for (BlockPos pos : linkedFactories) {
             links.add(NbtUtils.writeBlockPos(pos));
@@ -923,6 +985,18 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
         }
         if (tag.hasUUID("TrackedMissileId")) {
             trackedMissileId = tag.getUUID("TrackedMissileId");
+        }
+        trackedMissileIds.clear();
+        trackedMissileMisses.clear();
+        if (tag.contains("TrackedMissiles", Tag.TAG_LIST)) {
+            ListTag trackedMissiles = tag.getList("TrackedMissiles", Tag.TAG_COMPOUND);
+            for (int i = 0; i < trackedMissiles.size(); i++) {
+                CompoundTag entry = trackedMissiles.getCompound(i);
+                if (entry.hasUUID("Id")) trackedMissileIds.add(entry.getUUID("Id"));
+            }
+        } else if (trackedMissileId != null) {
+            // Worlds saved by the single-missile tracker still resume that flight after upgrading.
+            trackedMissileIds.add(trackedMissileId);
         }
         linkedFactories.clear();
         ListTag links = tag.getList("LinkedFactories", Tag.TAG_COMPOUND);

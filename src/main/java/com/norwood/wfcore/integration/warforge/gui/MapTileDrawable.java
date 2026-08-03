@@ -3,6 +3,8 @@ package com.norwood.wfcore.integration.warforge.gui;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.resources.ResourceLocation;
 
 import brachy.modularui.api.drawable.IDrawable;
@@ -11,6 +13,7 @@ import brachy.modularui.screen.viewport.GuiContext;
 import brachy.modularui.theme.WidgetTheme;
 import com.flansmod.warforge.Tags;
 import com.flansmod.warforge.api.modularui.ChunkMapTextureDaemon;
+import com.norwood.wfcore.common.machine.MissileLauncherMachine;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
@@ -41,6 +44,7 @@ final class MapTileDrawable implements IDrawable {
     private static final int GRID = 0x33FFFFFF;
     private static final int TARGET = 0x66FF4040;
     private static final int MISSILE = 0xFFFFFF38;
+    private static final int SIM_MISSILE = 0xFF45E6FF;
     private static final int MISSILE_BORDER = 0xFF101010;
     private static final int SELF = 0x8040A0FF;
     private static final int CURSOR = 0x66FFFFFF;
@@ -51,16 +55,14 @@ final class MapTileDrawable implements IDrawable {
     private final IntSupplier targetBlockX;
     private final IntSupplier targetBlockZ;
     private final BooleanSupplier hasTarget;
-    private final IntSupplier missileBlockX;
-    private final IntSupplier missileBlockZ;
-    private final BooleanSupplier hasMissile;
+    private final MissileLauncherMachine launcher;
     private final BooleanSupplier isSelfChunk;
     /** Shared out-holder: world block (x, z) under the mouse, written by whichever tile is hovered. */
     private final int[] hoverBlock;
 
     MapTileDrawable(String namespace, IntSupplier chunkX, IntSupplier chunkZ,
                      IntSupplier targetBlockX, IntSupplier targetBlockZ, BooleanSupplier hasTarget,
-                     IntSupplier missileBlockX, IntSupplier missileBlockZ, BooleanSupplier hasMissile,
+                     MissileLauncherMachine launcher,
                      BooleanSupplier isSelfChunk, int[] hoverBlock) {
         this.namespace = namespace;
         this.chunkX = chunkX;
@@ -68,9 +70,7 @@ final class MapTileDrawable implements IDrawable {
         this.targetBlockX = targetBlockX;
         this.targetBlockZ = targetBlockZ;
         this.hasTarget = hasTarget;
-        this.missileBlockX = missileBlockX;
-        this.missileBlockZ = missileBlockZ;
-        this.hasMissile = hasMissile;
+        this.launcher = launcher;
         this.isSelfChunk = isSelfChunk;
         this.hoverBlock = hoverBlock;
     }
@@ -117,15 +117,18 @@ final class MapTileDrawable implements IDrawable {
             GuiDraw.drawRect(context.getGraphics(), x + 1, bz, width - 1, Math.max(1f, px), TARGET);
         }
 
-        // Active missile marker: a high-contrast 5x5 beacon centred on its block. The suppliers read the
-        // launcher telemetry snapshot, which remains live while WF-Ballistics offloads the missile to sim.
-        int missileX = missileBlockX.getAsInt();
-        int missileZ = missileBlockZ.getAsInt();
-        if (hasMissile.getAsBoolean() && (missileX >> 4) == cx && (missileZ >> 4) == cz) {
+        // Active missile markers: real entities are yellow and offloaded simulated missiles are cyan.
+        ListTag missiles = launcher.getTelemetrySnapshot().getList("TrackedMissiles", Tag.TAG_COMPOUND);
+        for (int i = 0; i < missiles.size(); i++) {
+            var missile = missiles.getCompound(i);
+            int missileX = (int) Math.floor(missile.getDouble("X"));
+            int missileZ = (int) Math.floor(missile.getDouble("Z"));
+            if ((missileX >> 4) != cx || (missileZ >> 4) != cz) continue;
             float markerX = x + (missileX & 15) * px + px * 0.5f;
             float markerY = y + (missileZ & 15) * px + px * 0.5f;
             GuiDraw.drawRect(context.getGraphics(), markerX - 3, markerY - 3, 6, 6, MISSILE_BORDER);
-            GuiDraw.drawRect(context.getGraphics(), markerX - 2, markerY - 2, 4, 4, MISSILE);
+            int color = missile.getBoolean("Simulated") ? SIM_MISSILE : MISSILE;
+            GuiDraw.drawRect(context.getGraphics(), markerX - 2, markerY - 2, 4, 4, color);
         }
 
         // hover: publish the exact world block under the cursor and draw a block cursor. This mouse-vs-draw
