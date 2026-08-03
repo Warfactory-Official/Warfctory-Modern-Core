@@ -1213,6 +1213,7 @@ public class WFMachines {
                             .where('S', controller(blocks(definition.getBlock())))
                             .where('A', blocks(GTBlocks.MACHINE_CASING_MV.get())) // MV hull
                             .where('B', blocks(GTBlocks.CASING_STEEL_SOLID.get()) // steel casing + hatches
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMinGlobalLimited(1))
                                     .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
                                             .setMaxGlobalLimited(2))
                                     .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1))
