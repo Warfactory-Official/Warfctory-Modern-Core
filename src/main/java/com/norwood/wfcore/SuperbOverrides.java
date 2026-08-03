@@ -1,5 +1,6 @@
 package com.norwood.wfcore;
 
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -14,6 +15,10 @@ import java.util.Set;
 public final class SuperbOverrides {
 
     private SuperbOverrides() {}
+
+  
+    public static final TagKey<Item> VEHICLE_STORAGE_BLACKLIST =
+            TagKey.create(Registries.ITEM, new ResourceLocation("wfcore", "vehicle_storage_blacklist"));
 
     // Vehicle id -> data.
     public static volatile Map<String, OverrideData> overrideDataMap = Map.of();

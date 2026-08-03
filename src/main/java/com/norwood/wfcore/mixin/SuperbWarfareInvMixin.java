@@ -176,6 +176,10 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
      */
     @Inject(method = "canPlaceItem", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$filterStorageItem(int slot, ItemStack stack, CallbackInfoReturnable<Boolean> cir) {
+        if (!stack.isEmpty() && stack.is(SuperbOverrides.VEHICLE_STORAGE_BLACKLIST)) {
+            cir.setReturnValue(false);
+            return;
+        }
         var id = wfcore$typeId();
         var override = id == null ? null : SuperbOverrides.getOverride(id);
         if (override != null && override.hasStorageFilter() && !override.allowsInStorage(stack)) {
