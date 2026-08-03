@@ -16,7 +16,7 @@ public final class SuperbOverrides {
 
     private SuperbOverrides() {}
 
-  
+
     public static final TagKey<Item> VEHICLE_STORAGE_BLACKLIST =
             TagKey.create(Registries.ITEM, new ResourceLocation("wfcore", "vehicle_storage_blacklist"));
 
