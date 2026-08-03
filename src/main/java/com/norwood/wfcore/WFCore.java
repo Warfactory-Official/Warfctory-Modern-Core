@@ -104,6 +104,7 @@ public class WFCore {
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.diagnostics.server.DiagnosticsService.INSTANCE);
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.diagnostics.server.ModAuditService.INSTANCE);
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.common.darkness.DarknessServerHandler.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.common.shader.ShaderServerHandler.INSTANCE);
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.common.chat.ChatModeration.INSTANCE);
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.common.maintenance.MaintenanceService.INSTANCE);
 

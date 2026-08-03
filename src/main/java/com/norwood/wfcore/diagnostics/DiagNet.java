@@ -2,6 +2,7 @@ package com.norwood.wfcore.diagnostics;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.darkness.DarknessEnforceMessage;
+import com.norwood.wfcore.common.shader.ShaderEnforceMessage;
 
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
@@ -58,6 +59,10 @@ public final class DiagNet {
         CHANNEL.registerMessage(5, DarknessEnforceMessage.class,
                 DarknessEnforceMessage::write, DarknessEnforceMessage::read, DarknessEnforceMessage::handle,
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+        CHANNEL.registerMessage(6, ShaderEnforceMessage.class,
+                ShaderEnforceMessage::write, ShaderEnforceMessage::read, ShaderEnforceMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     public static void sendToClient(ServerPlayer player, DiagRequestMessage message) {
@@ -69,6 +74,10 @@ public final class DiagNet {
     }
 
     public static void sendDarknessEnforce(ServerPlayer player, DarknessEnforceMessage message) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    public static void sendShaderEnforce(ServerPlayer player, ShaderEnforceMessage message) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
     }
 }

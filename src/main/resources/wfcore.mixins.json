@@ -55,7 +55,8 @@
     "PlayerTabRankMixin",
     "ForceFirstPersonCameraMixin",
     "SodayoRocketShellBoundsMixin",
-    "DarknessConfigLockMixin"
+    "DarknessConfigLockMixin",
+    "IrisConfigShaderLockMixin"
   ],
   "injectors": {
     "defaultRequire": 1

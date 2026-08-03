@@ -230,6 +230,10 @@ dependencies {
     // True Darkness (client-only render mod, CurseForge 970641). Compile-only so the Mixin AP can resolve
     // grondag.darkness.Darkness for DarknessConfigLockMixin; delivered at runtime by the pack, not this build.
     compileOnly files("libs/darkness-forge-1.20.1-2.0.103-fork.jar")
+    // Oculus/Iris (client-only shader mod). Compile-only so the Mixin AP can resolve net.irisshaders.iris.config
+    // .IrisConfig for IrisConfigShaderLockMixin and OculusBridge can call Iris.reload(); delivered at runtime by
+    // the pack. See the shader lock in common/shader (companion to True Darkness enforcement).
+    compileOnly files("libs/oculus-mc1.20.1-1.8.0.jar")
     // Warfactory: Ultimate Weight (modid `ultimateweight`). NOT on CurseForge (ModDirector-delivered), so it
     // stays a local libs/ jar. Compile-only so WeightGate can call its public API directly (WeightViews1201 /
     // UltimateWeightCapabilities1201); delivered at runtime by the pack.

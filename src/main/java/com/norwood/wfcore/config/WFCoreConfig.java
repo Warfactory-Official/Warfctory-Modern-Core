@@ -56,6 +56,7 @@ public final class WFCoreConfig {
     private static final boolean DEFAULT_TRUE_DARKNESS_DARK_SKYLESS = false;
     private static final double DEFAULT_TRUE_DARKNESS_NETHER_FOG = 0.5;
     private static final double DEFAULT_TRUE_DARKNESS_END_FOG = 0.0;
+    private static final boolean DEFAULT_BLOCK_CLIENT_SHADERS = true;
     private static final boolean DEFAULT_CHAT_MODERATION_ENABLED = true;
     private static final boolean DEFAULT_CHAT_FILTER_ENABLED = true;
     private static final FilterAction DEFAULT_CHAT_FILTER_ACTION = FilterAction.CENSOR;
@@ -113,6 +114,7 @@ public final class WFCoreConfig {
     private static volatile boolean trueDarknessDarkSkyless = DEFAULT_TRUE_DARKNESS_DARK_SKYLESS;
     private static volatile double trueDarknessNetherFog = DEFAULT_TRUE_DARKNESS_NETHER_FOG;
     private static volatile double trueDarknessEndFog = DEFAULT_TRUE_DARKNESS_END_FOG;
+    private static volatile boolean blockClientShaders = DEFAULT_BLOCK_CLIENT_SHADERS;
     private static volatile boolean chatModerationEnabled = DEFAULT_CHAT_MODERATION_ENABLED;
     private static volatile boolean chatFilterEnabled = DEFAULT_CHAT_FILTER_ENABLED;
     private static volatile FilterAction chatFilterAction = DEFAULT_CHAT_FILTER_ACTION;
@@ -163,6 +165,7 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.BooleanValue TRUE_DARKNESS_DARK_SKYLESS;
     private static final ForgeConfigSpec.DoubleValue TRUE_DARKNESS_NETHER_FOG;
     private static final ForgeConfigSpec.DoubleValue TRUE_DARKNESS_END_FOG;
+    private static final ForgeConfigSpec.BooleanValue BLOCK_CLIENT_SHADERS;
     private static final ForgeConfigSpec.BooleanValue CHAT_MODERATION_ENABLED;
     private static final ForgeConfigSpec.BooleanValue CHAT_FILTER_ENABLED;
     private static final ForgeConfigSpec.EnumValue<FilterAction> CHAT_FILTER_ACTION;
@@ -399,6 +402,22 @@ public final class WFCoreConfig {
         TRUE_DARKNESS_END_FOG = builder
                 .comment("End fog brightness floor (0 = darkest, 1 = vanilla). Only applies while darkEnd is on.")
                 .defineInRange("endFog", DEFAULT_TRUE_DARKNESS_END_FOG, 0.0, 1.0);
+
+        builder.pop();
+
+        builder.comment(
+                "Server-enforced shader lock, the anti-bypass companion to [trueDarkness]. Oculus/Iris shaders",
+                "replace vanilla lighting entirely, so a shaderpack (or a fullbright shader) would render straight",
+                "through hardcore darkness. When enabled, a DEDICATED server tells each client on join to run with",
+                "shaders disabled (WFCore forces Iris onto the vanilla pipeline, which True Darkness then darkens);",
+                "the client's own shader toggle cannot re-enable them while connected. Clients without Oculus ignore",
+                "this, and single-player is never affected.")
+                .push("shaderControl");
+
+        BLOCK_CLIENT_SHADERS = builder
+                .comment("Block Oculus/Iris shaders on dedicated servers while True Darkness enforcement is on, so",
+                        "players cannot shade around hardcore darkness. Off = shaders are left to the client.")
+                .define("blockClientShaders", DEFAULT_BLOCK_CLIENT_SHADERS);
 
         builder.pop();
 
@@ -670,6 +689,11 @@ public final class WFCoreConfig {
         return trueDarknessEndFog;
     }
 
+    /** When true, dedicated servers make clients disable Oculus/Iris shaders so hardcore darkness can't be bypassed. */
+    public static boolean isBlockClientShaders() {
+        return blockClientShaders;
+    }
+
     /** Master switch for server-side chat moderation (mutes + blacklist filter). */
     public static boolean isChatModerationEnabled() {
         return chatModerationEnabled;
@@ -784,6 +808,7 @@ public final class WFCoreConfig {
         trueDarknessDarkSkyless = TRUE_DARKNESS_DARK_SKYLESS.get();
         trueDarknessNetherFog = TRUE_DARKNESS_NETHER_FOG.get();
         trueDarknessEndFog = TRUE_DARKNESS_END_FOG.get();
+        blockClientShaders = BLOCK_CLIENT_SHADERS.get();
         chatModerationEnabled = CHAT_MODERATION_ENABLED.get();
         chatFilterEnabled = CHAT_FILTER_ENABLED.get();
         chatFilterAction = CHAT_FILTER_ACTION.get();
