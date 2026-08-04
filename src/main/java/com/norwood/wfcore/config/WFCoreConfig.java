@@ -16,7 +16,7 @@ public final class WFCoreConfig {
     // Default constants (kept so callers that reference DEFAULT_* still compile,
     // and so the volatile fields have sane pre-load values).
     // -------------------------------------------------------------------------
-    private static final int DEFAULT_ENERGY_TO_FLUID_RATIO = 10;
+    private static final double DEFAULT_FUEL_RANGE_MULTIPLIER = 1.0;
     private static final int DEFAULT_REFUEL_INTERVAL_TICKS = 20;
     private static final boolean DEFAULT_CLEAR_STRUCTURE_LOOT = true;
     private static final boolean DEFAULT_DISABLE_NETHER = true;
@@ -75,7 +75,7 @@ public final class WFCoreConfig {
     // Volatile cache fields — pre-initialised to defaults so getters are safe
     // even before the config file is loaded.
     // -------------------------------------------------------------------------
-    private static volatile int energyToFluidRatio = DEFAULT_ENERGY_TO_FLUID_RATIO;
+    private static volatile double fuelRangeMultiplier = DEFAULT_FUEL_RANGE_MULTIPLIER;
     private static volatile int refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
     private static volatile boolean clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
     private static volatile boolean disableNether = DEFAULT_DISABLE_NETHER;
@@ -133,7 +133,7 @@ public final class WFCoreConfig {
     // -------------------------------------------------------------------------
     // ForgeConfigSpec handles
     // -------------------------------------------------------------------------
-    private static final ForgeConfigSpec.IntValue ENERGY_TO_FLUID_RATIO;
+    private static final ForgeConfigSpec.DoubleValue FUEL_RANGE_MULTIPLIER;
     private static final ForgeConfigSpec.IntValue REFUEL_INTERVAL_TICKS;
     private static final ForgeConfigSpec.BooleanValue CLEAR_STRUCTURE_LOOT;
     private static final ForgeConfigSpec.BooleanValue DISABLE_NETHER;
@@ -193,9 +193,14 @@ public final class WFCoreConfig {
     static {
         ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
 
-        ENERGY_TO_FLUID_RATIO = builder
-                .comment("Forge energy produced per millibucket of fluid fuel consumed.")
-                .defineInRange("energyToFluidRatio", DEFAULT_ENERGY_TO_FLUID_RATIO, 1, Integer.MAX_VALUE);
+        FUEL_RANGE_MULTIPLIER = builder
+                .comment(
+                        "How long a full fuel tank lasts, as a multiplier of the vehicle's NATIVE full-charge range.",
+                        "The mB<->FE conversion is anchored per-vehicle to its own energy budget, so 1.0 means a full",
+                        "tank drives (or flies) about as far as a full native charge would; 2.0 = twice as far, 0.5 = half.",
+                        "This scales every fuelled vehicle uniformly. Per-fuel quality is set separately via the",
+                        "WFVehicles KubeJS .fuel(id, ratio) multiplier (e.g. high-octane 2.0 lasts twice as long as diesel 1.0).")
+                .defineInRange("fuelRangeMultiplier", DEFAULT_FUEL_RANGE_MULTIPLIER, 0.001, 1000.0);
 
         REFUEL_INTERVAL_TICKS = builder
                 .comment("How often (in ticks) a fuelled vehicle tops up from its fluid tank.")
@@ -512,8 +517,13 @@ public final class WFCoreConfig {
     // Public API — unchanged signatures
     // -------------------------------------------------------------------------
 
-    public static int getEnergyToFluidRatio() {
-        return energyToFluidRatio;
+    /**
+     * Global multiplier on how long a full fuel tank lasts, relative to each vehicle's native full-charge range.
+     * {@code 1.0} = native range, {@code 2.0} = twice as long, {@code 0.5} = half. The absolute mB->FE conversion
+     * is derived per-vehicle from its own {@code MaxEnergy} (see {@code SuperbWarfareInvMixin}); this only scales it.
+     */
+    public static double getFuelRangeMultiplier() {
+        return fuelRangeMultiplier;
     }
 
     public static int getRefuelIntervalTicks() {
@@ -797,7 +807,7 @@ public final class WFCoreConfig {
     // -------------------------------------------------------------------------
 
     public static void bake() {
-        energyToFluidRatio = ENERGY_TO_FLUID_RATIO.get();
+        fuelRangeMultiplier = FUEL_RANGE_MULTIPLIER.get();
         refuelIntervalTicks = REFUEL_INTERVAL_TICKS.get();
         clearStructureLoot = CLEAR_STRUCTURE_LOOT.get();
         disableNether = DISABLE_NETHER.get();
@@ -861,8 +871,8 @@ public final class WFCoreConfig {
         depositLogPlacements = DEPOSIT_LOG_PLACEMENTS.get();
         depositHeal = DEPOSIT_HEAL.get();
         // Vehicle overrides + foliage breakers now come from the WFVehicles KubeJS API (registered at startup).
-        WFCore.LOGGER.info("Loaded WFCore TOML config: energy ratio {}, refuel interval {} ticks",
-                energyToFluidRatio, refuelIntervalTicks);
+        WFCore.LOGGER.info("Loaded WFCore TOML config: fuel range multiplier {}, refuel interval {} ticks",
+                fuelRangeMultiplier, refuelIntervalTicks);
     }
 
 }
