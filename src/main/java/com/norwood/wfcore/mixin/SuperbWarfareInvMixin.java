@@ -74,6 +74,10 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
     @Unique
     private double wfcore$drainRemainder;
 
+
+    @Unique
+    private static final double WFCORE_FALLBACK_FE_PER_MB = 1250.0;
+
     public SuperbWarfareInvMixin(EntityType<?> entityType, Level level) {
         super(entityType, level);
     }
@@ -228,17 +232,49 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
         return false;
     }
 
+    /**
+     * FE-equivalent produced per mB of fuel for this vehicle, fuel-agnostic.
+     *
+     * <p>
+     * A single global "FE per mB" cannot balance vehicles at once: Superb Warfare's own {@code MaxEnergy} and
+     * {@code EnergyCostRate} vary enormously (a truck costs 64/tick against a 5,000,000 FE charge; an A-10 costs
+     * ~4267/tick against 10,000,000), so a flat 4000&nbsp;mB * ratio tank drained a truck in ~30&nbsp;s and a plane
+     * in under a second. Instead the conversion is anchored to the vehicle's <em>own</em> native energy budget so a
+     * full tank equals a full native charge (i.e. native range) at the default multiplier, then scaled by
+     * {@link WFCoreConfig#getFuelRangeMultiplier()}. Per-fuel quality is applied on top in {@code consumeEnergy}.
+     */
+    @Unique
+    private double wfcore$fePerMb() {
+        int capacity = this.wfcore$fluidTank.getCapacity();
+        if (capacity <= 0) {
+            return 0.0;
+        }
+        long anchor = this.computed().getMaxEnergy();
+        // MaxEnergy is 0 for non-electric vehicles and Int.MAX_VALUE when a vehicle's data omits it (the unset
+        // sentinel, clamped >= 0 by DefaultVehicleData.limit()); neither is a real budget, so fall back.
+        if (anchor <= 0 || anchor >= Integer.MAX_VALUE) {
+            return WFCORE_FALLBACK_FE_PER_MB * WFCoreConfig.getFuelRangeMultiplier();
+        }
+        return (double) anchor / capacity * WFCoreConfig.getFuelRangeMultiplier();
+    }
+
+    /** Clamp a FE-equivalent (which can exceed the int range at high multipliers) into the int the API returns. */
+    @Unique
+    private static int wfcore$clampEnergy(double fe) {
+        return (int) Math.min(Integer.MAX_VALUE, Math.max(0.0, fe));
+    }
+
     @Inject(method = "getEnergy", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$getFluidAsEnergy(CallbackInfoReturnable<Integer> cir) {
         if (this.wfcore$usesFluidFuel && this.wfcore$fluidTank != null) {
-            cir.setReturnValue(this.wfcore$fluidTank.getFluidAmount() * WFCoreConfig.getEnergyToFluidRatio());
+            cir.setReturnValue(wfcore$clampEnergy(this.wfcore$fluidTank.getFluidAmount() * wfcore$fePerMb()));
         }
     }
 
     @Inject(method = "getMaxEnergy", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$getMaxFluidAsEnergy(CallbackInfoReturnable<Integer> cir) {
         if (this.wfcore$usesFluidFuel && this.wfcore$fluidTank != null) {
-            cir.setReturnValue(this.wfcore$fluidTank.getCapacity() * WFCoreConfig.getEnergyToFluidRatio());
+            cir.setReturnValue(wfcore$clampEnergy(this.wfcore$fluidTank.getCapacity() * wfcore$fePerMb()));
         }
     }
 
@@ -259,18 +295,22 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
                             : override.fluidConsumptionMap().getOrDefault(fluidId, 1.0f);
                 }
 
-                double effectiveRatio = WFCoreConfig.getEnergyToFluidRatio() * Math.max(0.0001d, efficiency);
+                // Effective FE per mB = the per-vehicle native anchor (scaled by the global range multiplier)
+                // times this fuel's quality multiplier. Higher = more energy per mB = the tank lasts longer.
+                double effectiveFePerMb = wfcore$fePerMb() * Math.max(0.0001d, efficiency);
 
                 // Superb Warfare calls consumeEnergy() every tick with a small energy cost. Rounding each call
                 // up with ceil() forced a minimum of 1 mB drained per tick (20 mB/s), emptying the tank in
                 // seconds no matter the real cost. Convert to a fractional mB and carry the sub-millibucket
                 // remainder across ticks so the drain tracks actual energy consumption.
-                this.wfcore$drainRemainder += amount / effectiveRatio;
-                int mbToDrain = (int) this.wfcore$drainRemainder;
+                if (effectiveFePerMb > 0.0) {
+                    this.wfcore$drainRemainder += amount / effectiveFePerMb;
+                    int mbToDrain = (int) this.wfcore$drainRemainder;
 
-                if (mbToDrain > 0) {
-                    this.wfcore$drainRemainder -= mbToDrain;
-                    this.wfcore$fluidTank.drain(mbToDrain, IFluidHandler.FluidAction.EXECUTE);
+                    if (mbToDrain > 0) {
+                        this.wfcore$drainRemainder -= mbToDrain;
+                        this.wfcore$fluidTank.drain(mbToDrain, IFluidHandler.FluidAction.EXECUTE);
+                    }
                 }
             }
             ci.cancel();
@@ -280,7 +320,8 @@ public abstract class SuperbWarfareInvMixin extends Entity implements IVehicleFu
     @Inject(method = "setEnergy", at = @At("HEAD"), cancellable = true, remap = false)
     private void wfcore$setFluidAsEnergy(int amount, CallbackInfo ci) {
         if (this.wfcore$usesFluidFuel && this.wfcore$fluidTank != null) {
-            int targetMb = amount / WFCoreConfig.getEnergyToFluidRatio();
+            double fePerMb = wfcore$fePerMb();
+            int targetMb = fePerMb > 0.0 ? (int) (amount / fePerMb) : 0;
             int currentMb = this.wfcore$fluidTank.getFluidAmount();
             FluidStack currentFluid = this.wfcore$fluidTank.getFluid();
 
