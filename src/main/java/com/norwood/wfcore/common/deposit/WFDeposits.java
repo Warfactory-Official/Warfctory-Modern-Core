@@ -71,6 +71,14 @@ public final class WFDeposits {
         return !NODES.isEmpty() || !REGIONS.isEmpty();
     }
 
+    public static int nodeCount() {
+        return NODES.size();
+    }
+
+    public static int regionCount() {
+        return REGIONS.size();
+    }
+
     public static boolean isEmpty() {
         return REGISTRY.isEmpty();
     }

@@ -144,6 +144,12 @@ public class WFCore {
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
             WFDeposits.registerDefaults();
+            LOGGER.info("Deposits: {} type(s), {} node(s), {} region(s); worldgen enabled={} scatter={} rarity={} heal={}",
+                    WFDeposits.all().size(), WFDeposits.nodeCount(), WFDeposits.regionCount(),
+                    WFCoreConfig.isDepositWorldgenEnabled(),
+                    WFCoreConfig.isDepositScatterEnabled(),
+                    WFCoreConfig.getDepositWorldgenRarity(),
+                    WFCoreConfig.isDepositHealEnabled());
             WFBlockResistances.registerDefaults();
             CoolantRegistry.register();
             CPURegistry.register();

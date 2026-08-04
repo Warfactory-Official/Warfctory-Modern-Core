@@ -20,6 +20,7 @@ import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.norwood.wfcore.common.machine.DepositBlockEntity;
 import com.norwood.wfcore.common.worldgen.DepositPlacer;
+import com.norwood.wfcore.config.WFCoreConfig;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,7 +56,9 @@ public final class DepositCommands {
                 .then(Commands.literal("retrofit")
                         .executes(ctx -> retrofit(ctx, 8))
                         .then(Commands.argument("chunkRadius", IntegerArgumentType.integer(0, 64))
-                                .executes(ctx -> retrofit(ctx, IntegerArgumentType.getInteger(ctx, "chunkRadius"))))));
+                                .executes(ctx -> retrofit(ctx, IntegerArgumentType.getInteger(ctx, "chunkRadius")))))
+                .then(Commands.literal("status")
+                        .executes(this::status)));
     }
 
     private static List<String> typeIds() {
@@ -188,6 +191,41 @@ public final class DepositCommands {
         return total;
     }
 
+
+    private int status(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack src = ctx.getSource();
+        ResourceLocation dim = src.getLevel().dimension().location();
+        int types = WFDeposits.all().size();
+        int nodes = WFDeposits.nodeCount();
+        int regions = WFDeposits.regionCount();
+        int dimNodes = WFDeposits.nodesIn(dim).size();
+        int dimRegions = WFDeposits.regionsIn(dim).size();
+
+        src.sendSuccess(() -> Component.literal("§7WFCore deposits — §fconfig§7: enabled=§f"
+                + WFCoreConfig.isDepositWorldgenEnabled() + "§7 scatter=§f" + WFCoreConfig.isDepositScatterEnabled()
+                + "§7 rarity=§f" + WFCoreConfig.getDepositWorldgenRarity() + "§7 heal=§f"
+                + WFCoreConfig.isDepositHealEnabled()), false);
+        src.sendSuccess(() -> Component.literal("§7Registry: §f" + types + "§7 type(s), §f" + nodes
+                + "§7 node(s), §f" + regions + "§7 region(s) total — in §f" + dim + "§7: §f" + dimNodes
+                + "§7 node(s), §f" + dimRegions + "§7 region(s)"), false);
+
+        if (types == 0) {
+            src.sendSuccess(() -> Component.literal("  §c 0 types — WFCore common setup didn't run (defaults "
+                    + "always register 3). The running server has an old/missing WFCore jar, or it crashed at "
+                    + "init — check the startup log."), false);
+        } else if (!WFDeposits.hasPlacements()) {
+            src.sendSuccess(() -> Component.literal("  §c No nodes/regions registered — locate/retrofit/heal "
+                    + "have nothing to place. Your KubeJS §fstartup_scripts§c aren't running "
+                    + "§fWFDeposits.region(...)/node(...).register()§c. Check the startup log for KubeJS errors."), false);
+        } else if (!WFCoreConfig.isDepositWorldgenEnabled()) {
+            src.sendSuccess(() -> Component.literal("  §c Placements exist but worldgen is disabled — the "
+                    + "server config still has §f[deposits.worldgen] enabled = false§c. Fix the toml and restart."), false);
+        } else {
+            src.sendSuccess(() -> Component.literal("  §a Configured. Use §f/wfcore_deposit locate§a to "
+                    + "predict positions and §f/wfcore_deposit retrofit§a to fill loaded chunks."), false);
+        }
+        return types;
+    }
 
     private int retrofit(CommandContext<CommandSourceStack> ctx, int chunkRadius) {
         CommandSourceStack src = ctx.getSource();
