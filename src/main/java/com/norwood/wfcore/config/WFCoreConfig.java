@@ -26,6 +26,7 @@ public final class WFCoreConfig {
     private static final boolean DEFAULT_DEPOSIT_SCATTER = true;
     private static final int DEFAULT_DEPOSIT_WORLDGEN_RARITY = 24;
     private static final boolean DEFAULT_DEPOSIT_LOG_PLACEMENTS = false;
+    private static final boolean DEFAULT_DEPOSIT_HEAL = true;
     private static final boolean DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED = false;
     private static final boolean DEFAULT_BALLISTICS_ENABLED = true;
     private static final boolean DEFAULT_BALLISTICS_DEBUG_LOGGING = false;
@@ -84,6 +85,7 @@ public final class WFCoreConfig {
     private static volatile boolean depositScatter = DEFAULT_DEPOSIT_SCATTER;
     private static volatile int depositWorldgenRarity = DEFAULT_DEPOSIT_WORLDGEN_RARITY;
     private static volatile boolean depositLogPlacements = DEFAULT_DEPOSIT_LOG_PLACEMENTS;
+    private static volatile boolean depositHeal = DEFAULT_DEPOSIT_HEAL;
     private static volatile boolean modelTransformDebugEnabled = DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED;
     private static volatile boolean ballisticsEnabled = DEFAULT_BALLISTICS_ENABLED;
     private static volatile boolean ballisticsDebugLogging = DEFAULT_BALLISTICS_DEBUG_LOGGING;
@@ -182,6 +184,7 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.BooleanValue DEPOSIT_SCATTER;
     private static final ForgeConfigSpec.IntValue DEPOSIT_WORLDGEN_RARITY;
     private static final ForgeConfigSpec.BooleanValue DEPOSIT_LOG_PLACEMENTS;
+    private static final ForgeConfigSpec.BooleanValue DEPOSIT_HEAL;
     private static final ForgeConfigSpec.BooleanValue MAINTENANCE_ENABLED;
     private static final ForgeConfigSpec.ConfigValue<String> MAINTENANCE_KICK_MESSAGE;
 
@@ -224,10 +227,12 @@ public final class WFCoreConfig {
                 .defineInRange("defaultYieldMax", DEFAULT_DEPOSIT_YIELD_MAX, 1, Integer.MAX_VALUE);
 
         builder.comment(
+                "Deposit worldgen. Deposits generate as chunks are first explored; enabled must be true for ANY of them to appear.",
                 "Ambient weighted scatter across the world. Turn scatter off to rely only on KubeJS nodes/regions. rarity is \"1 in N chunks\".")
                 .push("worldgen");
 
         DEPOSIT_WORLDGEN_ENABLED = builder
+                .comment("Master switch. When false, NO deposits generate (nodes, regions or scatter), whatever KubeJS registers.")
                 .define("enabled", DEFAULT_DEPOSIT_WORLDGEN_ENABLED);
 
         DEPOSIT_SCATTER = builder
@@ -235,6 +240,14 @@ public final class WFCoreConfig {
 
         DEPOSIT_WORLDGEN_RARITY = builder
                 .defineInRange("rarity", DEFAULT_DEPOSIT_WORLDGEN_RARITY, 1, Integer.MAX_VALUE);
+
+        DEPOSIT_HEAL = builder
+                .comment(
+                        "Retro-fit healer: as already-generated chunks reload, stamp in any node/region deposit they should host but",
+                        "were missing (e.g. because deposits were off or unregistered when the chunk first generated). Deterministic and",
+                        "one-shot per chunk (never double-placed, never resurrected after a deposit is drilled away). Scatter can't be",
+                        "healed. Harmless when off or when there are no node/region placements.")
+                .define("healExistingChunks", DEFAULT_DEPOSIT_HEAL);
 
         DEPOSIT_LOG_PLACEMENTS = builder
                 .comment("Debug: log every deposit cluster placed by worldgen (type, size, position). Testing aid.")
@@ -545,6 +558,14 @@ public final class WFCoreConfig {
         return depositLogPlacements;
     }
 
+    /**
+     * When true (and worldgen is enabled), the load-time healer retro-fits missing node/region deposits into
+     * already-generated chunks. See {@code DepositRetrofitHandler}.
+     */
+    public static boolean isDepositHealEnabled() {
+        return depositHeal;
+    }
+
     /** Dev tool gate: the numpad model-transform debugger (see IAnimatedMachine) only arms when this is true. */
     public static boolean isModelTransformDebugEnabled() {
         return modelTransformDebugEnabled;
@@ -838,6 +859,7 @@ public final class WFCoreConfig {
         depositScatter = DEPOSIT_SCATTER.get();
         depositWorldgenRarity = DEPOSIT_WORLDGEN_RARITY.get();
         depositLogPlacements = DEPOSIT_LOG_PLACEMENTS.get();
+        depositHeal = DEPOSIT_HEAL.get();
         // Vehicle overrides + foliage breakers now come from the WFVehicles KubeJS API (registered at startup).
         WFCore.LOGGER.info("Loaded WFCore TOML config: energy ratio {}, refuel interval {} ticks",
                 energyToFluidRatio, refuelIntervalTicks);

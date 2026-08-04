@@ -8,6 +8,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.level.levelgen.Heightmap;
@@ -18,6 +19,7 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.norwood.wfcore.common.machine.DepositBlockEntity;
+import com.norwood.wfcore.common.worldgen.DepositPlacer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -49,7 +51,11 @@ public final class DepositCommands {
                 .then(Commands.literal("count")
                         .executes(ctx -> count(ctx, 8))
                         .then(Commands.argument("chunkRadius", IntegerArgumentType.integer(0, 32))
-                                .executes(ctx -> count(ctx, IntegerArgumentType.getInteger(ctx, "chunkRadius"))))));
+                                .executes(ctx -> count(ctx, IntegerArgumentType.getInteger(ctx, "chunkRadius")))))
+                .then(Commands.literal("retrofit")
+                        .executes(ctx -> retrofit(ctx, 8))
+                        .then(Commands.argument("chunkRadius", IntegerArgumentType.integer(0, 64))
+                                .executes(ctx -> retrofit(ctx, IntegerArgumentType.getInteger(ctx, "chunkRadius"))))));
     }
 
     private static List<String> typeIds() {
@@ -180,6 +186,63 @@ public final class DepositCommands {
                     + "§7: §f" + n + "§7 blocks"), false));
         }
         return total;
+    }
+
+
+    private int retrofit(CommandContext<CommandSourceStack> ctx, int chunkRadius) {
+        CommandSourceStack src = ctx.getSource();
+        ServerLevel level = src.getLevel();
+        if (!WFDeposits.hasPlacements()) {
+            src.sendFailure(Component.literal("No deposit nodes/regions are registered — nothing to retro-fit. "
+                    + "(Ambient scatter deposits can't be retro-fit.) Check that your KubeJS startup scripts run "
+                    + "WFDeposits.region(...) / node(...)."));
+            return 0;
+        }
+
+        BlockPos at = BlockPos.containing(src.getPosition());
+        ResourceLocation dim = level.dimension().location();
+        long seed = level.getSeed();
+        int ccx = at.getX() >> 4;
+        int ccz = at.getZ() >> 4;
+
+        int placedBlocks = 0;
+        int hostedClusters = 0;
+        int loadedChunks = 0;
+        int unloadedChunks = 0;
+        for (int dx = -chunkRadius; dx <= chunkRadius; dx++) {
+            for (int dz = -chunkRadius; dz <= chunkRadius; dz++) {
+                int cx = ccx + dx;
+                int cz = ccz + dz;
+                LevelChunk chunk = level.getChunkSource().getChunkNow(cx, cz);
+                if (chunk == null) {
+                    unloadedChunks++;
+                    continue;
+                }
+                loadedChunks++;
+                RandomSource rng = RandomSource.create(
+                        seed ^ ((long) cx * 341873128712L) ^ ((long) cz * 132897987541L));
+                DepositPlacer.Result r = DepositPlacer.placeExplicit(level, rng, dim, cx, cz, seed, true);
+                hostedClusters += r.hostedClusters();
+                placedBlocks += r.placedBlocks();
+            }
+        }
+
+        int fPlaced = placedBlocks;
+        int fHosted = hostedClusters;
+        int fLoaded = loadedChunks;
+        int fUnloaded = unloadedChunks;
+        src.sendSuccess(() -> Component.literal("§aRetro-fit §7in §f" + dim + "§7: stamped §f" + fPlaced
+                + "§a deposit blocks across §f" + fHosted + "§a clusters, scanning §f" + fLoaded
+                + "§a loaded chunks (radius " + chunkRadius + ")."), true);
+        if (fHosted == 0) {
+            src.sendSuccess(() -> Component.literal("  §8No node/region cells fall in this radius — move to where "
+                    + "§f/wfcore_deposit locate§8 points, or widen the radius."), false);
+        }
+        if (fUnloaded > 0) {
+            src.sendSuccess(() -> Component.literal("  §8Skipped " + fUnloaded + " unloaded chunks. Force-load the "
+                    + "area (Chunky / §f/forceload add§8) and re-run to cover them."), false);
+        }
+        return fPlaced;
     }
 
     /** Nearest predicted deposit origin (block x/z) of {@code type} to (cx, cz), or {@code null} if none in range. */

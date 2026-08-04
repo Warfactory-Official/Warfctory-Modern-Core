@@ -96,6 +96,7 @@ public class WFCore {
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.radar.Retrofitter.INSTANCE);
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.radar.RadarCommands.INSTANCE);
         MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.common.deposit.DepositCommands.INSTANCE);
+        MinecraftForge.EVENT_BUS.register(com.norwood.wfcore.common.worldgen.DepositRetrofitHandler.INSTANCE);
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.compute.WFComputeTooltips());
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.block.WFBlockResistanceTooltip());
         MinecraftForge.EVENT_BUS.register(new com.norwood.wfcore.common.loot.WFLootEvents());
