@@ -5,6 +5,7 @@ import net.minecraftforge.common.ForgeConfigSpec;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.chat.FilterAction;
 import com.norwood.wfcore.common.darkness.DarknessEnforcement;
+import com.norwood.wfcore.diagnostics.DiagChunkMessage;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +41,7 @@ public final class WFCoreConfig {
     private static final int DEFAULT_DIAG_JPEG_QUALITY = 70;
     private static final int DEFAULT_DIAG_MAX_IMAGE_BYTES = 20 * 1024 * 1024;
     private static final int DEFAULT_DIAG_CAPTURE_TIMEOUT_SECONDS = 15;
-    private static final int DEFAULT_DIAG_CHUNK_SIZE = 262144;
+    private static final int DEFAULT_DIAG_CHUNK_SIZE = 16384;
     private static final double DEFAULT_DIAG_MIN_VARIANCE = 6.0;
     private static final boolean DEFAULT_MOD_AUDIT_ENABLED = false;
     private static final String DEFAULT_MOD_AUDIT_WEBHOOK_URL = "";
@@ -321,8 +322,10 @@ public final class WFCoreConfig {
                 .defineInRange("captureTimeoutSeconds", DEFAULT_DIAG_CAPTURE_TIMEOUT_SECONDS, 1, 300);
 
         DIAG_CHUNK_SIZE = builder
-                .comment("Transfer chunk size (bytes) for the returned image.")
-                .defineInRange("chunkSize", DEFAULT_DIAG_CHUNK_SIZE, 4096, 1048576);
+                .comment("Transfer chunk size (bytes) for the returned image. Capped so each chunk packet stays"
+                        + " under Minecraft's 32767-byte custom-payload limit; values above the cap are clamped.")
+                .defineInRange("chunkSize", DEFAULT_DIAG_CHUNK_SIZE,
+                        DiagChunkMessage.MIN_CHUNK_BYTES, DiagChunkMessage.MAX_CHUNK_BYTES);
 
         DIAG_MIN_VARIANCE = builder
                 .comment("Minimum luminance variance a returned image must have; near-uniform frames are rejected.")

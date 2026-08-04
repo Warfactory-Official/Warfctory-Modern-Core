@@ -104,7 +104,9 @@ public final class DiagnosticsService {
         int maxEdge = WFCoreConfig.getDiagMaxImageEdge();
         int quality = WFCoreConfig.getDiagJpegQuality();
         int maxBytes = WFCoreConfig.getDiagMaxImageBytes();
-        int chunkSize = WFCoreConfig.getDiagChunkSize();
+        // Guarantee each chunk packet fits under the vanilla custom-payload limit regardless of config, and
+        // keep the requested size in lock-step with the client's clamp so header validation stays exact.
+        int chunkSize = DiagChunkMessage.clampChunkSize(WFCoreConfig.getDiagChunkSize());
         long timeoutTicks = WFCoreConfig.getDiagCaptureTimeoutSeconds() * 20L;
 
         long nonce;

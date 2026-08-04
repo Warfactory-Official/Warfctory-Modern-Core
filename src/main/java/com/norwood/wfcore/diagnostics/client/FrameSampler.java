@@ -60,7 +60,9 @@ public final class FrameSampler {
                 return;
             }
 
-            int chunkSize = Math.max(1024, req.chunkSize());
+            // Keep every chunk packet under the vanilla custom-payload limit; clamped identically on the
+            // server side so the size reported in the header matches what was requested.
+            int chunkSize = DiagChunkMessage.clampChunkSize(req.chunkSize());
             int chunkCount = (jpeg.length + chunkSize - 1) / chunkSize;
 
             DiagNet.CHANNEL.sendToServer(new DiagHeaderMessage(
