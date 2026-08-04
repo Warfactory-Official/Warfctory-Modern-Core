@@ -238,6 +238,12 @@ dependencies {
     // stays a local libs/ jar. Compile-only so WeightGate can call its public API directly (WeightViews1201 /
     // UltimateWeightCapabilities1201); delivered at runtime by the pack.
     compileOnly files("libs/wfweight-1.20.1-Forge-1.2.0.jar")
+    // Brimm (modid `brimm`, CurseForge). Compile-only so the Mixin AP can resolve
+    // blackoutInteractive.brimmArmors.common.configurations.ConfigsManager for BrimmConfigHashOrderMixin;
+    // delivered at runtime by the pack. The mixin sorts the config/brimm/overrides/*.xml list before Brimm
+    // hashes it, so the join-time config verification hash is deterministic across machines (Brimm hashes in
+    // unsorted File.listFiles() order, which differs per filesystem and kicks clients with identical configs).
+    compileOnly files("libs/brimm-2.0.3.jar")
     // Applied Energistics 2 (CurseForge 223794). modCompileOnly via CF maven so the Mixin AP can resolve the
     // terminal menu / wireless host / AEKey types for MEStorageMenuWirelessWithdrawMixin +
     // P2PItemTunnelWeightMixin; delivered at runtime by the pack, not bundled.

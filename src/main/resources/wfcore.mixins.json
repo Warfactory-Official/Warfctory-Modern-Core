@@ -33,7 +33,8 @@
     "WirelessItemCoverWeightMixin",
     "EnderItemLinkCoverWeightMixin",
     "LongDistanceItemPipeWeightMixin",
-    "P2PItemTunnelWeightMixin"
+    "P2PItemTunnelWeightMixin",
+    "BrimmConfigHashOrderMixin"
   ],
   "client": [
     "NamePlateMixin",
