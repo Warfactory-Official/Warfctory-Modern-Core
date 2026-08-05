@@ -171,7 +171,7 @@ public class LargeBlastFurnaceMachine extends WorkableMultiblockMachine implemen
             return RecipeModifier.nullWrongType(LargeBlastFurnaceMachine.class, machine);
         }
         int chambers = furnace.getSideChambers();
-        int parallels = Math.min(6, 2 + 2 * chambers);
+        int parallels = Math.min(8, 4 + 2 * chambers);
         double durationMultiplier = 1.0 - 0.05 * chambers;
         return ModifierFunction.builder()
                 .modifyAllContents(ContentModifier.multiplier(parallels))

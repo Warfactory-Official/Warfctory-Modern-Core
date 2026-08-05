@@ -403,7 +403,7 @@ public class WFMachines {
                                 // Optional Optical Data Transmission Hatch (Research Data Output): the unit is a
                                 // research producer, so it transmits; wire a Data Bank to it to two-way sync.
                                 .or(abilities(PartAbility.OPTICAL_DATA_TRANSMISSION).setMaxGlobalLimited(1, 1))
-                                .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMinGlobalLimited(1, 1))
+                                .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION))
                                 // Maintenance Hatch (required once maintenance is enabled in the GT config).
                                 .or(autoAbilities(true, false, false)))
                         .where('C', blocks(GTBlocks.CASING_STEEL_SOLID.get()))
