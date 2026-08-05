@@ -34,7 +34,8 @@
     "EnderItemLinkCoverWeightMixin",
     "LongDistanceItemPipeWeightMixin",
     "P2PItemTunnelWeightMixin",
-    "BrimmConfigHashOrderMixin"
+    "BrimmConfigHashOrderMixin",
+    "GTOreLoaderTransplantMixin"
   ],
   "client": [
     "NamePlateMixin",

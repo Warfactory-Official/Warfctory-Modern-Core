@@ -4,6 +4,7 @@ import com.gregtechceu.gtceu.api.addon.GTAddon;
 import com.gregtechceu.gtceu.api.addon.IGTAddon;
 import com.gregtechceu.gtceu.api.registry.registrate.GTRegistrate;
 
+import com.norwood.wfcore.common.worldgen.transplant.VeinTransplant;
 import net.minecraft.data.recipes.FinishedRecipe;
 
 import java.util.function.Consumer;
@@ -39,6 +40,11 @@ public class WfCoreAddon implements IGTAddon {
     @Override
     public void registerElements() {
         // CustomElements.init();
+    }
+
+    @Override
+    public void registerWorldgenLayers() {
+        VeinTransplant.registerLayer();
     }
 
     @Override
