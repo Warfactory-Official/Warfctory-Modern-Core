@@ -55,6 +55,7 @@
     "ReplayPlaybackGateMixin",
     "PlayerTabRankMixin",
     "ForceFirstPersonCameraMixin",
+    "SodayoRocketShellBoundsMixin",
     "DarknessConfigLockMixin",
     "IrisConfigShaderLockMixin"
   ],

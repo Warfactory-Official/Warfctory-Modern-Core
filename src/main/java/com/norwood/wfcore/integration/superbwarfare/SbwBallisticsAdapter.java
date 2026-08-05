@@ -62,14 +62,14 @@ public final class SbwBallisticsAdapter implements BallisticsAdapter {
 
         if (liveProjectile instanceof FastThrowableProjectile shell) {
 
-            gravity = shell.getCustomGravity();
+            gravity = shell.getGravityValue();
             Entity owner = shell.getOwner();
             shooter = owner != null ? owner.getUUID() : null;
             explosive = true;
         } else {
             ProjectileEntity bullet = (ProjectileEntity) liveProjectile;
             gravity = BULLET_GRAVITY_FALLBACK;
-            Entity owner = bullet.getOwner();
+            Entity owner = bullet.getShooter();
             shooter = owner != null ? owner.getUUID() : null;
             explosive = false;
         }

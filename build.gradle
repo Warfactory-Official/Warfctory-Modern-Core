@@ -213,11 +213,9 @@ dependencies {
 
     modCompileOnly("maven.modrinth:embeddium:0.3.31+mc1.20.1") { transitive = false }
 
-    // Rolling SBW snapshot (local build), replacing curse.maven:superb-warfare-1218165:8104849.
-    // The rolling snapshot refactored VehicleEntity.interact -> onCrowbarInteract and removed the GeckoLib
-    // SodayoPickUpRocketModel (converted to Simple Bedrock Model); wfcore's mixins were updated to match and
-    // must be compiled/validated (Mixin AP) against this snapshot.
-    modImplementation("com.atsuishio:superbwarfare:0.8.9-rolling")
+    modImplementation("curse.maven:superb-warfare-1218165:8104849") {
+        exclude group: "org.spongepowered", module: "mixin"
+    }
 
     modCompileOnly("curse.maven:gunfire-overhaul-echoes-of-the-battlefield-1324526:8062389"){ transitive = false }
 
