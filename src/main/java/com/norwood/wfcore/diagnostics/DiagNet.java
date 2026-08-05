@@ -63,6 +63,26 @@ public final class DiagNet {
         CHANNEL.registerMessage(6, ShaderEnforceMessage.class,
                 ShaderEnforceMessage::write, ShaderEnforceMessage::read, ShaderEnforceMessage::handle,
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+        CHANNEL.registerMessage(7, DiagCatalogMessage.class,
+                DiagCatalogMessage::write, DiagCatalogMessage::read, DiagCatalogMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+        CHANNEL.registerMessage(8, DiagListRequestMessage.class,
+                DiagListRequestMessage::write, DiagListRequestMessage::read, DiagListRequestMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
+
+        CHANNEL.registerMessage(9, DiagImageRequestMessage.class,
+                DiagImageRequestMessage::write, DiagImageRequestMessage::read, DiagImageRequestMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
+
+        CHANNEL.registerMessage(10, DiagImageHeaderMessage.class,
+                DiagImageHeaderMessage::write, DiagImageHeaderMessage::read, DiagImageHeaderMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+        CHANNEL.registerMessage(11, DiagImageChunkMessage.class,
+                DiagImageChunkMessage::write, DiagImageChunkMessage::read, DiagImageChunkMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     public static void sendToClient(ServerPlayer player, DiagRequestMessage message) {
@@ -78,6 +98,18 @@ public final class DiagNet {
     }
 
     public static void sendShaderEnforce(ServerPlayer player, ShaderEnforceMessage message) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    public static void sendCatalog(ServerPlayer player, DiagCatalogMessage message) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    public static void sendImageHeader(ServerPlayer player, DiagImageHeaderMessage message) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    public static void sendImageChunk(ServerPlayer player, DiagImageChunkMessage message) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
     }
 }

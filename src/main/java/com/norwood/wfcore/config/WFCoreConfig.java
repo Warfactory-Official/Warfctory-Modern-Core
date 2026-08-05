@@ -316,7 +316,9 @@ public final class WFCoreConfig {
                 .push("diagnostics");
 
         DIAG_ENABLED = builder
-                .comment("Master switch. When off, no samples are requested and inbound samples are ignored.")
+                .comment("Controls automatic sampling and the disclosure message shown to joining players. The "
+                        + "/wfcore_diag capture and view commands are gated on permission level 3 only and work "
+                        + "regardless of this setting.")
                 .define("enabled", DEFAULT_DIAG_ENABLED);
 
         DIAG_AUTO_INTERVAL_SECONDS = builder

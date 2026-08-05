@@ -5,10 +5,15 @@ import com.mojang.brigadier.exceptions.CommandSyntaxException;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.config.WFCoreConfig;
+import com.norwood.wfcore.diagnostics.DiagCatalogMessage;
 import com.norwood.wfcore.diagnostics.DiagHeaderMessage;
 import com.norwood.wfcore.diagnostics.DiagChunkMessage;
+import com.norwood.wfcore.diagnostics.DiagImageChunkMessage;
+import com.norwood.wfcore.diagnostics.DiagImageHeaderMessage;
+import com.norwood.wfcore.diagnostics.DiagImageRequestMessage;
 import com.norwood.wfcore.diagnostics.DiagNet;
 import com.norwood.wfcore.diagnostics.DiagRequestMessage;
+import com.norwood.wfcore.diagnostics.FrameCodec;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -36,12 +41,25 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public final class DiagnosticsService {
 
     public static final DiagnosticsService INSTANCE = new DiagnosticsService();
 
     private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
+
+    /** Op level guarding the whole {@code wfcore_diag} tree; re-checked on every viewer packet. */
+    private static final int VIEWER_PERMISSION = 3;
+
+    /** Disk work for the viewer (directory listings, reading captures back) stays off the server thread. */
+    private static final ExecutorService IO = Executors.newSingleThreadExecutor(r -> {
+        Thread t = new Thread(r, "wfcore-diag-io");
+        t.setDaemon(true);
+        t.setPriority(Thread.MIN_PRIORITY);
+        return t;
+    });
 
     private record Pending(UUID playerId, long deadlineTick, int maxEdge, int quality, int maxBytes, int chunkSize) {}
 
@@ -56,11 +74,13 @@ public final class DiagnosticsService {
     @SubscribeEvent
     public void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("wfcore_diag")
-                .requires(source -> source.hasPermission(3))
+                .requires(source -> source.hasPermission(VIEWER_PERMISSION))
                 .then(Commands.literal("capture")
                         .executes(this::captureAll)
                         .then(Commands.argument("target", EntityArgument.players())
-                                .executes(this::captureTargets))));
+                                .executes(this::captureTargets)))
+                .then(Commands.literal("view")
+                        .executes(this::openViewer)));
     }
 
     @SubscribeEvent
@@ -97,10 +117,88 @@ public final class DiagnosticsService {
         return count;
     }
 
-    public void requestCapture(MinecraftServer server, ServerPlayer player) {
-        if (!WFCoreConfig.isDiagEnabled()) {
+    private int openViewer(CommandContext<CommandSourceStack> ctx) throws CommandSyntaxException {
+        ServerPlayer player = ctx.getSource().getPlayerOrException();
+        sendCatalog(player);
+        ctx.getSource().sendSuccess(() -> Component.literal("Opening the capture viewer..."), false);
+        return 1;
+    }
+
+    /** Refresh button in the viewer. Unsolicited from the server's point of view, so re-check the op level. */
+    public void onListRequest(ServerPlayer sender) {
+        if (sender == null || !sender.hasPermissions(VIEWER_PERMISSION)) {
             return;
         }
+        sendCatalog(sender);
+    }
+
+    private void sendCatalog(ServerPlayer player) {
+        MinecraftServer server = player.getServer();
+        if (server == null) {
+            return;
+        }
+        // Directory listings are disk work; keep them off the server thread and hop back only to send.
+        IO.submit(() -> {
+            ScreenshotCatalog.Scan scan = ScreenshotCatalog.scan(server);
+            server.execute(() -> {
+                if (player.hasDisconnected()) {
+                    return;
+                }
+                DiagNet.sendCatalog(player,
+                        new DiagCatalogMessage(scan.entries(), scan.truncatedVerified(), scan.truncatedFlagged()));
+            });
+        });
+    }
+
+    /**
+     * Streams one capture back to the requesting operator. The filename is untrusted (a client can send this
+     * message at any time), so the op level is re-checked here and the path is validated in
+     * {@link ScreenshotCatalog#read}; a rejected request is answered with silence.
+     */
+    public void onImageRequest(ServerPlayer sender, DiagImageRequestMessage msg) {
+        if (sender == null || !sender.hasPermissions(VIEWER_PERMISSION)) {
+            return;
+        }
+        MinecraftServer server = sender.getServer();
+        if (server == null) {
+            return;
+        }
+        int maxBytes = WFCoreConfig.getDiagMaxImageBytes();
+        int chunkSize = DiagChunkMessage.clampChunkSize(WFCoreConfig.getDiagChunkSize());
+        IO.submit(() -> {
+            ScreenshotCatalog.Image image = ScreenshotCatalog.read(server, msg.flagged(), msg.fileName(), maxBytes);
+            if (image == null) {
+                WFCore.LOGGER.warn("[wfcore-diag] {} requested an unreadable capture: {}",
+                        sender.getGameProfile().getName(), msg.fileName());
+                return;
+            }
+            byte[] jpeg = image.jpeg();
+            byte[] digest;
+            try {
+                digest = FrameCodec.sha256(jpeg);
+            } catch (Exception e) {
+                WFCore.LOGGER.warn("[wfcore-diag] failed to digest {}: {}", msg.fileName(), e.toString());
+                return;
+            }
+            int chunkCount = (jpeg.length + chunkSize - 1) / chunkSize;
+            server.execute(() -> {
+                if (sender.hasDisconnected()) {
+                    return;
+                }
+                DiagNet.sendImageHeader(sender, new DiagImageHeaderMessage(msg.requestId(),
+                        image.width(), image.height(), jpeg.length, chunkSize, chunkCount, digest));
+                for (int i = 0; i < chunkCount; i++) {
+                    int offset = i * chunkSize;
+                    int length = Math.min(chunkSize, jpeg.length - offset);
+                    byte[] part = new byte[length];
+                    System.arraycopy(jpeg, offset, part, 0, length);
+                    DiagNet.sendImageChunk(sender, new DiagImageChunkMessage(msg.requestId(), i, part));
+                }
+            });
+        });
+    }
+
+    public void requestCapture(MinecraftServer server, ServerPlayer player) {
         int maxEdge = WFCoreConfig.getDiagMaxImageEdge();
         int quality = WFCoreConfig.getDiagJpegQuality();
         int maxBytes = WFCoreConfig.getDiagMaxImageBytes();
@@ -296,7 +394,7 @@ public final class DiagnosticsService {
         }
         Component line = Component.literal("[wfcore] " + message).withStyle(ChatFormatting.RED);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (player.hasPermissions(3)) {
+            if (player.hasPermissions(VIEWER_PERMISSION)) {
                 player.sendSystemMessage(line);
             }
         }
