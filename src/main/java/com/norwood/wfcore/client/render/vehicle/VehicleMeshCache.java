@@ -1,6 +1,6 @@
 package com.norwood.wfcore.client.render.vehicle;
 
-import com.atsuishio.superbwarfare.client.RenderHelper;
+import com.atsuishio.superbwarfare.tools.RenderDistanceHelper;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.norwood.wfcore.WFCore;
@@ -137,7 +137,7 @@ public final class VehicleMeshCache {
         }
 
 
-        RenderHelper.markGuiRenderTimestamp();
+        RenderDistanceHelper.markGuiRenderTimestamp();
 
         BakedGeoModel model;
         RenderType rt;
