@@ -288,6 +288,15 @@ public final class Research {
         }
 
         /**
+         * Appends a pre-built {@link ResearchInput} cost. Used when reconstructing a research from the network
+         * (the registry sync), where the ingredient — exact or tag — has already been decoded from the packet.
+         */
+        public Builder input(ResearchInput input) {
+            if (input != null) this.itemInputs.add(input);
+            return this;
+        }
+
+        /**
          * Adds a TAG item cost: any item in {@code tagId} (leading {@code #} optional, e.g.
          * {@code 'gtceu:circuits/lv'}) satisfies it, {@code count} consumed per run. Use instead of hard-coding
          * one specific circuit/plate item so any tier-appropriate variant works. The research GUI shows the

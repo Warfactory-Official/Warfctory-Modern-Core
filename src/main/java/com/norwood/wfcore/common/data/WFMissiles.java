@@ -107,6 +107,7 @@ public class WFMissiles {
     public static ItemEntry<MissileItem> ICBM_HEAVY;
     // --- Bunker buster ---
     public static ItemEntry<MissileItem> BUNKER_BUSTER;
+    public static ItemEntry<MissileItem> SHITBOX_BUSTER;
     public static ItemEntry<MissileItem> BUNKER_BUSTER_HEAVY;
     public static ItemEntry<MissileItem> BUNKER_TUNNELLER;
     // --- Frag / cluster ---
@@ -236,6 +237,13 @@ public class WFMissiles {
                         .diveAngleRange(82.0, 90.0).attackStage(weakDive())
                         .turnRate(0.55).accuracy(10.0)
                         .accel(0.15, 0.1).fuel(MissileEntity.FuelType.LIQUID, 3000));
+
+        SHITBOX_BUSTER = missile("shitbox_buster", "Shitbox Buster Missile",
+                MissileModels.rl("v2_bunker"), WFWarheads.SHITBOX_BUSTER,
+                b -> b.highAltitude(280.0).cruiseSpeed(3.5).health(70.0f)
+                        .diveAngleRange(82.0, 90.0).attackStage(weakDive())
+                        .turnRate(0.55).accuracy(10.0)
+                        .accel(0.12, 0.1).fuel(MissileEntity.FuelType.LIQUID, 3000));
 
         BUNKER_BUSTER_HEAVY = missile("bunker_buster_heavy", "Heavy Bunker Buster Missile",
                 MissileModels.rl("carrier"), WFWarheads.BUNKER_MK2,

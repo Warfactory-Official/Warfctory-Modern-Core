@@ -2,6 +2,7 @@ package com.norwood.wfcore.diagnostics;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.darkness.DarknessEnforceMessage;
+import com.norwood.wfcore.common.research.ResearchSyncMessage;
 import com.norwood.wfcore.common.shader.ShaderEnforceMessage;
 
 import net.minecraft.resources.ResourceLocation;
@@ -83,6 +84,10 @@ public final class DiagNet {
         CHANNEL.registerMessage(11, DiagImageChunkMessage.class,
                 DiagImageChunkMessage::write, DiagImageChunkMessage::read, DiagImageChunkMessage::handle,
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+        CHANNEL.registerMessage(12, ResearchSyncMessage.class,
+                ResearchSyncMessage::write, ResearchSyncMessage::read, ResearchSyncMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     public static void sendToClient(ServerPlayer player, DiagRequestMessage message) {
@@ -111,5 +116,10 @@ public final class DiagNet {
 
     public static void sendImageChunk(ServerPlayer player, DiagImageChunkMessage message) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    /** Sends the full research tree (categories + nodes) to a client — on login and after {@code /reload}. */
+    public static void sendResearchRegistry(ServerPlayer player) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), ResearchSyncMessage.snapshot());
     }
 }

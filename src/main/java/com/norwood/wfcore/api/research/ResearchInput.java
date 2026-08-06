@@ -1,5 +1,6 @@
 package com.norwood.wfcore.api.research;
 
+import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -46,6 +47,23 @@ public final class ResearchInput {
     /** How many matching items one research run consumes. */
     public int count() {
         return count;
+    }
+
+    /**
+     * Writes this cost to a packet buffer (the {@link Ingredient} + its count) for the research-registry sync.
+     * Forge's {@link Ingredient#toNetwork} preserves both exact ({@link StrictNBTIngredient}) and tag costs, so
+     * the client rebuilds the same {@link #displayStacks()} the GUI draws — the only thing the client needs, as
+     * cost matching ({@link #test}) is server-side.
+     */
+    public void writeToNetwork(FriendlyByteBuf buf) {
+        ingredient.toNetwork(buf);
+        buf.writeVarInt(count);
+    }
+
+    /** Reads a cost written by {@link #writeToNetwork} (client side of the registry sync). */
+    public static ResearchInput fromNetwork(FriendlyByteBuf buf) {
+        Ingredient ingredient = Ingredient.fromNetwork(buf);
+        return new ResearchInput(ingredient, buf.readVarInt());
     }
 
     public Ingredient ingredient() {

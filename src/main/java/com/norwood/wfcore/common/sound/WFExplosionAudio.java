@@ -21,11 +21,11 @@ public final class WFExplosionAudio {
     private static final float NEAR_VOLUME = 4.0F;
     private static final float DISTANT_VOLUME = 8.0F;
     /** Variable-range audibility of the loud distant variant (~16 * volume). */
-    private static final double MAX_RANGE = 16.0 * DISTANT_VOLUME;
 
     private WFExplosionAudio() {}
 
-    public static void playBlast(ServerLevel level, Vec3 pos, float power) {
+    public static void playBlast(ServerLevel level, Vec3 pos, float power, double range) {
+        final double MAX_RANGE = range * DISTANT_VOLUME;
         float powerScale = Math.min(1.0F, power / 4.0F);
         long seed = level.random.nextLong(); // shared so everyone hears the same variant of a given event
         for (ServerPlayer player : level.players()) {

@@ -1,6 +1,8 @@
 package com.norwood.wfcore.common.data;
 
+import com.lowdragmc.lowdraglib.test.TestJava;
 import com.norwood.wfcore.WFCore;
+import com.norwood.wfcore.common.block.MiningExplosion;
 import com.norwood.wfcore.common.sound.WFDelayedSounds;
 import com.norwood.wfcore.common.sound.WFSounds;
 import com.norwood.wfcore.common.warhead.BlockAllocatorEMPRay;
@@ -92,6 +94,7 @@ public final class WFWarheads {
     public static final ResourceLocation ICBM_HEAVY = WFCore.id("icbm_heavy");
     public static final ResourceLocation BUNKER_MK1 = WFCore.id("bunker_mk1");
     public static final ResourceLocation BUNKER_MK2 = WFCore.id("bunker_mk2");
+    public static final ResourceLocation SHITBOX_BUSTER = WFCore.id("shitbox_buster");
     public static final ResourceLocation TUNNELLER = WFCore.id("tunneller");
     public static final ResourceLocation GAS_SWISS = WFCore.id("gas_swiss");
     public static final ResourceLocation FIRE_CLUSTER = WFCore.id("fire_cluster");
@@ -245,6 +248,12 @@ public final class WFWarheads {
         WarheadRegistry.register(BUNKER_MK2, (source, pos) ->
                 bunker(source.level(), pos, source.angle(), 12.0f, 14.0f, 16.0f, 100.0f),
                 WarheadRegistry.STANDARD_INTERCEPT);
+        WarheadRegistry.register(SHITBOX_BUSTER, (source, pos) ->
+                        shitboxBuster(source.level(), pos, source.angle(), 10, 1, 2),
+                WarheadRegistry.STANDARD_INTERCEPT);
+        WarheadRegistry.register(BUNKER_MK2, (source, pos) ->
+                        bunker(source.level(), pos, source.angle(), 12.0f, 14.0f, 16.0f, 100.0f),
+                WarheadRegistry.STANDARD_INTERCEPT);
 
         // Tunneller (final-tier bunker buster): instead of a surface shaped-charge, it BORES a shaft up to
         // TUNNEL_MAX_DEPTH blocks down the impact heading — stopped early when it meets heavy shielding
@@ -344,7 +353,7 @@ public final class WFWarheads {
                 return;
             }
             Vec3 axis = source.angle();
-            ExplosionAEF emp = new ExplosionAEF(level, pos.x, pos.y, pos.z, 20);
+            ExplosionAEF emp = new ExplosionAEF(level, pos.x, pos.y, pos.z, 60);
             emp.setBlockAllocator(new BlockAllocatorEMPRay(axis, EMP_RAY_LENGTH));
             emp.setBlockProcessor(empProcessor(EMP_FULL)); // lance only pauses/mallets, nothing else
             emp.bypassClaims(true);
@@ -359,6 +368,36 @@ public final class WFWarheads {
         // of small, fast child interceptors that each home on the nearest remaining missile — one shot to blunt
         // a barrage. Children carry the plain "interceptor" warhead so they don't re-cluster.
         WarheadRegistry.register(INTERCEPT_CLUSTER, (source, pos) -> {}, WFWarheads::interceptCluster);
+    }
+
+    private static void shitboxBuster(Level level, Vec3 pos, Vec3 heading, int radius, int fortune, int tier) {
+        if (!(level instanceof ServerLevel server)) {
+            return;
+        }
+        MiningExplosion.explodeSphere(server, surfaceImpact(server, pos, heading), radius, fortune, tier, null);
+    }
+
+
+    private static BlockPos surfaceImpact(ServerLevel level, Vec3 pos, Vec3 heading) {
+        BlockPos hit = BlockPos.containing(pos);
+        if (!isSolid(level, hit)) {
+            return hit;
+        }
+        Vec3 back = heading.lengthSqr() > 1.0e-6 ? heading.normalize() : new Vec3(0.0, 1.0, 0.0);
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        for (double t = 0.5; t <= 4.0; t += 0.5) {
+            Vec3 p = pos.subtract(back.scale(t));
+            cursor.set(Mth.floor(p.x), Mth.floor(p.y), Mth.floor(p.z));
+            if (!isSolid(level, cursor)) {
+                return cursor.immutable();
+            }
+        }
+        return hit;
+    }
+
+    private static boolean isSolid(ServerLevel level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        return !state.isAir() && state.blocksMotion();
     }
 
     // ------------------------------------------------------------------------------------------------------
@@ -428,7 +467,7 @@ public final class WFWarheads {
     }
 
     // Tunneller bore tunables.
-    private static final int TUNNEL_MAX_DEPTH = 15;          // max blocks the shaft reaches through soft ground
+    private static final int TUNNEL_MAX_DEPTH = 100;          // max blocks the shaft reaches through soft ground
     private static final double TUNNEL_DIG_POWER = 300.0;    // budget drained by each gate block's resistance
     private static final double TUNNEL_RADIUS = 1.3;         // shaft half-width (a ~3-block-wide bore)
     private static final float TUNNEL_WALL_CAP = 120.0f;     // resistance the bore can't defeat (tungsten-class stops it)
