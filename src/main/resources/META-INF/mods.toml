@@ -48,6 +48,12 @@ Example Description
         versionRange = "*"
         ordering = "AFTER"
         side = "CLIENT"
+    [[dependencies.${mod_id}]]
+        modId = "darkness"
+        mandatory = true
+        versionRange = "*"
+        ordering = "AFTER"
+        side = "CLIENT"
     # Optional: enables WarForge faction integration (research sharing + chunk reinforcer).
     # Must load before WFCore so its capabilities are registered first.
     [[dependencies.${mod_id}]]
@@ -61,6 +67,12 @@ Example Description
         modId = "wfballistics"
         mandatory = true
         versionRange = "[1.0,)"
+        ordering = "AFTER"
+        side = "BOTH"
+    [[dependencies.${mod_id}]]
+        modId = "tacz"
+        mandatory = true
+        versionRange = "*"
         ordering = "AFTER"
         side = "BOTH"
     # Optional: without it, reinforced_glass/reinforced_concrete just render with their plain texture

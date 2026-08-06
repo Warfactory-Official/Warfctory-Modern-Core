@@ -2,7 +2,12 @@ package com.norwood.wfcore.integration.kubejs;
 
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.data.recipe.builder.GTRecipeBuilder;
+import com.gregtechceu.gtceu.integration.kjs.recipe.GTRecipeSchema;
 
+import dev.latvian.mods.kubejs.recipe.RecipeJS;
+import dev.latvian.mods.kubejs.recipe.RecipesEventJS;
+
+import com.norwood.wfcore.common.recipe.condition.ResearchRecipeCondition;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -193,8 +198,8 @@ public class WFVehicleBindings {
             return this;
         }
 
-        /** Assemble + serialize to the recipe JSON GTCEu emits; feed the result to {@code event.custom(...)}. */
-        public JsonObject build() {
+        /** Populate a fresh GTRecipeBuilder for this factory with all the accumulated inputs/output/EU/duration. */
+        private GTRecipeBuilder toBuilder() {
             GTRecipeBuilder b = VehicleFactoryRecipes.byName(factory).recipeBuilder(rid);
             for (ItemStack s : items) {
                 b.inputItems(s);
@@ -209,12 +214,30 @@ public class WFVehicleBindings {
                 b.circuitMeta(circuit);
             }
             if (research != null && !research.isBlank()) {
-                b.addCondition(new com.norwood.wfcore.common.recipe.condition.ResearchRecipeCondition(research));
+                b.addCondition(new ResearchRecipeCondition(research));
             }
             b.outputItems(PackagedVehicleItem.of(eid)).EUt(eut).duration(duration);
-            JsonObject[] json = new JsonObject[1];
-            b.save(fr -> json[0] = fr.serializeRecipe());
-            return json[0];
+            return b;
+        }
+
+        public JsonObject build() {
+            return toBuilder().build().serializeRecipe();
+        }
+
+
+        public RecipeJS add(RecipesEventJS event) {
+            JsonObject json = toBuilder().build().serializeRecipe();
+            RecipeJS added = event.custom(json);
+            if (added instanceof GTRecipeSchema.GTRecipeJS gt) {
+                gt.EUt(eut, 1L); // re-apply the tick-input EU (voltage=eut, amperage=1) the schema parse dropped
+                WFCore.LOGGER.info("[WFVehicles] {} @ {} (entity {}): registered, re-applied EUt={} (dur={})",
+                        rid, factory, eid, eut, duration);
+            } else {
+                WFCore.LOGGER.warn("[WFVehicles] {} @ {} (entity {}): event.custom returned {} (not a GTRecipeJS) - "
+                        + "could NOT re-apply EU; this recipe will run with no power",
+                        rid, factory, eid, added == null ? "null" : added.getClass().getName());
+            }
+            return added;
         }
     }
 

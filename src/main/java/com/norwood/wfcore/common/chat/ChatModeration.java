@@ -7,6 +7,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraftforge.event.CommandEvent;
 import net.minecraftforge.event.RegisterCommandsEvent;
 import net.minecraftforge.event.ServerChatEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -15,6 +16,7 @@ import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.context.ParsedCommandNode;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.config.WFCoreConfig;
@@ -32,6 +34,9 @@ import java.util.regex.Pattern;
 public final class ChatModeration {
 
     public static final ChatModeration INSTANCE = new ChatModeration();
+
+    private static final Set<String> MUTE_BLOCKED_COMMANDS =
+            Set.of("say", "me", "msg", "tell", "w", "teammsg", "tm");
 
     private ChatModeration() {}
 
@@ -83,6 +88,30 @@ public final class ChatModeration {
         }
     }
 
+
+    @SubscribeEvent
+    public void onCommand(CommandEvent event) {
+        if (!WFCoreConfig.isChatModerationEnabled()) {
+            return;
+        }
+        List<ParsedCommandNode<CommandSourceStack>> nodes = event.getParseResults().getContext().getNodes();
+        if (nodes.isEmpty()) {
+            return;
+        }
+        if (!MUTE_BLOCKED_COMMANDS.contains(nodes.get(0).getNode().getName())) {
+            return;
+        }
+        if (!(event.getParseResults().getContext().getSource().getEntity() instanceof ServerPlayer player)) {
+            return;
+        }
+        long now = System.currentTimeMillis();
+        ChatModerationData.MuteEntry mute =
+                ChatModerationData.get(player.serverLevel()).getActiveMute(player.getUUID(), now);
+        if (mute != null) {
+            event.setCanceled(true);
+            player.sendSystemMessage(muteNotice(mute, now));
+        }
+    }
 
     private static Pattern effectivePattern(ChatModerationData data) {
         Set<String> words = new LinkedHashSet<>(WFCoreConfig.getChatBlacklist());

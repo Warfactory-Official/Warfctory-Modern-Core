@@ -85,35 +85,50 @@ public class WFMachines {
     public static MultiblockMachineDefinition GREENHOUSE;
     public static MultiblockMachineDefinition MOB_FARMER;
 
-    // JEI preview stages for the Large Blast Furnace, generated to match its pattern.
-    // Each aisle is a FRONT-depth slice; strings go bottom->top; the char column maps to the RIGHT
-    // axis reversed; the controller ('S') faces SOUTH. 'P' = primitive brick, 'F' = bronze firebox,
-    // ' ' = air. Stage 1 = core only, stage 2 = core + left flue, stage 3 = core + both. The chamber's
-    // solid side walls are present in every stage, so an unbuilt flue leaves a wall, not a hole.
+    // JEI preview stages for the Large Blast Furnace, laid out to match its pattern's axes
+    // (start(RIGHT, UP, FRONT)): each aisle is a slice along RIGHT (the 9-wide axis that carries the
+    // center + two side chimneys), strings go bottom->top (9 tall), the 5-char column is the FRONT
+    // depth, and the controller ('S', aisle 4 / string 2 / char 4) faces SOUTH. 'P' = primitive brick,
+    // 'F' = bronze firebox, ' ' = air. The side-chimney fireboxes sit on aisles 1 & 7 so they render
+    // to the controller's LEFT/RIGHT, matching detectSideChimneys/computeChimneyMouths. Stage 1 = core
+    // only, stage 2 = core + one side chimney, stage 3 = both.
     private static final String[][] PBF_SHAPE_STAGE1 = {
-            { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
-            { "   PPP   ", "  P   P  ", "  P   P  ", "  P   P  ", "   PPP   ", "    P    ", "    P    ", "    P    ", "   PPP   " },
-            { "  PPPPP  ", "  P   P  ", "  P   P  ", "  P   P  ", "  PP PP  ", "   P P   ", "   P P   ", "   P P   ", "   P P   " },
-            { "   PPP   ", "  P   P  ", "  P   P  ", "  P   P  ", "   PPP   ", "    P    ", "    P    ", "    P    ", "   PPP   " },
-            { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+            { "     ", "     ", "     ", "     ", "     ", "     ", "     ", "     ", "     " },
+            { "     ", "     ", "     ", "     ", "     ", "     ", "     ", "     ", "     " },
+            { "  P  ", " PPP ", " PPP ", " PPP ", "  P  ", "     ", "     ", "     ", "     " },
+            { " PPP ", "P   P", "P   P", "P   P", " PPP ", "  P  ", "  P  ", "  P  ", " PPP " },
+            { " PPP ", "P   P", "P   S", "P   P", " P P ", " P P ", " P P ", " P P ", " P P " },
+            { " PPP ", "P   P", "P   P", "P   P", " PPP ", "  P  ", "  P  ", "  P  ", " PPP " },
+            { "  P  ", " PPP ", " PPP ", " PPP ", "  P  ", "     ", "     ", "     ", "     " },
+            { "     ", "     ", "     ", "     ", "     ", "     ", "     ", "     ", "     " },
+            { "     ", "     ", "     ", "     ", "     ", "     ", "     ", "     ", "     " },
     };
     private static final String[][] PBF_SHAPE_STAGE2 = {
-            { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
-            { "   PPP F ", "  P   PP ", "  P   PP ", "  P   PP ", "   PPP P ", "  P P PPP", "    P    ", "    P    ", "   PPP   " },
-            { "  PPPPPFP", "  P   P P", "  P   P P", "  P   P P", "  PP PP P", "  PP PP P", "   P P   ", "   P P   ", "   P P   " },
-            { "   PPP F ", "  P   PP ", "  P   PP ", "  P   PP ", "   PPP P ", "  P P PPP", "    P    ", "    P    ", "   PPP   " },
-            { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+            { "     ", "     ", "     ", "     ", "     ", "     ", "     ", "     ", "     " },
+            { "     ", "     ", "     ", "     ", "     ", "     ", "     ", "     ", "     " },
+            { "  P  ", " PPP ", " PPP ", " PPP ", "  P  ", " PPP ", "     ", "     ", "     " },
+            { " PPP ", "P   P", "P   P", "P   P", " PPP ", "  P  ", "  P  ", "  P  ", " PPP " },
+            { " PPP ", "P   P", "P   S", "P   P", " P P ", " P P ", " P P ", " P P ", " P P " },
+            { " PPP ", "P   P", "P   P", "P   P", " PPP ", "  P  ", "  P  ", "  P  ", " PPP " },
+            { "  P  ", " PPP ", " PPP ", " PPP ", "  P  ", " PPP ", "     ", "     ", "     " },
+            { " FFF ", " P P ", " P P ", " P P ", " P P ", " P P ", "     ", "     ", "     " },
+            { "  P  ", "  P  ", "  P  ", "  P  ", "  P  ", " PPP ", "     ", "     ", "     " },
     };
     private static final String[][] PBF_SHAPE_STAGE3 = {
-            { "         ", "   PPP   ", "   PSP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
-            { " F PPP F ", " PP   PP ", " PP   PP ", " PP   PP ", " P PPP P ", "PPP P PPP", "    P    ", "    P    ", "   PPP   " },
-            { "PFPPPPPFP", "P P   P P", "P P   P P", "P P   P P", "P PP PP P", "P PP PP P", "   P P   ", "   P P   ", "   P P   " },
-            { " F PPP F ", " PP   PP ", " PP   PP ", " PP   PP ", " P PPP P ", "PPP P PPP", "    P    ", "    P    ", "   PPP   " },
-            { "         ", "   PPP   ", "   PPP   ", "   PPP   ", "         ", "         ", "         ", "         ", "         " },
+            { "  P  ", "  P  ", "  P  ", "  P  ", "  P  ", " PPP ", "     ", "     ", "     " },
+            { " FFF ", " P P ", " P P ", " P P ", " P P ", " P P ", "     ", "     ", "     " },
+            { "  P  ", " PPP ", " PPP ", " PPP ", "  P  ", " PPP ", "     ", "     ", "     " },
+            { " PPP ", "P   P", "P   P", "P   P", " PPP ", "  P  ", "  P  ", "  P  ", " PPP " },
+            { " PPP ", "P   P", "P   S", "P   P", " P P ", " P P ", " P P ", " P P ", " P P " },
+            { " PPP ", "P   P", "P   P", "P   P", " PPP ", "  P  ", "  P  ", "  P  ", " PPP " },
+            { "  P  ", " PPP ", " PPP ", " PPP ", "  P  ", " PPP ", "     ", "     ", "     " },
+            { " FFF ", " P P ", " P P ", " P P ", " P P ", " P P ", "     ", "     ", "     " },
+            { "  P  ", "  P  ", "  P  ", "  P  ", "  P  ", " PPP ", "     ", "     ", "     " },
     };
 
     private static MultiblockShapeInfo largeBlastFurnaceShape(MultiblockMachineDefinition definition, String[][] aisles) {
         var builder = MultiblockShapeInfo.builder();
+
         for (String[] aisle : aisles) {
             builder.aisle(aisle);
         }
@@ -451,10 +466,9 @@ public class WFMachines {
                         Component.translatable("wfcore.machine.large_blast_furnace.tooltip3"),
                         Component.translatable("wfcore.machine.large_blast_furnace.tooltip4"))
                 .appearanceBlock(GTBlocks.CASING_PRIMITIVE_BRICKS)
+
                 .pattern(definition -> FactoryBlockPattern.start(
                                 RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
-
-
                         .aisle("  D  ", "  D  ", "  D  ", "  D  ", "  D  ", " DDD ", "     ", "     ", "     ")
                         .aisle(" CCC ", " D#D ", " D#D ", " D#D ", " D#D ", " D#D ", "     ", "     ", "     ")
                         .aisle("  B  ", " BBB ", " BBB ", " BBB ", "  B  ", " DDD ", "     ", "     ", "     ")

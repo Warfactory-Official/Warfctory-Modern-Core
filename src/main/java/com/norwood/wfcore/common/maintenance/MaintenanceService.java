@@ -1,5 +1,6 @@
 package com.norwood.wfcore.common.maintenance;
 
+import com.mojang.authlib.GameProfile;
 import com.mojang.brigadier.context.CommandContext;
 
 import com.norwood.wfcore.WFCore;
@@ -59,7 +60,7 @@ public final class MaintenanceService {
                     .withStyle(ChatFormatting.YELLOW));
             return;
         }
-        player.connection.disconnect(kickMessage());
+        player.connection.disconnect(maintenanceKickMessage());
     }
 
     // ---------------------------------------------------------------------------------------------------------
@@ -107,7 +108,7 @@ public final class MaintenanceService {
         if (server == null) {
             return 0;
         }
-        Component reason = kickMessage();
+        Component reason = maintenanceKickMessage();
         // Snapshot first: disconnecting mutates the live player list we would otherwise be iterating.
         List<ServerPlayer> toKick = new ArrayList<>();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
@@ -136,7 +137,7 @@ public final class MaintenanceService {
         }
     }
 
-    private static Component kickMessage() {
+    public static Component maintenanceKickMessage() {
         String msg = WFCoreConfig.getMaintenanceKickMessage();
         if (msg == null || msg.isBlank()) {
             msg = "The server is down for maintenance.";
@@ -144,17 +145,29 @@ public final class MaintenanceService {
         return Component.literal(msg);
     }
 
+    /**
+     * True when a login by this profile should be refused for maintenance: maintenance is on and the
+     * profile is not an operator. Called from the {@code PlayerList#canPlayerLogin} mixin so the refusal
+     * happens in the login phase and the client shows a clean disconnect message (like a ban), not the
+     * "Connection Lost" screen a post-join disconnect produces.
+     */
+    public static boolean isLoginRefused(MinecraftServer server, GameProfile profile) {
+        return WFCoreConfig.isMaintenanceEnabled() && !isOperator(server, profile);
+    }
+
     /** True if the player is a server operator (ops list, singleplayer owner, or permission level &gt;= 2). */
     public static boolean isOperator(ServerPlayer player) {
-        MinecraftServer server = player.getServer();
-        if (server != null) {
-            if (server.getPlayerList().isOp(player.getGameProfile())) {
-                return true;
-            }
-            if (server.isSingleplayerOwner(player.getGameProfile())) {
-                return true;
-            }
+        if (isOperator(player.getServer(), player.getGameProfile())) {
+            return true;
         }
         return player.hasPermissions(2);
+    }
+
+    /** Operator check from a bare profile, for use before a {@link ServerPlayer} exists (i.e. at login). */
+    public static boolean isOperator(MinecraftServer server, GameProfile profile) {
+        if (server == null) {
+            return false;
+        }
+        return server.getPlayerList().isOp(profile) || server.isSingleplayerOwner(profile);
     }
 }

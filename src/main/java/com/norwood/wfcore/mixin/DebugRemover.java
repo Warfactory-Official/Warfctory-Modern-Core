@@ -10,9 +10,16 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(EntityRenderDispatcher.class)
 public class DebugRemover {
+
+    @Inject(method = "shouldRenderHitBoxes", at = @At("HEAD"), cancellable = true)
+    private void wfcore$shouldRenderHitBoxes(CallbackInfoReturnable<Boolean> cir) {
+        if (!WFCore.DEBUG)
+            cir.setReturnValue(false);
+    }
 
     @Inject(method = "renderHitbox", at = @At("HEAD"), cancellable = true)
     private static void wfcore$renderHitbox(PoseStack poseStack, VertexConsumer consumer, Entity entity,

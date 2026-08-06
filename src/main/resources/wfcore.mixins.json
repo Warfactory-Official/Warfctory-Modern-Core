@@ -35,7 +35,8 @@
     "LongDistanceItemPipeWeightMixin",
     "P2PItemTunnelWeightMixin",
     "BrimmConfigHashOrderMixin",
-    "GTOreLoaderTransplantMixin"
+    "GTOreLoaderTransplantMixin",
+    "PlayerListMaintenanceGateMixin"
   ],
   "client": [
     "NamePlateMixin",
@@ -58,7 +59,8 @@
     "ForceFirstPersonCameraMixin",
     "SodayoRocketShellBoundsMixin",
     "DarknessConfigLockMixin",
-    "IrisConfigShaderLockMixin"
+    "IrisConfigShaderLockMixin",
+    "PatternPreviewWidgetNullSafeMixin"
   ],
   "injectors": {
     "defaultRequire": 1
