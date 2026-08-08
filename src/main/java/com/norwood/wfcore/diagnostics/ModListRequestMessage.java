@@ -6,20 +6,37 @@ import net.minecraftforge.network.NetworkEvent;
 
 import net.minecraft.network.FriendlyByteBuf;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Supplier;
 
-/**
- * Server -> client: asks the client to hash its mods-folder jars and reply with a {@link ModReportMessage}.
- * The {@code nonce} ties a reply back to this request so the server ignores unsolicited or stale reports.
- */
-public record ModListRequestMessage(long nonce) {
+
+public record ModListRequestMessage(long nonce, List<String> signatures) {
+
+    private static final int MAX_SIGNATURES = 512;
+    private static final int MAX_SIGNATURE_LEN = 256;
 
     public static void write(ModListRequestMessage msg, FriendlyByteBuf buf) {
         buf.writeLong(msg.nonce);
+        List<String> sigs = msg.signatures != null ? msg.signatures : List.of();
+        int n = Math.min(sigs.size(), MAX_SIGNATURES);
+        buf.writeVarInt(n);
+        for (int i = 0; i < n; i++) {
+            buf.writeUtf(sigs.get(i), MAX_SIGNATURE_LEN);
+        }
     }
 
     public static ModListRequestMessage read(FriendlyByteBuf buf) {
-        return new ModListRequestMessage(buf.readLong());
+        long nonce = buf.readLong();
+        int n = buf.readVarInt();
+        if (n < 0 || n > MAX_SIGNATURES) {
+            return new ModListRequestMessage(nonce, List.of());
+        }
+        List<String> sigs = new ArrayList<>(n);
+        for (int i = 0; i < n; i++) {
+            sigs.add(buf.readUtf(MAX_SIGNATURE_LEN));
+        }
+        return new ModListRequestMessage(nonce, sigs);
     }
 
     public static void handle(ModListRequestMessage msg, Supplier<NetworkEvent.Context> ctx) {

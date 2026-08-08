@@ -192,6 +192,12 @@ public final class ResearchTreeGui {
         if (!mte.isFormed() || mte.getMode() != ResearchUnitMachine.Mode.CONTROL) {
             return buildInfoPanel(mte);
         }
+        // Formed Control, but the research registry hasn't been populated/synced yet (e.g. the very first world
+        // join before the pack's research finishes registering). Show a clear notice rather than an empty tab
+        // strip - the tree self-heals on the next open once the registry fills in.
+        if (categories().isEmpty()) {
+            return buildEmptyResearchPanel(mte);
+        }
 
         // A smaller GUI scale frees up vertical space; grow the panel into it (client-only read) and pour the
         // gained height into the tree pane. The server keeps the design height - sync handlers key off widget
@@ -262,6 +268,34 @@ public final class ResearchTreeGui {
                         .withStyle(net.minecraft.ChatFormatting.YELLOW));
             }
         });
+        panel.child(body);
+        return panel;
+    }
+
+    /**
+     * Shown for a formed Control whose research registry is still empty (nothing registered/synced yet). Mirrors
+     * {@link #buildInfoPanel}'s compact style so a first-join "no data yet" state reads as a clear message
+     * instead of a broken-looking empty tab (which is what the old {@code getOrCreate("wfcore")} fallback drew).
+     */
+    private static ModularPanel<?> buildEmptyResearchPanel(ResearchUnitMachine mte) {
+        int w = 198;
+        int h = 96;
+        ModularPanel<?> panel = ModularPanel.defaultPanel("research_unit", w, h);
+
+        ItemStack block = mte.getDefinition().asStack();
+        panel.child(itemIcon(() -> block, 16).pos(8, 7).name("info_icon"));
+        panel.child(new TextWidget<>(Text.of(block.getHoverName())).pos(28, 10).name("info_title"));
+        panel.child(new ParentWidget<>().background(new Rectangle().color(COLOR_BORDER))
+                .pos(7, 27).size(w - 14, 1).name("info_divider"));
+
+        panel.child(new TextWidget<>(Text.of(Component.translatable("wfcore.gui.research.info_empty_title")
+                .withStyle(net.minecraft.ChatFormatting.YELLOW))).pos(8, 33).name("info_heading"));
+
+        RichTextWidget body = new RichTextWidget();
+        body.name("info_body");
+        body.pos(8, 45).size(w - 16, h - 51);
+        body.autoUpdate(true);
+        body.textBuilder(rt -> rt.addLine(gray("wfcore.gui.research.info_empty_desc")));
         panel.child(body);
         return panel;
     }
@@ -1233,6 +1267,14 @@ public final class ResearchTreeGui {
      * Tabs, in order: every explicitly-registered {@link ResearchCategory} first, then a default category for
      * any id a research references but that was never registered. A registered category with no researches
      * still shows its (empty) tab.
+     *
+     * <p>
+     * This is a pure read of the registries — it must NOT mutate them. The default fill-in for an unregistered
+     * id uses {@link ResearchCategory#createDefault(String)} (a transient category), NOT
+     * {@code ResearchCategoryRegistry.getOrCreate} which would <em>register</em> it. The old code registered a
+     * fallback here, so opening the GUI on a first join (before the registry was populated) permanently planted
+     * an empty "wfcore" tab that then lingered forever alongside the real tabs after a /reload. When there is
+     * genuinely nothing to show this returns an empty list and {@link #build} shows a notice instead.
      */
     private static List<ResearchCategory> categories() {
         Map<String, ResearchCategory> ordered = new LinkedHashMap<>();
@@ -1240,10 +1282,7 @@ public final class ResearchTreeGui {
             ordered.put(c.getId(), c);
         }
         for (Research r : ResearchRegistry.all()) {
-            ordered.computeIfAbsent(r.getCategory(), ResearchCategoryRegistry::getOrCreate);
-        }
-        if (ordered.isEmpty()) {
-            ordered.put("wfcore", ResearchCategoryRegistry.getOrCreate("wfcore"));
+            ordered.computeIfAbsent(r.getCategory(), ResearchCategory::createDefault);
         }
         return new ArrayList<>(ordered.values());
     }

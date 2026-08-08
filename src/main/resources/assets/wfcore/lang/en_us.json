@@ -93,6 +93,8 @@
   "wfcore.gui.research.info_part_computation": "• Computation Data Reception Hatch (wired to a Mainframe)",
   "wfcore.gui.research.info_part_data": "• Optical Data Transmission Hatch (optional; wire a Data Bank to sync research)",
   "wfcore.gui.research.info_hint_preview": "Tip: sneak + right-click with an empty hand to preview the structure in-world.",
+  "wfcore.gui.research.info_empty_title": "No Research Available",
+  "wfcore.gui.research.info_empty_desc": "The research tree hasn't loaded yet. It should appear shortly - reopen this screen, or run /reload if it stays empty.",
   "wfcore.gui.research.info_slave_title": "Slave Mode",
   "wfcore.gui.research.info_slave_desc": "This unit is in Slave mode. It lends one parallel research slot to any Control unit sharing its computation network (both reception hatches wired to the same optical pipes) and doesn't run research itself.",
   "wfcore.gui.research.info_slave_hint": "Tip: wire its Computation Reception Hatch to the Control's network with optical pipes, or use a screwdriver to switch it back to Control mode.",

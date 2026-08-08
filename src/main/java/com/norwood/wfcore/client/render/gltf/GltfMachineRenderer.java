@@ -4,16 +4,6 @@ import com.gregtechceu.gtceu.api.blockentity.MetaMachineBlockEntity;
 import com.gregtechceu.gtceu.api.machine.MetaMachine;
 import com.gregtechceu.gtceu.api.machine.multiblock.MultiblockControllerMachine;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
-
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.LevelRenderer;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
-import net.minecraft.client.renderer.texture.DynamicTexture;
-import net.minecraft.core.BlockPos;
-import net.minecraft.core.Direction;
-
 import com.modularmods.mcgltf.MCglTF;
 import com.modularmods.mcgltf.RenderedGltfModel;
 import com.mojang.blaze3d.platform.GlStateManager;
@@ -24,15 +14,17 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.debug.ModelTransformDebug;
 import com.norwood.wfcore.client.render.mask.RenderMaskManager;
 import com.norwood.wfcore.mixin.LightTextureAccessor;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
+import net.minecraft.client.renderer.texture.DynamicTexture;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL30;
-import org.lwjgl.opengl.GL33;
+import org.lwjgl.opengl.*;
 
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -44,12 +36,13 @@ import java.util.WeakHashMap;
  */
 public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements BlockEntityRenderer<T> {
 
+    private static DynamicTexture worldLightTexture;
     private final MachineGltfModel model;
     private final Map<T, AnimationController> controllers = new WeakHashMap<>();
     private final GltfMachineLightSampler lightSampler;
 
     public GltfMachineRenderer(MachineGltfModel model, BlockPos... lightOffsets) {
-        this(model,lightOffsets.length == 0 ? new GltfMachineLightSampler(BlockPos.ZERO) : new GltfMachineLightSampler(lightOffsets));
+        this(model, lightOffsets.length == 0 ? new GltfMachineLightSampler(BlockPos.ZERO) : new GltfMachineLightSampler(lightOffsets));
     }
 
     public GltfMachineRenderer(MachineGltfModel model, @NotNull GltfMachineLightSampler lightSampler) {
@@ -57,133 +50,10 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         this.lightSampler = lightSampler;
     }
 
-    @Override
-    public void render(T be, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource,
-                       int packedLight, int packedOverlay) {
-        MetaMachine machine = be.getMetaMachine();
-        if (!(machine instanceof IAnimatedMachine animated)) {
-            return;
-        }
-
-        boolean formed = animated.shouldRenderModel();
-
-        boolean realLevel = be.getLevel() != null && be.getLevel() == Minecraft.getInstance().level;
-
-        if (realLevel) {
-
-            boolean masked = RenderMaskManager.isControllerMasked(be.getBlockPos());
-            if (formed && !masked) {
-                RenderMaskManager.addDisableModel(be.getBlockPos(), animated.getHiddenBlocks());
-            } else if (!formed && masked) {
-                RenderMaskManager.removeDisableModel(be.getBlockPos());
-            }
-        }
-
-        if (!formed || !realLevel || model.scene == null || model.animations == null) {
-            return;
-        }
-
-        AnimationController controller = controllers.computeIfAbsent(be, k -> new AnimationController());
-        float now = (be.getLevel() != null ? (float) be.getLevel().getGameTime() : 0f) + partialTick;
-        controller.advance(animated, model.animations, now);
-        AnimationLoop loop = model.animations.get(controller.getCurrent());
-        if (loop != null) {
-
-            float override = animated.getAnimationOverride();
-            float time = override >= 0f ? Math.min(override, 1f) * loop.getDuration() : controller.getTime();
-            loop.update(time);
-        }
-
-        poseStack.pushPose();
-        var transform = ModelTransformDebug.resolve(animated, machine.getFrontFacing());
-        poseStack.translate(transform.x, transform.y, transform.z);
-        var scale = ModelTransformDebug.resolveScale(animated, machine.getFrontFacing());
-        poseStack.scale((float) scale.x, (float) scale.y, (float) scale.z);
-        applyOrientation(poseStack, machine);
-
-
-        Matrix4f pose = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(poseStack.last().pose());
-        poseStack.popPose();
-
-
-        final int prevVao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
-        final int prevArrayBuffer = GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING);
-        final int prevElementArrayBuffer = GL11.glGetInteger(GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING);
-        final boolean prevCullFace = GL11.glGetBoolean(GL11.GL_CULL_FACE);
-        final boolean prevDepthTest = GL11.glGetBoolean(GL11.GL_DEPTH_TEST);
-        final boolean prevBlend = GL11.glGetBoolean(GL11.GL_BLEND);
-
-        GL11.glEnable(GL11.GL_DEPTH_TEST);
-        GL11.glEnable(GL11.GL_BLEND);
-        GlStateManager._blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        RenderSystem.depthMask(true);
-
-
-
-
-        GL13.glActiveTexture(GL13.GL_TEXTURE2);
-        final int prevSampler2 = GL11.glGetInteger(GL33.GL_SAMPLER_BINDING);
-        GL33.glBindSampler(2, 0);
-        final int prevTexture2 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-        final int lightTex = worldLightLightmap(be);
-
-        GL13.glActiveTexture(GL13.GL_TEXTURE1);
-        final int prevSampler1 = GL11.glGetInteger(GL33.GL_SAMPLER_BINDING);
-        GL33.glBindSampler(1, 0);
-        final int prevTexture1 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, lightTex);
-
-        GL13.glActiveTexture(GL13.GL_TEXTURE0);
-        final int prevSampler0 = GL11.glGetInteger(GL33.GL_SAMPLER_BINDING);
-        GL33.glBindSampler(0, 0);
-
-
-        GL30.glVertexAttribI4i(RenderedGltfModel.vaUV1, 0, 0, 0, 0);
-        GL30.glVertexAttribI4i(RenderedGltfModel.vaUV2, 0, 0, 0, 0);
-
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
-
-        RenderedGltfModel.setCurrentPose(pose);
-        RenderedGltfModel.setCurrentNormal(new Matrix3f(pose).invert().transpose());
-        try {
-            if (MCglTF.getInstance().isShaderModActive()) {
-                model.scene.renderForShaderMod();
-            } else {
-                model.scene.renderForVanilla();
-            }
-        } catch (RuntimeException e) {
-            WFCore.LOGGER.error("Failed to render GLTF model {}", model.getModelLocation(), e);
-        } finally {
-            restoreGlState(prevVao, prevArrayBuffer, prevElementArrayBuffer,
-                    prevCullFace, prevDepthTest, prevBlend, prevTexture1, prevTexture2,
-                    prevSampler0, prevSampler1, prevSampler2);
-        }
-    }
-
-    private static DynamicTexture worldLightTexture;
-
-
-    private int worldLightLightmap(MetaMachineBlockEntity be) {
-        if (worldLightTexture == null) {
-            worldLightTexture = new DynamicTexture(new NativeImage(1, 1, false));
-        }
-        int color = 0xFFFFFFFF;
-        if (be.getLevel() != null) {
-            int packed = lightSampler.getLightLevel(be);
-            NativeImage pixels = ((LightTextureAccessor) Minecraft.getInstance().gameRenderer.lightTexture())
-                    .wfcore$getLightPixels();
-            if (pixels != null) {
-                color = pixels.getPixelRGBA(LightTexture.block(packed), LightTexture.sky(packed));
-            }
-        }
-        worldLightTexture.getPixels().setPixelRGBA(0, 0, color);
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, worldLightTexture.getId());
-        worldLightTexture.getPixels().upload(0, 0, 0, false);
-        return worldLightTexture.getId();
-    }
-
     private static void restoreGlState(int prevVao, int prevArrayBuffer, int prevElementArrayBuffer,
                                        boolean prevCullFace, boolean prevDepthTest, boolean prevBlend,
+                                       boolean prevDepthMask, int prevBlendSrcRgb, int prevBlendDstRgb,
+                                       int prevBlendSrcAlpha, int prevBlendDstAlpha,
                                        int prevTexture1, int prevTexture2,
                                        int prevSampler0, int prevSampler1, int prevSampler2) {
         GL13.glActiveTexture(GL13.GL_TEXTURE2);
@@ -192,8 +62,6 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         GL11.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture1);
         GL13.glActiveTexture(GL13.GL_TEXTURE0);
 
-        // Hand the sampler units back exactly as we found them (see render()); glBindSampler takes an explicit
-        // unit, so no glActiveTexture dance is needed. prev* are 0 outside Embeddium, making these no-ops.
         GL33.glBindSampler(0, prevSampler0);
         GL33.glBindSampler(1, prevSampler1);
         GL33.glBindSampler(2, prevSampler2);
@@ -203,6 +71,10 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         if (prevCullFace) GL11.glEnable(GL11.GL_CULL_FACE);
         else GL11.glDisable(GL11.GL_CULL_FACE);
 
+
+        GlStateManager._blendFuncSeparate(prevBlendSrcRgb, prevBlendDstRgb, prevBlendSrcAlpha, prevBlendDstAlpha);
+        RenderSystem.depthMask(prevDepthMask);
+
         GL30.glBindVertexArray(prevVao);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, prevArrayBuffer);
         GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevElementArrayBuffer);
@@ -210,7 +82,9 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
     }
 
-    /** Orients the model for a multiblock controller, ported from the 1.12.2 {@code MteRenderer}. */
+    /**
+     * Orients the model for a multiblock controller, ported from the 1.12.2 {@code MteRenderer}.
+     */
     private static void applyOrientation(PoseStack poseStack, MetaMachine machine) {
         Direction front = machine.getFrontFacing();
         if (machine instanceof MultiblockControllerMachine controller) {
@@ -275,6 +149,133 @@ public class GltfMachineRenderer<T extends MetaMachineBlockEntity> implements Bl
 
     private static void rotZ(PoseStack poseStack, float deg) {
         poseStack.mulPose(com.mojang.math.Axis.ZP.rotationDegrees(deg));
+    }
+
+    @Override
+    public void render(T be, float partialTick, PoseStack poseStack, MultiBufferSource bufferSource,
+                       int packedLight, int packedOverlay) {
+        MetaMachine machine = be.getMetaMachine();
+        if (!(machine instanceof IAnimatedMachine animated)) {
+            return;
+        }
+
+        boolean formed = animated.shouldRenderModel();
+
+        boolean realLevel = be.getLevel() != null && be.getLevel() == Minecraft.getInstance().level;
+
+        if (realLevel) {
+
+            boolean masked = RenderMaskManager.isControllerMasked(be.getBlockPos());
+            if (formed && !masked) {
+                RenderMaskManager.addDisableModel(be.getBlockPos(), animated.getHiddenBlocks());
+            } else if (!formed && masked) {
+                RenderMaskManager.removeDisableModel(be.getBlockPos());
+            }
+        }
+
+        if (!formed || !realLevel || model.scene == null || model.animations == null) {
+            return;
+        }
+
+        AnimationController controller = controllers.computeIfAbsent(be, k -> new AnimationController());
+        float now = (be.getLevel() != null ? (float) be.getLevel().getGameTime() : 0f) + partialTick;
+        controller.advance(animated, model.animations, now);
+        AnimationLoop loop = model.animations.get(controller.getCurrent());
+        if (loop != null) {
+
+            float override = animated.getAnimationOverride();
+            float time = override >= 0f ? Math.min(override, 1f) * loop.getDuration() : controller.getTime();
+            loop.update(time);
+        }
+
+        poseStack.pushPose();
+        var transform = ModelTransformDebug.resolve(animated, machine.getFrontFacing());
+        poseStack.translate(transform.x, transform.y, transform.z);
+        var scale = ModelTransformDebug.resolveScale(animated, machine.getFrontFacing());
+        poseStack.scale((float) scale.x, (float) scale.y, (float) scale.z);
+        applyOrientation(poseStack, machine);
+
+
+        Matrix4f pose = new Matrix4f(RenderSystem.getModelViewMatrix()).mul(poseStack.last().pose());
+        poseStack.popPose();
+
+
+        final int prevVao = GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING);
+        final int prevArrayBuffer = GL11.glGetInteger(GL15.GL_ARRAY_BUFFER_BINDING);
+        final int prevElementArrayBuffer = GL11.glGetInteger(GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING);
+        final boolean prevCullFace = GL11.glGetBoolean(GL11.GL_CULL_FACE);
+        final boolean prevDepthTest = GL11.glGetBoolean(GL11.GL_DEPTH_TEST);
+        final boolean prevBlend = GL11.glGetBoolean(GL11.GL_BLEND);
+        final boolean prevDepthMask = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+        final int prevBlendSrcRgb = GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB);
+        final int prevBlendDstRgb = GL11.glGetInteger(GL14.GL_BLEND_DST_RGB);
+        final int prevBlendSrcAlpha = GL11.glGetInteger(GL14.GL_BLEND_SRC_ALPHA);
+        final int prevBlendDstAlpha = GL11.glGetInteger(GL14.GL_BLEND_DST_ALPHA);
+
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
+        GL11.glEnable(GL11.GL_BLEND);
+        GlStateManager._blendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        RenderSystem.depthMask(true);
+
+
+        GL13.glActiveTexture(GL13.GL_TEXTURE2);
+        final int prevSampler2 = GL11.glGetInteger(GL33.GL_SAMPLER_BINDING);
+        GL33.glBindSampler(2, 0);
+        final int prevTexture2 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        final int lightTex = worldLightLightmap(be);
+
+        GL13.glActiveTexture(GL13.GL_TEXTURE1);
+        final int prevSampler1 = GL11.glGetInteger(GL33.GL_SAMPLER_BINDING);
+        GL33.glBindSampler(1, 0);
+        final int prevTexture1 = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, lightTex);
+
+        GL13.glActiveTexture(GL13.GL_TEXTURE0);
+        final int prevSampler0 = GL11.glGetInteger(GL33.GL_SAMPLER_BINDING);
+        GL33.glBindSampler(0, 0);
+
+
+        GL30.glVertexAttribI4i(RenderedGltfModel.vaUV1, 0, 0, 0, 0);
+        GL30.glVertexAttribI4i(RenderedGltfModel.vaUV2, 0, 0, 0, 0);
+
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+
+        RenderedGltfModel.setCurrentPose(pose);
+        RenderedGltfModel.setCurrentNormal(new Matrix3f(pose).invert().transpose());
+        try {
+            if (MCglTF.getInstance().isShaderModActive()) {
+                model.scene.renderForShaderMod();
+            } else {
+                model.scene.renderForVanilla();
+            }
+        } catch (RuntimeException e) {
+            WFCore.LOGGER.error("Failed to render GLTF model {}", model.getModelLocation(), e);
+        } finally {
+            restoreGlState(prevVao, prevArrayBuffer, prevElementArrayBuffer,
+                    prevCullFace, prevDepthTest, prevBlend, prevDepthMask,
+                    prevBlendSrcRgb, prevBlendDstRgb, prevBlendSrcAlpha, prevBlendDstAlpha,
+                    prevTexture1, prevTexture2,
+                    prevSampler0, prevSampler1, prevSampler2);
+        }
+    }
+
+    private int worldLightLightmap(MetaMachineBlockEntity be) {
+        if (worldLightTexture == null) {
+            worldLightTexture = new DynamicTexture(new NativeImage(1, 1, false));
+        }
+        int color = 0xFFFFFFFF;
+        if (be.getLevel() != null) {
+            int packed = lightSampler.getLightLevel(be);
+            NativeImage pixels = ((LightTextureAccessor) Minecraft.getInstance().gameRenderer.lightTexture())
+                    .wfcore$getLightPixels();
+            if (pixels != null) {
+                color = pixels.getPixelRGBA(LightTexture.block(packed), LightTexture.sky(packed));
+            }
+        }
+        worldLightTexture.getPixels().setPixelRGBA(0, 0, color);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, worldLightTexture.getId());
+        worldLightTexture.getPixels().upload(0, 0, 0, false);
+        return worldLightTexture.getId();
     }
 
     @Override

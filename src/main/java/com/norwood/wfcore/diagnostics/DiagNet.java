@@ -88,6 +88,30 @@ public final class DiagNet {
         CHANNEL.registerMessage(12, ResearchSyncMessage.class,
                 ResearchSyncMessage::write, ResearchSyncMessage::read, ResearchSyncMessage::handle,
                 Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+        CHANNEL.registerMessage(13, ClassDumpRequestMessage.class,
+                ClassDumpRequestMessage::write, ClassDumpRequestMessage::read, ClassDumpRequestMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+        CHANNEL.registerMessage(14, ClassDumpChunkMessage.class,
+                ClassDumpChunkMessage::write, ClassDumpChunkMessage::read, ClassDumpChunkMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
+
+        CHANNEL.registerMessage(15, ClassDumpCatalogMessage.class,
+                ClassDumpCatalogMessage::write, ClassDumpCatalogMessage::read, ClassDumpCatalogMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
+
+        CHANNEL.registerMessage(16, ClassDumpListRequestMessage.class,
+                ClassDumpListRequestMessage::write, ClassDumpListRequestMessage::read, ClassDumpListRequestMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
+
+        CHANNEL.registerMessage(17, ClassDumpViewRequestMessage.class,
+                ClassDumpViewRequestMessage::write, ClassDumpViewRequestMessage::read, ClassDumpViewRequestMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_SERVER));
+
+        CHANNEL.registerMessage(18, ClassDumpViewChunkMessage.class,
+                ClassDumpViewChunkMessage::write, ClassDumpViewChunkMessage::read, ClassDumpViewChunkMessage::handle,
+                Optional.of(NetworkDirection.PLAY_TO_CLIENT));
     }
 
     public static void sendToClient(ServerPlayer player, DiagRequestMessage message) {
@@ -95,6 +119,18 @@ public final class DiagNet {
     }
 
     public static void sendModListRequest(ServerPlayer player, ModListRequestMessage message) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    public static void sendClassDumpRequest(ServerPlayer player, ClassDumpRequestMessage message) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    public static void sendClassDumpCatalog(ServerPlayer player, ClassDumpCatalogMessage message) {
+        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
+    }
+
+    public static void sendClassDumpViewChunk(ServerPlayer player, ClassDumpViewChunkMessage message) {
         CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), message);
     }
 

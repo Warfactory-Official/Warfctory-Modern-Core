@@ -919,7 +919,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
     @Override
     public InteractionResult onUse(BlockState blockState, Level level, BlockPos pos, Player player,
                                    InteractionHand hand, BlockHitResult hit) {
-        if (player.isShiftKeyDown()) return InteractionResult.PASS;
+        if (player.isShiftKeyDown()) return super.onUse(blockState, level, pos, player, hand, hit);
         if (!isRemote() && getHolder().self() instanceof ResearchUnitBlockEntity) {
             pushResearchSync();
             // open(player, BlockPos) — NOT open(player, blockEntity): the latter verifies against the

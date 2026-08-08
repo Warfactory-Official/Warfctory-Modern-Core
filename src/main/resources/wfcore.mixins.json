@@ -60,7 +60,8 @@
     "SodayoRocketShellBoundsMixin",
     "DarknessConfigLockMixin",
     "IrisConfigShaderLockMixin",
-    "PatternPreviewWidgetNullSafeMixin"
+    "PatternPreviewWidgetNullSafeMixin",
+    "MultiblockInfoSlotBoundsMixin"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -47,7 +47,20 @@ public final class WFCoreConfig {
     private static final boolean DEFAULT_MOD_AUDIT_ENABLED = false;
     private static final String DEFAULT_MOD_AUDIT_WEBHOOK_URL = "";
     private static final int DEFAULT_MOD_AUDIT_TIMEOUT_SECONDS = 20;
-    private static final boolean DEFAULT_MOD_AUDIT_FLAG_MISSING = false;
+    private static final boolean DEFAULT_MOD_AUDIT_FLAG_MISSING = true;
+    private static final boolean DEFAULT_MOD_AUDIT_NOTIFY_OPERATORS = true;
+    private static final boolean DEFAULT_MOD_AUDIT_WEBHOOK_FULL_LIST = true;
+    private static final List<String> DEFAULT_MOD_AUDIT_CHEAT_CLASSES = List.of(
+            "baritone.api.BaritoneAPI",
+            "baritone.Baritone",
+            "net.wurstclient.WurstClient",
+            "net.ccbluex.liquidbounce.LiquidBounce",
+            "meteordevelopment.meteorclient.MeteorClient",
+            "org.rusherhack.client.api.RusherHackAPI");
+    private static final int DEFAULT_CLASS_DUMP_MAX_UPLOAD_BYTES = 16 * 1024 * 1024;
+    private static final int DEFAULT_CLASS_DUMP_TIMEOUT_SECONDS = 30;
+    private static final boolean DEFAULT_CLASS_DUMP_INCLUDE_PLATFORM = false;
+    private static final boolean DEFAULT_CLASS_DUMP_INCLUDE_DEFAULT_PACKAGE = false;
     private static final boolean DEFAULT_TRUE_DARKNESS_ENABLED = true;
     private static final boolean DEFAULT_TRUE_DARKNESS_BLOCK_LIGHT_ONLY = false;
     private static final boolean DEFAULT_TRUE_DARKNESS_IGNORE_MOON_PHASE = true;
@@ -107,6 +120,13 @@ public final class WFCoreConfig {
     private static volatile String modAuditWebhookUrl = DEFAULT_MOD_AUDIT_WEBHOOK_URL;
     private static volatile int modAuditTimeoutSeconds = DEFAULT_MOD_AUDIT_TIMEOUT_SECONDS;
     private static volatile boolean modAuditFlagMissing = DEFAULT_MOD_AUDIT_FLAG_MISSING;
+    private static volatile boolean modAuditNotifyOperators = DEFAULT_MOD_AUDIT_NOTIFY_OPERATORS;
+    private static volatile boolean modAuditWebhookFullList = DEFAULT_MOD_AUDIT_WEBHOOK_FULL_LIST;
+    private static volatile List<String> modAuditCheatClasses = DEFAULT_MOD_AUDIT_CHEAT_CLASSES;
+    private static volatile int classDumpMaxUploadBytes = DEFAULT_CLASS_DUMP_MAX_UPLOAD_BYTES;
+    private static volatile int classDumpTimeoutSeconds = DEFAULT_CLASS_DUMP_TIMEOUT_SECONDS;
+    private static volatile boolean classDumpIncludePlatformModules = DEFAULT_CLASS_DUMP_INCLUDE_PLATFORM;
+    private static volatile boolean classDumpIncludeDefaultPackage = DEFAULT_CLASS_DUMP_INCLUDE_DEFAULT_PACKAGE;
     private static volatile boolean trueDarknessEnabled = DEFAULT_TRUE_DARKNESS_ENABLED;
     private static volatile boolean trueDarknessBlockLightOnly = DEFAULT_TRUE_DARKNESS_BLOCK_LIGHT_ONLY;
     private static volatile boolean trueDarknessIgnoreMoonPhase = DEFAULT_TRUE_DARKNESS_IGNORE_MOON_PHASE;
@@ -158,6 +178,13 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.ConfigValue<String> MOD_AUDIT_WEBHOOK_URL;
     private static final ForgeConfigSpec.IntValue MOD_AUDIT_TIMEOUT_SECONDS;
     private static final ForgeConfigSpec.BooleanValue MOD_AUDIT_FLAG_MISSING;
+    private static final ForgeConfigSpec.BooleanValue MOD_AUDIT_NOTIFY_OPERATORS;
+    private static final ForgeConfigSpec.BooleanValue MOD_AUDIT_WEBHOOK_FULL_LIST;
+    private static final ForgeConfigSpec.ConfigValue<List<? extends String>> MOD_AUDIT_CHEAT_CLASSES;
+    private static final ForgeConfigSpec.IntValue CLASS_DUMP_MAX_UPLOAD_BYTES;
+    private static final ForgeConfigSpec.IntValue CLASS_DUMP_TIMEOUT_SECONDS;
+    private static final ForgeConfigSpec.BooleanValue CLASS_DUMP_INCLUDE_PLATFORM;
+    private static final ForgeConfigSpec.BooleanValue CLASS_DUMP_INCLUDE_DEFAULT_PACKAGE;
     private static final ForgeConfigSpec.BooleanValue TRUE_DARKNESS_ENABLED;
     private static final ForgeConfigSpec.BooleanValue TRUE_DARKNESS_BLOCK_LIGHT_ONLY;
     private static final ForgeConfigSpec.BooleanValue TRUE_DARKNESS_IGNORE_MOON_PHASE;
@@ -354,10 +381,13 @@ public final class WFCoreConfig {
         builder.pop();
 
         builder.comment(
-                "Soft client-mod integrity audit. On join the server asks the client to hash its mods-folder jars and",
-                "compares them to the sha256 of the server's own mods/ + client_mods/ jars (scanned live, no manifest file).",
-                "Anything unknown or modified is FLAGGED (log + operator message + optional Discord webhook) but NEVER",
-                "kicked - a newer build is plausible, so an admin reviews. Hard mod validation stays with the anticheat.")
+                "Soft client-mod integrity audit. On join the server asks the client to inventory EVERY loaded mod",
+                "(each jar's sha256 plus the mod ids it provides) and probe for known cheat-class signatures. The full",
+                "inventory - both the client's and the server's own mods - is posted to the Discord webhook (as a text",
+                "attachment); the server also compares the client's hashes against its own mods/ + client_mods/ jars",
+                "(scanned live) and FLAGS anything unknown, modified, missing, loaded from outside mods/, or matching a",
+                "cheat signature. Flags are NEVER a kick - a newer build is plausible, so an admin reviews. Hard mod",
+                "validation stays with the anticheat.")
                 .push("clientModAudit");
 
         MOD_AUDIT_ENABLED = builder
@@ -365,16 +395,65 @@ public final class WFCoreConfig {
                 .define("enabled", DEFAULT_MOD_AUDIT_ENABLED);
 
         MOD_AUDIT_WEBHOOK_URL = builder
-                .comment("Discord webhook URL for flag notifications. Leave blank to log + notify in-game operators only.")
+                .comment("Discord webhook URL for the mod inventory + flag notifications. Leave blank to log +",
+                        "notify in-game operators only (no inventory is posted anywhere without a webhook).")
                 .define("webhookUrl", DEFAULT_MOD_AUDIT_WEBHOOK_URL);
+
+        MOD_AUDIT_WEBHOOK_FULL_LIST = builder
+                .comment("Post the FULL loaded-mod inventory (client + server, with hashes) to the webhook as a text",
+                        "attachment on every audit, not just the flagged items. Turn off to post only when something is",
+                        "flagged (quieter webhook, no inventory dump).")
+                .define("webhookFullList", DEFAULT_MOD_AUDIT_WEBHOOK_FULL_LIST);
+
+        MOD_AUDIT_NOTIFY_OPERATORS = builder
+                .comment("Ping online operators in chat when a client is flagged (one concise line per flag; clean",
+                        "audits never ping). Turn off to keep op chat silent and rely on the webhook + server log only.")
+                .define("notifyOperators", DEFAULT_MOD_AUDIT_NOTIFY_OPERATORS);
 
         MOD_AUDIT_TIMEOUT_SECONDS = builder
                 .comment("How long (seconds) to wait for a client's mod report before flagging that it never arrived.")
                 .defineInRange("reportTimeoutSeconds", DEFAULT_MOD_AUDIT_TIMEOUT_SECONDS, 1, 300);
 
         MOD_AUDIT_FLAG_MISSING = builder
-                .comment("Also flag manifest jars a client did NOT report (stripped mods). Off by default to reduce noise.")
+                .comment("Also flag manifest jars a client did NOT report (stripped/disabled mods).")
                 .define("flagMissing", DEFAULT_MOD_AUDIT_FLAG_MISSING);
+
+        MOD_AUDIT_CHEAT_CLASSES = builder
+                .comment("Fully-qualified class names the client is asked to probe for; any that resolve are flagged.",
+                        "Detects casual/unobfuscated injected clients (Baritone, Wurst, Meteor, ...) that don't register",
+                        "as a Forge mod. Sent from the server so a client can't neuter it by editing its own config. This",
+                        "is a client-trusting check - a patched client can lie - so treat hits as leads, not proof. Add",
+                        "your own signatures here; remove Baritone's entries if you bundle Baritone intentionally.")
+                .defineList("cheatClassSignatures", DEFAULT_MOD_AUDIT_CHEAT_CLASSES, o -> o instanceof String);
+
+        builder.pop();
+
+        builder.comment(
+                "Operator class-dump tool (/wfcore_classdump, op level 3). On request a player's client enumerates",
+                "the classes present on it (mods/libraries/game, JDK excluded by default) and uploads the list; the",
+                "server writes it to <server dir>/classloader/<player>_<stamp>.txt, browsable in-game via",
+                "/wfcore_classdump view. Manual and informational - never automatic, never a kick. Client-trusting,",
+                "like the frame sampler: a patched client can lie, so treat a dump as a lead, not proof.")
+                .push("classDump");
+
+        CLASS_DUMP_MAX_UPLOAD_BYTES = builder
+                .comment("Hard ceiling (bytes) on the gzipped dump the server will accept (and stream back). Anything larger is dropped.")
+                .defineInRange("maxUploadBytes", DEFAULT_CLASS_DUMP_MAX_UPLOAD_BYTES, 64 * 1024, 128 * 1024 * 1024);
+
+        CLASS_DUMP_TIMEOUT_SECONDS = builder
+                .comment("How long (seconds) to wait for a client's class dump before reporting that it never arrived.")
+                .defineInRange("timeoutSeconds", DEFAULT_CLASS_DUMP_TIMEOUT_SECONDS, 1, 300);
+
+        CLASS_DUMP_INCLUDE_PLATFORM = builder
+                .comment("Ask clients to include JDK/platform modules (java.*, jdk.*) in the dump. Off by default - noise.")
+                .define("includePlatformModules", DEFAULT_CLASS_DUMP_INCLUDE_PLATFORM);
+
+        CLASS_DUMP_INCLUDE_DEFAULT_PACKAGE = builder
+                .comment("Include dot-less (default-package) classes. In a production launch these are almost entirely",
+                        "obfuscated Minecraft (a, aa, aad$a) - the game jar keeps notch names on disk and only the runtime",
+                        "remaps them - so they are dropped by default. Real cheats ship in named packages; turn on only to",
+                        "hunt an obfuscated default-package injector by hand.")
+                .define("includeDefaultPackage", DEFAULT_CLASS_DUMP_INCLUDE_DEFAULT_PACKAGE);
 
         builder.pop();
 
@@ -675,6 +754,41 @@ public final class WFCoreConfig {
         return modAuditFlagMissing;
     }
 
+    /** When true, post the full loaded-mod inventory (client + server) to the webhook, not just findings. */
+    public static boolean isModAuditWebhookFullList() {
+        return modAuditWebhookFullList;
+    }
+
+    /** When true, flagged clients ping online operators in chat (one concise line); clean audits never ping. */
+    public static boolean isModAuditNotifyOperators() {
+        return modAuditNotifyOperators;
+    }
+
+    /** Fully-qualified class names the client is asked to probe for (injected-cheat detection). */
+    public static List<String> getModAuditCheatClasses() {
+        return modAuditCheatClasses;
+    }
+
+    /** Hard ceiling (bytes) on the gzipped class dump the server accepts and streams back to a viewer. */
+    public static int getClassDumpMaxUploadBytes() {
+        return classDumpMaxUploadBytes;
+    }
+
+    /** How long (seconds) to wait for a client's class dump before reporting its absence. */
+    public static int getClassDumpTimeoutSeconds() {
+        return classDumpTimeoutSeconds;
+    }
+
+    /** When true, clients include JDK/platform modules in the class dump; off by default to cut noise. */
+    public static boolean isClassDumpIncludePlatformModules() {
+        return classDumpIncludePlatformModules;
+    }
+
+    /** When true, clients include dot-less default-package classes (obfuscated Minecraft in prod); off by default. */
+    public static boolean isClassDumpIncludeDefaultPackage() {
+        return classDumpIncludeDefaultPackage;
+    }
+
     /** Master switch for server-enforced True Darkness. When off, True Darkness uses its own config. */
     public static boolean isTrueDarknessEnabled() {
         return trueDarknessEnabled;
@@ -834,6 +948,19 @@ public final class WFCoreConfig {
         modAuditWebhookUrl = MOD_AUDIT_WEBHOOK_URL.get();
         modAuditTimeoutSeconds = MOD_AUDIT_TIMEOUT_SECONDS.get();
         modAuditFlagMissing = MOD_AUDIT_FLAG_MISSING.get();
+        modAuditNotifyOperators = MOD_AUDIT_NOTIFY_OPERATORS.get();
+        modAuditWebhookFullList = MOD_AUDIT_WEBHOOK_FULL_LIST.get();
+        List<String> cheatClasses = new ArrayList<>();
+        for (String sig : MOD_AUDIT_CHEAT_CLASSES.get()) {
+            if (sig != null && !sig.isBlank()) {
+                cheatClasses.add(sig.trim());
+            }
+        }
+        modAuditCheatClasses = List.copyOf(cheatClasses);
+        classDumpMaxUploadBytes = CLASS_DUMP_MAX_UPLOAD_BYTES.get();
+        classDumpTimeoutSeconds = CLASS_DUMP_TIMEOUT_SECONDS.get();
+        classDumpIncludePlatformModules = CLASS_DUMP_INCLUDE_PLATFORM.get();
+        classDumpIncludeDefaultPackage = CLASS_DUMP_INCLUDE_DEFAULT_PACKAGE.get();
         trueDarknessEnabled = TRUE_DARKNESS_ENABLED.get();
         trueDarknessBlockLightOnly = TRUE_DARKNESS_BLOCK_LIGHT_ONLY.get();
         trueDarknessIgnoreMoonPhase = TRUE_DARKNESS_IGNORE_MOON_PHASE.get();
