@@ -36,7 +36,8 @@
     "P2PItemTunnelWeightMixin",
     "BrimmConfigHashOrderMixin",
     "GTOreLoaderTransplantMixin",
-    "PlayerListMaintenanceGateMixin"
+    "PlayerListMaintenanceGateMixin",
+    "BackpackStorageCellBlockMixin"
   ],
   "client": [
     "NamePlateMixin",
