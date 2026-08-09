@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "wfcore:block/machine/naval_vehicle_deployer",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "wfcore:block/machine/naval_vehicle_deployer"
+    },
+    "facing=south": {
+      "model": "wfcore:block/machine/naval_vehicle_deployer",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "wfcore:block/machine/naval_vehicle_deployer",
+      "y": 270
+    }
+  }
+}

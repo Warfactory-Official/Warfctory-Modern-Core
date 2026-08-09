@@ -45,6 +45,8 @@ public class VehicleFactoryRecipes {
     public static GTRecipeType HEAVY_VEHICLE_DEPOT;
     /** {@code wfcore:helicopter_assembler} — the Helicopter Assembler. */
     public static GTRecipeType HELICOPTER_ASSEMBLER;
+    /** {@code wfcore:naval_vehicle_deployer} — the Naval Vehicle Deployer (boat dock). */
+    public static GTRecipeType NAVAL_VEHICLE_DEPLOYER;
 
     /** Every map keyed by its machine path, so KubeJS/GroovyScript can resolve a map by name. */
     private static final Map<String, GTRecipeType> BY_NAME = new LinkedHashMap<>();
@@ -56,6 +58,7 @@ public class VehicleFactoryRecipes {
         HEAVY_PLANE_ASSEMBLER = register("heavy_plane_assembler");
         HEAVY_VEHICLE_DEPOT = register("heavy_vehicle_depot");
         HELICOPTER_ASSEMBLER = register("helicopter_assembler");
+        NAVAL_VEHICLE_DEPLOYER = register("naval_vehicle_deployer");
     }
 
     /**

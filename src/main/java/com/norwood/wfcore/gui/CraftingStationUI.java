@@ -2,6 +2,7 @@ package com.norwood.wfcore.gui;
 
 import com.gregtechceu.gtceu.api.gui.GuiTextures;
 import com.gregtechceu.gtceu.api.gui.widget.SlotWidget;
+import com.gregtechceu.gtceu.api.item.tool.ToolHelper;
 
 import com.lowdragmc.lowdraglib.gui.modular.ModularUI;
 import com.lowdragmc.lowdraglib.gui.texture.ColorBorderTexture;
@@ -133,7 +134,7 @@ public final class CraftingStationUI {
         for (int r = 0; r < 3; r++) {
             for (int c = 0; c < 3; c++) {
                 int index = r * 3 + c;
-                craft.addWidget(new SlotWidget(grid, index, INSET + c * SLOT, gridY + r * SLOT, true, true)
+                craft.addWidget(new GridSlot(grid, index, INSET + c * SLOT, gridY + r * SLOT, toolBay, storage, recompute)
                         .setChangeListener(recompute)
                         .setBackgroundTexture(GuiTextures.SLOT));
             }
@@ -153,7 +154,7 @@ public final class CraftingStationUI {
                 .setYBarStyle(new ColorRectTexture(0x40000000), new ColorRectTexture(0xFF9A9A9A));
         for (int i = 0; i < storage.getSlots(); i++) {
             StorageSlotWidget cell = new StorageSlotWidget(storage, i,
-                    (i % STORAGE_COLS) * SLOT, (i / STORAGE_COLS) * SLOT);
+                    (i % STORAGE_COLS) * SLOT, (i / STORAGE_COLS) * SLOT, toolBay);
             cell.setBackgroundTexture(GuiTextures.SLOT);
             storageGrid.addSlot(cell);
         }
@@ -198,24 +199,23 @@ public final class CraftingStationUI {
         for (int row = 0; row < 3; row++) {
             for (int col = 0; col < 9; col++) {
                 playerPanel.addWidget(new PlayerDepositSlot(inv, col + (row + 1) * 9,
-                        invX + col * SLOT, invY + row * SLOT, false, storage));
+                        invX + col * SLOT, invY + row * SLOT, false, storage, toolBay));
             }
         }
         for (int col = 0; col < 9; col++) {
-            playerPanel.addWidget(new PlayerDepositSlot(inv, col, invX + col * SLOT, invY + 58, true, storage));
+            playerPanel.addWidget(new PlayerDepositSlot(inv, col, invX + col * SLOT, invY + 58, true, storage, toolBay));
         }
         ui.widget(playerPanel);
 
-        // Return the grid to the player when the UI closes (transient, per-player); overflow drops at their feet.
+        // Empty the transient (per-player) grid when the UI closes. Tools head for the tool bay first, then the
+        // player, then storage; everything else goes to the player then storage; whatever is left drops at their feet.
         ui.registerCloseListener(() -> {
             if (client) return;
             for (int i = 0; i < 9; i++) {
                 ItemStack stack = grid.getItem(i);
                 if (stack.isEmpty()) continue;
                 grid.setItem(i, ItemStack.EMPTY);
-                if (!player.getInventory().add(stack)) {
-                    player.drop(stack, false);
-                }
+                returnGridItem(player, stack, toolBay, storage);
             }
         });
 
@@ -248,6 +248,26 @@ public final class CraftingStationUI {
             }
         }
         return needed <= 0;
+    }
+
+    static boolean isTool(ItemStack stack) {
+        return !stack.isEmpty() && !ToolHelper.getCraftingToolTypes(stack).isEmpty();
+    }
+
+    private static void returnGridItem(Player player, ItemStack stack, IItemHandlerModifiable toolBay,
+                                       IItemHandlerModifiable storage) {
+        if (isTool(stack)) {
+            stack = ItemHandlerHelper.insertItemStacked(toolBay, stack, false);
+        }
+        if (!stack.isEmpty() && player.getInventory().add(stack)) {
+            return;
+        }
+        if (!stack.isEmpty()) {
+            stack = ItemHandlerHelper.insertItemStacked(storage, stack, false);
+        }
+        if (!stack.isEmpty()) {
+            player.drop(stack, false);
+        }
     }
 
 
@@ -320,10 +340,13 @@ public final class CraftingStationUI {
     private static final class PlayerDepositSlot extends SlotWidget {
 
         private final IItemHandlerModifiable store;
+        private final IItemHandlerModifiable toolBay;
 
-        PlayerDepositSlot(Container inv, int index, int x, int y, boolean hotbar, IItemHandlerModifiable store) {
+        PlayerDepositSlot(Container inv, int index, int x, int y, boolean hotbar, IItemHandlerModifiable store,
+                          IItemHandlerModifiable toolBay) {
             super(inv, index, x, y, true, true);
             this.store = store;
+            this.toolBay = toolBay;
             setBackgroundTexture(GuiTextures.SLOT);
             setLocationInfo(true, hotbar);
         }
@@ -340,8 +363,62 @@ public final class CraftingStationUI {
             if (inSlot.isEmpty()) {
                 return getItem();
             }
-            ItemStack remainder = ItemHandlerHelper.insertItemStacked(store, inSlot.copy(), false);
+            ItemStack remainder = inSlot.copy();
+            if (isTool(remainder)) {
+                remainder = ItemHandlerHelper.insertItemStacked(toolBay, remainder, false);
+            }
+            if (!remainder.isEmpty()) {
+                remainder = ItemHandlerHelper.insertItemStacked(store, remainder, false);
+            }
             setItem(remainder);
+            if (player instanceof ServerPlayer serverPlayer) {
+                serverPlayer.containerMenu.broadcastChanges();
+            }
+            return getItem();
+        }
+    }
+
+
+
+    private static final class GridSlot extends SlotWidget {
+
+        private final IItemHandlerModifiable toolBay;
+        private final IItemHandlerModifiable store;
+        private final Runnable recompute;
+
+        GridSlot(Container grid, int index, int x, int y, IItemHandlerModifiable toolBay,
+                 IItemHandlerModifiable store, Runnable recompute) {
+            super(grid, index, x, y, true, true);
+            this.toolBay = toolBay;
+            this.store = store;
+            this.recompute = recompute;
+            setBackgroundTexture(GuiTextures.SLOT);
+        }
+
+        @Override
+        public ItemStack slotClick(int dragType, ClickType clickType, Player player) {
+            if (clickType != ClickType.QUICK_MOVE) {
+                return null;
+            }
+            if (player.level().isClientSide) {
+                return getItem();
+            }
+            ItemStack inSlot = getItem();
+            if (inSlot.isEmpty()) {
+                return getItem();
+            }
+            ItemStack moving = inSlot.copy();
+            if (isTool(moving)) {
+                moving = ItemHandlerHelper.insertItemStacked(toolBay, moving, false);
+            }
+            if (!moving.isEmpty() && player.getInventory().add(moving)) {
+                moving = ItemStack.EMPTY;
+            }
+            if (!moving.isEmpty()) {
+                moving = ItemHandlerHelper.insertItemStacked(store, moving, false);
+            }
+            setItem(moving);
+            recompute.run();
             if (player instanceof ServerPlayer serverPlayer) {
                 serverPlayer.containerMenu.broadcastChanges();
             }

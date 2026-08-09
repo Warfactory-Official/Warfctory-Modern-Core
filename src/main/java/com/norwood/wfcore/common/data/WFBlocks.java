@@ -49,6 +49,8 @@ public class WFBlocks {
     public static BlockEntry<Block> REINFORCED_STAINLESS_CASING;
     /** Custom titanium turbine casing (CTM); stands in for {@code gtceu:titanium_turbine_casing} in WF factories. */
     public static BlockEntry<Block> MACHINE_CASING_TURBINE_TITANIUM;
+    /** Connected-texture solar collector casing; forms the sunlit top cap of the Solar Blast Furnace. */
+    public static BlockEntry<Block> SOLAR_PANEL_CASING;
     public static BlockEntry<Block> CONDENSED_CABLES;
     public static BlockEntry<Block> CONCRETE_BASE;
     public static BlockEntry<Block> DRILL_HEAD;
@@ -90,6 +92,8 @@ public class WFBlocks {
                 WFCore.id("block/casings/reinforced_stainless_casing"));
         MACHINE_CASING_TURBINE_TITANIUM = createCasingBlock("machine_casing_turbine_titanium",
                 WFCore.id("block/casings/machine_casing_turbine_titanium"));
+        SOLAR_PANEL_CASING = createCasingBlock("solar_panel_casing",
+                WFCore.id("block/casings/solar_panel_casing"));
         CONDENSED_CABLES = createCasingBlock("condensed_cables",
                 WFCore.id("block/casings/condensed_cables"));
         CONCRETE_BASE = createCasingBlock("concrete_base",

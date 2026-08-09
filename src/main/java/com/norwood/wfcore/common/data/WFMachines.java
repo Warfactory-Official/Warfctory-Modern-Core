@@ -66,6 +66,7 @@ public class WFMachines {
     public static MultiblockMachineDefinition MV_NETWORK_SWITCH;
     public static MultiblockMachineDefinition LARGE_TRANSFORMER;
     public static MultiblockMachineDefinition LARGE_BLAST_FURNACE;
+    public static MultiblockMachineDefinition SOLARIS_FURNACE;
     public static MultiblockMachineDefinition PRIMITIVE_ALLOYER;
     public static MultiblockMachineDefinition STRANDCASTER;
     public static MultiblockMachineDefinition GAS_EXTRACTOR;
@@ -78,6 +79,7 @@ public class WFMachines {
     public static MultiblockMachineDefinition HEAVY_PLANE_ASSEMBLER;
     public static MultiblockMachineDefinition HEAVY_VEHICLE_DEPOT;
     public static MultiblockMachineDefinition HELICOPTER_ASSEMBLER;
+    public static MultiblockMachineDefinition NAVAL_VEHICLE_DEPLOYER;
     public static MultiblockMachineDefinition DRILL_RIG;
     public static MultiblockMachineDefinition STEAM_WIREMILL;
     public static MultiblockMachineDefinition MISSILE_FACTORY;
@@ -519,6 +521,41 @@ public class WFMachines {
                         GTCEu.id("block/multiblock/primitive_blast_furnace"))
                         .andThen(b -> b.addDynamicRenderer(DynamicRenderHelper::createPBFLavaRender)))
                 .hasBER(true)
+                .register();
+
+        SOLARIS_FURNACE = WF_MACHINES.multiblock("solaris_furnace", SolarisFurnaceMachine::new)
+                .langValue("Solaris Furnace")
+                .rotationState(RotationState.NON_Y_AXIS)
+                .recipeType(GTRecipeTypes.BLAST_RECIPES)
+                .recipeModifier(SolarisFurnaceMachine::modifyRecipe)
+                .tooltips(Component.translatable("wfcore.machine.solaris_furnace.tooltip1"),
+                        Component.translatable("wfcore.machine.solaris_furnace.tooltip2"),
+                        Component.translatable("wfcore.machine.solaris_furnace.tooltip3"),
+                        Component.translatable("wfcore.machine.solaris_furnace.tooltip4"),
+                        Component.translatable("wfcore.machine.solaris_furnace.tooltip5"))
+                .appearanceBlock(GTBlocks.CASING_INVAR_HEATPROOF)
+                .pattern(definition -> FactoryBlockPattern.start(
+                                RelativeDirection.RIGHT, RelativeDirection.BACK, RelativeDirection.UP)
+                        .aisle("XXSXX", "XXXXX", "XXXXX", "XXXXX", "XXXXX")
+                        .aisle("     ", " CCC ", " C#C ", " CCC ", "     ")
+                        .aisle("     ", " CCC ", " C#C ", " CCC ", "     ")
+                        .aisle("     ", " CCC ", " C#C ", " CCC ", "     ")
+                        .aisle("     ", " CCC ", " C#C ", " CCC ", "     ")
+                        .aisle("PPPPP", "PPPPP", "PPPPP", "PPPPP", "PPPPP")
+                        .where('S', controller(blocks(definition.getBlock())))
+                        .where('X', blocks(GTBlocks.CASING_INVAR_HEATPROOF.get())
+                                .setMinGlobalLimited(12)
+                                .or(autoAbilities(definition.getRecipeTypes()))
+                                .or(autoAbilities(true, false, false))
+                                .or(abilities(PartAbility.MUFFLER))
+                        )
+                        .where('P', blocks(WFBlocks.SOLAR_PANEL_CASING.get()))
+                        .where('C', heatingCoils())
+                        .where('#', air())
+                        .where(' ', any())
+                        .build())
+                .workableCasingModel(GTCEu.id("block/casings/solid/machine_casing_heatproof"),
+                        GTCEu.id("block/multiblock/electric_blast_furnace"))
                 .register();
 
         PRIMITIVE_ALLOYER = WF_MACHINES.multiblock("primitive_alloyer", PrimitiveAlloyerMachine::new)
@@ -1032,6 +1069,38 @@ public class WFMachines {
                             .where(' ', any()).build();
                 })
                 .workableCasingModel(WFCore.id("block/casings/machine_casing_turbine_titanium"),
+                        GTCEu.id("block/machines/assembler"))
+                .register();
+
+
+        NAVAL_VEHICLE_DEPLOYER = WF_MACHINES
+                .multiblock("naval_vehicle_deployer", NavalVehicleDeployerMachine::new,
+                        MetaMachineBlock::new, MetaMachineItem::new, VehicleFactoryBlockEntity::new)
+                .langValue("Naval Vehicle Deployer")
+                .recipeType(VehicleFactoryRecipes.NAVAL_VEHICLE_DEPLOYER)
+                .appearanceBlock(GTBlocks.CASING_STEEL_SOLID)
+                .allowFlip(false)
+                .allowExtendedFacing(false)
+                .pattern(definition -> {
+                    var pattern = FactoryBlockPattern.start(RelativeDirection.FRONT, RelativeDirection.UP,
+                            RelativeDirection.RIGHT);
+                    for (String[] aisle : NavalDeployerStructure.AISLES) {
+                        pattern.aisle(aisle);
+                    }
+                    return pattern
+                            .where('S', controller(blocks(definition.getBlock())))
+
+                            .where('A', blocks(GTBlocks.CASING_STEEL_SOLID.get())
+                                    .or(abilities(PartAbility.INPUT_ENERGY).setMaxGlobalLimited(2))
+                                    .or(abilities(PartAbility.IMPORT_ITEMS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.IMPORT_FLUIDS).setMinGlobalLimited(1, 1))
+                                    .or(abilities(PartAbility.DATA_ACCESS))) // gtceu:solid_machine_casing x47
+                            .where('B', blocks(GTBlocks.STEEL_HULL.get())) // gtceu:steel_machine_casing x20
+                            .where('C', frames(GTMaterials.Steel)) // gtceu:steel_frame x37
+                            .where(' ', any())
+                            .build();
+                })
+                .workableCasingModel(GTCEu.id("block/casings/steam/steel/side"),
                         GTCEu.id("block/machines/assembler"))
                 .register();
 
