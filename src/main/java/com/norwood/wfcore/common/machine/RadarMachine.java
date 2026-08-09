@@ -37,6 +37,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.Vec3;
@@ -537,7 +538,13 @@ public class RadarMachine extends MultiblockControllerMachine
         group.addWidget(new LabelWidget(8, 46, this::getScanHeaderText).setTextColor(-1).setDropShadow(true));
         group.addWidget(new LabelWidget(8, 57, this::getPowerText).setTextColor(-1).setDropShadow(true));
         group.addWidget(new LabelWidget(8, 68, this::getComputeText).setTextColor(-1).setDropShadow(true));
-        group.addWidget(new SlotWidget(dataStickInv, 0, 142, 86).setBackgroundTexture(GuiTextures.SLOT));
+        
+        group.addWidget(new SlotWidget(dataStickInv.storage, 0, 142, 86, true, true) {
+            @Override
+            public boolean canTakeStack(Player player) {
+                return super.canTakeStack(player) && !isActive;
+            }
+        }.setBackgroundTexture(GuiTextures.SLOT));
         group.addWidget(new ButtonWidget(8, 86, 80, 18, GuiTextures.BUTTON, this::onScanClick)
                 .setHoverTooltips("wfcore.gui.radar.start_scan"));
         group.addWidget(new LabelWidget(14, 91, this::getScanButtonText));
