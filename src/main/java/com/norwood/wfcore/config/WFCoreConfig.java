@@ -31,7 +31,7 @@ public final class WFCoreConfig {
     private static final boolean DEFAULT_BALLISTICS_ENABLED = true;
     private static final boolean DEFAULT_BALLISTICS_DEBUG_LOGGING = false;
     private static final boolean DEFAULT_PLAYER_RANKS_ENABLED = true;
-    private static final String DEFAULT_RANK_MANIFEST_URL = "";
+    private static final String DEFAULT_RANK_MANIFEST_URL = "https://warfactory.co/ranks.json";
     private static final int DEFAULT_RANK_REFRESH_INTERVAL_MINUTES = 4;
     private static final boolean DEFAULT_REPLAY_RANK_REQUIRED = true;
     private static final boolean DEFAULT_SHOW_CHAT_TAGS = true;
@@ -103,6 +103,7 @@ public final class WFCoreConfig {
     private static volatile boolean ballisticsEnabled = DEFAULT_BALLISTICS_ENABLED;
     private static volatile boolean ballisticsDebugLogging = DEFAULT_BALLISTICS_DEBUG_LOGGING;
     private static volatile boolean playerRanksEnabled = DEFAULT_PLAYER_RANKS_ENABLED;
+    /** Reserved: baked from config but currently ignored (see {@link #getRankManifestUrl()}, which is hardcoded). */
     private static volatile String rankManifestUrl = DEFAULT_RANK_MANIFEST_URL;
     private static volatile int rankRefreshIntervalMinutes = DEFAULT_RANK_REFRESH_INTERVAL_MINUTES;
     private static volatile boolean replayRankRequired = DEFAULT_REPLAY_RANK_REQUIRED;
@@ -677,9 +678,9 @@ public final class WFCoreConfig {
         return playerRanksEnabled;
     }
 
-    /** URL of the JSON rank manifest, or blank to disable downloads. */
+
     public static String getRankManifestUrl() {
-        return rankManifestUrl;
+        return DEFAULT_RANK_MANIFEST_URL;
     }
 
     /** How often (minutes) the rank manifest is re-downloaded after the initial fetch. */

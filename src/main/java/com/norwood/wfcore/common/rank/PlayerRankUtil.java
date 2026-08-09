@@ -113,7 +113,6 @@ public final class PlayerRankUtil {
             writeCache(response.body());
             WFCore.LOGGER.info("wfcore: loaded {} player-rank entries from manifest.", parsed.size());
         } catch (Throwable t) {
-            // Network hiccup, bad URL, malformed JSON: keep the previous (or cached) data and try again later.
             WFCore.LOGGER.warn("wfcore: failed to refresh player-rank manifest ({}): {}", url, t.toString());
         }
     }
