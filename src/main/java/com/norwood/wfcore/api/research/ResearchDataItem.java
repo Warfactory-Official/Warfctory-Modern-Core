@@ -6,6 +6,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -93,6 +94,14 @@ public final class ResearchDataItem {
         for (String id : ids) list.add(StringTag.valueOf(id));
         CompoundTag tag = stack.getOrCreateTag();
         tag.put(KEY, list);
+        if(stack.getItem() == Items.PAPER) {
+            var name =ResearchRegistry.get(researchId).getNameKey();
+            String json = Component.Serializer.toJson(
+                    Component.literal(String.format("Blueprint: %s ",name))
+            );
+            var displayTag = stack.getOrCreateTagElement(ItemStack.TAG_DISPLAY);
+            displayTag.putString(ItemStack.TAG_DISPLAY_NAME, json);
+        }
         return true;
     }
 }

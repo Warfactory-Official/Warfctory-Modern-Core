@@ -2,6 +2,7 @@ package com.norwood.wfcore.common.data;
 
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
+import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 import com.gregtechceu.gtceu.api.gui.GuiTextures;
@@ -15,12 +16,15 @@ import com.lowdragmc.lowdraglib.gui.texture.ProgressTexture;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.recipes.FinishedRecipe;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.recipe.DrillingCustomRecipeLogic;
 import com.norwood.wfcore.common.recipe.condition.DepositRecipeCondition;
+import net.minecraft.world.level.material.Fluids;
+import net.minecraftforge.fluids.FluidStack;
 
 import java.util.function.Consumer;
 
@@ -248,16 +252,17 @@ public class WFRecipeTypes {
     }
 
     private static void cast(Consumer<FinishedRecipe> provider, String id,
-                             com.gregtechceu.gtceu.api.data.chemical.material.Material alloy) {
+                            Material alloy) {
         STRANDCASTER.recipeBuilder(WFCore.id(id))
                 .inputFluids(alloy.getFluid(144 * ALLOY_BATCH))
+                .inputFluids(new FluidStack(Fluids.WATER,100 * ALLOY_BATCH))
                 .outputItems(TagPrefix.ingot, alloy, ALLOY_BATCH)
                 .duration(120)
                 .save(provider);
     }
 
     private static void addDrillingRecipe(Consumer<FinishedRecipe> provider, String recipeId, String deposit,
-                                          net.minecraft.world.item.Item output) {
+                                          Item output) {
         DRILLING.recipeBuilder(WFCore.id(recipeId))
                 .outputItems(output)
                 .EUt(GTValues.VA[GTValues.LV])

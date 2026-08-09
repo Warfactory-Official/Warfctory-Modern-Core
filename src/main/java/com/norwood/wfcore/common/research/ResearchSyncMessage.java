@@ -14,7 +14,9 @@ import com.norwood.wfcore.api.research.ResearchInput;
 import com.norwood.wfcore.api.research.ResearchRegistry;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.function.Supplier;
 
 public record ResearchSyncMessage(List<ResearchCategory> categories, List<Research> researches) {
@@ -50,10 +52,23 @@ public record ResearchSyncMessage(List<ResearchCategory> categories, List<Resear
             if (connection != null && connection.isMemoryConnection()) {
                 return;
             }
-            ResearchCategoryRegistry.clear();
-            ResearchRegistry.clear();
-            for (ResearchCategory category : msg.categories) ResearchCategoryRegistry.register(category);
-            for (Research research : msg.researches) ResearchRegistry.register(research);
+
+            if (!msg.researches.isEmpty()) {
+                for (Research research : msg.researches) ResearchRegistry.register(research);
+                Set<String> live = new HashSet<>();
+                for (Research research : msg.researches) live.add(research.getId());
+                for (Research existing : new ArrayList<>(ResearchRegistry.all())) {
+                    if (!live.contains(existing.getId())) ResearchRegistry.unregister(existing.getId());
+                }
+            }
+            if (!msg.categories.isEmpty()) {
+                for (ResearchCategory category : msg.categories) ResearchCategoryRegistry.register(category);
+                Set<String> live = new HashSet<>();
+                for (ResearchCategory category : msg.categories) live.add(category.getId());
+                for (ResearchCategory existing : new ArrayList<>(ResearchCategoryRegistry.all())) {
+                    if (!live.contains(existing.getId())) ResearchCategoryRegistry.unregister(existing.getId());
+                }
+            }
         });
         context.setPacketHandled(true);
     }

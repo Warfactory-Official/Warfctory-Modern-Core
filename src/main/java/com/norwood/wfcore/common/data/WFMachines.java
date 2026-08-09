@@ -31,6 +31,7 @@ import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.machine.*;
 import com.norwood.wfcore.common.machine.compute.CPUSlotPartMachine;
+import com.norwood.wfcore.common.machine.crafting.CraftingStationMachine;
 import com.norwood.wfcore.common.machine.compute.CoolingPartMachine;
 import com.norwood.wfcore.common.machine.compute.RAMSlotPartMachine;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
@@ -84,6 +85,7 @@ public class WFMachines {
     public static MultiblockMachineDefinition INTERCEPTOR;
     public static MultiblockMachineDefinition GREENHOUSE;
     public static MultiblockMachineDefinition MOB_FARMER;
+    public static MultiblockMachineDefinition CRAFTING_STATION;
 
     // JEI preview stages for the Large Blast Furnace, laid out to match its pattern's axes
     // (start(RIGHT, UP, FRONT)): each aisle is a slice along RIGHT (the 9-wide axis that carries the
@@ -382,6 +384,25 @@ public class WFMachines {
                         .build())
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
                         WFCore.id("block/multiblock/mainframe"))
+                .register();
+
+        CRAFTING_STATION = WF_MACHINES.multiblock("crafting_station", CraftingStationMachine::new)
+                .langValue("Crafting Station")
+                .rotationState(RotationState.NON_Y_AXIS)
+                .appearanceBlock(GTBlocks.TREATED_WOOD_PLANK)
+                .tooltips(Component.translatable("wfcore.machine.crafting_station.tooltip0"),
+                        Component.translatable("wfcore.machine.crafting_station.tooltip1"),
+                        Component.translatable("wfcore.machine.crafting_station.tooltip2"))
+                .pattern(definition -> FactoryBlockPattern.start(RelativeDirection.LEFT, RelativeDirection.UP, RelativeDirection.BACK)
+                        .aisle("ABSBA", "     ", "     ", "     ")
+                        .aisle("ABBBA", "C   C", "C   C", "CCCCC")
+                        .where('S', controller(blocks(definition.getBlock())))
+                        .where('A', blocks(GTBlocks.TREATED_WOOD_PLANK.get()).or(abilities(PartAbility.IMPORT_ITEMS).setMaxGlobalLimited(1))) // gtceu:treated_wood_planks x4
+                        .where('B', blocks(GTBlocks.TREATED_WOOD_SLAB.get()))
+                        .where('C', frames(GTMaterials.TreatedWood))
+                        .where(' ', any())                        .build())
+                .workableCasingModel(GTCEu.id("block/treated_wood_planks"),
+                        WFCore.id("block/treated_wood_planks"))
                 .register();
 
         RESEARCH_UNIT = WF_MACHINES.multiblock("research_unit", ResearchUnitMachine::new,
