@@ -547,7 +547,7 @@ public class WFMachines {
                                 .setMinGlobalLimited(12)
                                 .or(autoAbilities(definition.getRecipeTypes()))
                                 .or(autoAbilities(true, false, false))
-                                .or(abilities(PartAbility.MUFFLER))
+                                .or(abilities(PartAbility.MUFFLER).setMaxGlobalLimited(1))
                         )
                         .where('P', blocks(WFBlocks.SOLAR_PANEL_CASING.get()))
                         .where('C', heatingCoils())

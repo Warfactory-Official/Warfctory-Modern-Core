@@ -538,7 +538,7 @@ public class RadarMachine extends MultiblockControllerMachine
         group.addWidget(new LabelWidget(8, 46, this::getScanHeaderText).setTextColor(-1).setDropShadow(true));
         group.addWidget(new LabelWidget(8, 57, this::getPowerText).setTextColor(-1).setDropShadow(true));
         group.addWidget(new LabelWidget(8, 68, this::getComputeText).setTextColor(-1).setDropShadow(true));
-        
+
         group.addWidget(new SlotWidget(dataStickInv.storage, 0, 142, 86, true, true) {
             @Override
             public boolean canTakeStack(Player player) {
