@@ -25,15 +25,15 @@ public class BoltableCasingBlock extends Block {
 
     @Override
     public List<ItemStack> getDrops(BlockState state, LootParams.Builder params) {
-        List<ItemStack> drops = super.getDrops(state, params);
-        List<ItemStack> refund = BoltGunConversions.costForOutput(state);
-        if (refund.isEmpty()) {
-            return drops;
+        BlockState unbolted = BoltGunConversions.inputForOutput(state);
+        if (unbolted == null) {
+            return super.getDrops(state, params);
         }
-        List<ItemStack> withRefund = new ArrayList<>(drops);
-        for (ItemStack stack : refund) {
-            withRefund.add(stack.copy());
+
+        List<ItemStack> drops = new ArrayList<>(unbolted.getBlock().getDrops(unbolted, params));
+        for (ItemStack stack : BoltGunConversions.costForOutput(state)) {
+            drops.add(stack.copy());
         }
-        return withRefund;
+        return drops;
     }
 }

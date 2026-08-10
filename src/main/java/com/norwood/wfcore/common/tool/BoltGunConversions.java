@@ -76,6 +76,16 @@ public final class BoltGunConversions {
         return List.of();
     }
 
+
+    public static BlockState inputForOutput(BlockState output) {
+        for (Map.Entry<BlockState, Conversion> entry : REGISTRY.entrySet()) {
+            if (entry.getValue().output().equals(output)) {
+                return entry.getKey();
+            }
+        }
+        return null;
+    }
+
     public static int size() {
         return REGISTRY.size();
     }
