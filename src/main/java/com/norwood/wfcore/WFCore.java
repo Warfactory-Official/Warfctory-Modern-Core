@@ -27,6 +27,7 @@ import com.norwood.wfcore.common.fluid.CoolantRegistry;
 import com.norwood.wfcore.common.loot.WFLootEvents;
 import com.norwood.wfcore.common.maintenance.MaintenanceService;
 import com.norwood.wfcore.common.particle.WFParticles;
+import com.norwood.wfcore.common.recipe.WFRecipeTypeTweaks;
 import com.norwood.wfcore.common.recipe.condition.WFRecipeConditions;
 import com.norwood.wfcore.common.shader.ShaderServerHandler;
 import com.norwood.wfcore.common.sound.WFSounds;
@@ -186,6 +187,7 @@ public class WFCore {
                     com.norwood.wfcore.common.tool.BoltGunConversions.size());
             // com.norwood.wfcore.common.research.WFResearches.registerTest();
             WFRecipeConditions.init();
+            WFRecipeTypeTweaks.init();
             com.norwood.wfcore.diagnostics.DiagNet.register();
             TaczBallisticsIntegration.register();
             SbwBallisticsIntegration.register();
