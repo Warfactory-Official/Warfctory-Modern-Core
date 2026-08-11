@@ -680,7 +680,7 @@ public class WFMachines {
                 .langValue("Radar")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .hasBER(false)
-                .allowFlip(false)
+                .allowExtendedFacing(false)
                 .pattern(definition -> {
                     var pattern = FactoryBlockPattern.start(
                             RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT);
