@@ -24,7 +24,8 @@ import com.gregtechceu.gtceu.utils.GTUtil;
 
 import com.lowdragmc.lowdraglib.gui.util.ClickData;
 import com.lowdragmc.lowdraglib.gui.widget.ButtonWidget;
-import com.lowdragmc.lowdraglib.gui.widget.ImageWidget;
+import com.lowdragmc.lowdraglib.gui.widget.ComponentPanelWidget;
+import com.lowdragmc.lowdraglib.gui.widget.DraggableScrollableWidgetGroup;
 import com.lowdragmc.lowdraglib.gui.widget.LabelWidget;
 import com.lowdragmc.lowdraglib.gui.widget.Widget;
 import com.lowdragmc.lowdraglib.gui.widget.WidgetGroup;
@@ -48,6 +49,7 @@ import com.norwood.wfcore.client.render.gltf.IAnimatedMachine;
 import com.norwood.wfcore.radar.RadarClustering;
 import com.norwood.wfcore.radar.RadarConfig;
 import com.norwood.wfcore.radar.RadarDataStick;
+import com.norwood.wfcore.radar.RadarSession;
 import com.norwood.wfcore.radar.data.RadarScanData;
 import org.jetbrains.annotations.Nullable;
 
@@ -92,6 +94,22 @@ public class RadarMachine extends MultiblockControllerMachine
     protected boolean computationReady;
     @DescSynced
     protected int availableCWUt;
+
+    /** Packed (x, z) calibrator target points for the current scan session; empty when no session. */
+    @Persisted
+    @DescSynced
+    protected long[] sessionTargets = new long[0];
+    /** Authoritative session size (primitive int always syncs; drives client button/gate logic). */
+    @Persisted
+    @DescSynced
+    protected int sessionTargetCount;
+    /** Bit i set when a calibrator is in position for {@code sessionTargets[i]}. */
+    @Persisted
+    @DescSynced
+    protected int sessionPlacedMask;
+    /** 0 = none, 1 = last initiate refused (a target couldn't fit inside the world border). */
+    @DescSynced
+    protected int sessionError;
 
     @Nullable
     protected EnergyContainerList energyContainer;
@@ -181,6 +199,9 @@ public class RadarMachine extends MultiblockControllerMachine
             this.availableCWUt = avail;
             this.computationReady = avail >= getRequiredCWUt();
         }
+        if (getOffsetTimer() % 20 == 0 && hasSession()) {
+            refreshPlacedMask();
+        }
         if (!isActive) {
             animAdvancing = true; // idle loops freely
             return;
@@ -259,7 +280,6 @@ public class RadarMachine extends MultiblockControllerMachine
         return requestCWU(true) >= getRequiredCWUt();
     }
 
-    /** True when a maintenance hatch is present and reporting unfixed problems (scanning stays blocked until fixed). */
     public boolean hasMaintenanceProblems() {
         return maintenance != null && maintenance.hasMaintenanceProblems();
     }
@@ -316,25 +336,79 @@ public class RadarMachine extends MultiblockControllerMachine
             }
             RadarDataStick.writeScan(stick, lastScan);
         }
+        clearSession();
         finished = true;
         lastScan = null;
     }
 
     public boolean canScan() {
         return isFormed() && !isActive && voltageTier >= MIN_TIER && hasDataStick() && isCorrectY() &&
-                hasSkylightAccess() && !hasMaintenanceProblems() && drainEnergy(true) && hasComputation();
+                hasSkylightAccess() && !hasMaintenanceProblems() && allCalibratorsPlaced() &&
+                drainEnergy(true) && hasComputation();
+    }
+
+    public int getCalibratorCount() {
+        return RadarConfig.getCalibratorBaseCount() + Math.max(0, voltageTier - MIN_TIER);
+    }
+
+    public boolean hasSession() {
+        return sessionTargetCount > 0;
+    }
+
+    private static int fullMask(int n) {
+        return n >= 32 ? -1 : (1 << n) - 1;
+    }
+
+    public boolean allCalibratorsPlaced() {
+        return sessionTargetCount > 0 && (sessionPlacedMask & fullMask(sessionTargetCount)) == fullMask(sessionTargetCount);
+    }
+
+    public void initiateSession() {
+        if (isActive || voltageTier < MIN_TIER || !(getLevel() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+        long[] targets = RadarSession.generate(serverLevel, getPos(), getCalibratorCount());
+        if (targets == null) {
+            sessionError = 1;
+            clearSession();
+            WFCore.LOGGER.info("[Radar@{}] session refused: a calibrator target can't fit inside the world border",
+                    getPos());
+            return;
+        }
+        sessionError = 0;
+        finished = false;
+        sessionTargets = targets;
+        sessionTargetCount = targets.length;
+        refreshPlacedMask();
+        WFCore.LOGGER.info("[Radar@{}] session initiated: {} calibrator target(s)", getPos(), targets.length);
+    }
+
+    public void cancelSession() {
+        clearSession();
+        sessionError = 0;
+    }
+
+    private void clearSession() {
+        sessionTargets = new long[0];
+        sessionTargetCount = 0;
+        sessionPlacedMask = 0;
+    }
+
+    private void refreshPlacedMask() {
+        if (hasSession() && getLevel() instanceof ServerLevel serverLevel) {
+            sessionPlacedMask = RadarSession.placedMask(serverLevel, sessionTargets,
+                    RadarConfig.getCalibratorTolerance());
+        }
     }
 
     public boolean hasDataStick() {
         return !dataStickInv.getStackInSlot(0).isEmpty();
     }
 
-    /** Client-synced scanning state, used to pick the GeckoLib animation (running vs idle). */
     public boolean isScanning() {
         return isActive;
     }
 
-    /** Client-synced: whether the spin clock advances; false freezes the dish in place on power loss. */
     public boolean isAnimAdvancing() {
         return animAdvancing;
     }
@@ -530,43 +604,75 @@ public class RadarMachine extends MultiblockControllerMachine
 
     @Override
     public Widget createUIWidget() {
-        WidgetGroup group = new WidgetGroup(0, 0, 170, 108);
-        group.addWidget(new ImageWidget(4, 4, 162, 80, GuiTextures.DISPLAY));
-        group.addWidget(new LabelWidget(8, 8, "wfcore.machine.radar.name"));
-        group.addWidget(new LabelWidget(8, 20, this::getStatusText).setTextColor(-1).setDropShadow(true));
-        group.addWidget(new LabelWidget(8, 31, this::getProgressText).setTextColor(-1).setDropShadow(true));
-        group.addWidget(new LabelWidget(8, 46, this::getScanHeaderText).setTextColor(-1).setDropShadow(true));
-        group.addWidget(new LabelWidget(8, 57, this::getPowerText).setTextColor(-1).setDropShadow(true));
-        group.addWidget(new LabelWidget(8, 68, this::getComputeText).setTextColor(-1).setDropShadow(true));
+        WidgetGroup group = new WidgetGroup(0, 0, 190, 130);
+        group.setBackground(GuiTextures.BACKGROUND_INVERSE);
+        group.addWidget(new DraggableScrollableWidgetGroup(4, 4, 182, 100).setBackground(GuiTextures.DISPLAY)
+                .addWidget(new LabelWidget(4, 5, "wfcore.machine.radar.name"))
+                .addWidget(new ComponentPanelWidget(4, 17, this::addDisplayText).setMaxWidthLimit(170)));
 
-        group.addWidget(new SlotWidget(dataStickInv.storage, 0, 142, 86, true, true) {
+        group.addWidget(new SlotWidget(dataStickInv.storage, 0, 168, 106, true, true) {
             @Override
             public boolean canTakeStack(Player player) {
                 return super.canTakeStack(player) && !isActive;
             }
         }.setBackgroundTexture(GuiTextures.SLOT));
-        group.addWidget(new ButtonWidget(8, 86, 80, 18, GuiTextures.BUTTON, this::onScanClick)
-                .setHoverTooltips("wfcore.gui.radar.start_scan"));
-        group.addWidget(new LabelWidget(14, 91, this::getScanButtonText));
+        group.addWidget(new ButtonWidget(4, 106, 78, 18, GuiTextures.BUTTON, this::onPrimaryClick));
+        group.addWidget(new LabelWidget(10, 111, this::getPrimaryButtonText));
+        group.addWidget(new ButtonWidget(86, 106, 76, 18, GuiTextures.BUTTON, this::onSecondaryClick));
+        group.addWidget(new LabelWidget(92, 111, this::getSecondaryButtonText));
         return group;
     }
 
-    /** Button caption: reflects the toggle so a running scan shows "Stop Scan". */
-    private String getScanButtonText() {
-        return Component.translatable(isActive ? "wfcore.gui.radar.stop_scan" : "wfcore.gui.radar.start_scan")
-                .getString();
+    /** Builds the scrollable status readout: status line, scan progress, and the session's target list. */
+    public void addDisplayText(List<Component> textList) {
+        textList.add(Component.literal(getStatusText()));
+        if (isActive) {
+            textList.add(Component.literal(getProgressText()));
+        }
+        if (hasSession()) {
+            int placed = Integer.bitCount(sessionPlacedMask & fullMask(sessionTargetCount));
+            textList.add(Component.translatable("wfcore.gui.radar.calibrators_progress", placed, sessionTargetCount));
+            for (int i = 0; i < sessionTargetCount; i++) {
+                textList.add(targetLine(i));
+            }
+        } else if (!isActive && !finished && canPreviewCost()) {
+            textList.add(Component.literal(getScanHeaderText()));
+            textList.add(Component.literal(getPowerText()));
+            textList.add(Component.literal(getComputeText()));
+        }
     }
 
-    private void onScanClick(ClickData data) {
-        WFCore.LOGGER.info("[Radar@{}] onScanClick fired: machineRemote={} clickData.isRemote={} isActive={}",
-                getPos(), isRemote(), data == null ? "?" : data.isRemote, isActive);
+    /** One session line: check mark + target coords + distance/bearing from the radar (computed client-side). */
+    private Component targetLine(int i) {
+        boolean placed = (sessionPlacedMask & (1 << i)) != 0;
+        String mark = placed ? "§a✔" : "§c✘";
+        if (i >= sessionTargets.length) {
+            return Component.literal(String.format("%s §7#%d", mark, i + 1));
+        }
+        int tx = RadarSession.unpackX(sessionTargets[i]);
+        int tz = RadarSession.unpackZ(sessionTargets[i]);
+        double dist = Math.hypot((double) tx - getPos().getX(), (double) tz - getPos().getZ());
+        String brg = bearing(tx - getPos().getX(), tz - getPos().getZ());
+        return Component.literal(String.format("%s §fX %d, Z %d §7(%.1fk %s)", mark, tx, tz, dist / 1000.0, brg));
+    }
+
+    /** 8-point compass bearing from a (dx, dz) offset (+X = East, +Z = South). */
+    private static String bearing(double dx, double dz) {
+        double ang = (Math.toDegrees(Math.atan2(dz, dx)) + 360.0) % 360.0;
+        String[] dirs = { "E", "SE", "S", "SW", "W", "NW", "N", "NE" };
+        return dirs[(int) Math.round(ang / 45.0) % 8];
+    }
+
+    private void onPrimaryClick(ClickData data) {
         if (isRemote()) {
             return;
         }
-        // Toggle: a running scan is cancelled, an idle radar starts one (gates permitting).
         if (isActive) {
-            WFCore.LOGGER.info("[Radar@{}] gates passed -> stopScan()", getPos());
             stopScan();
+            return;
+        }
+        if (!hasSession()) {
+            initiateSession();
             return;
         }
         logScanGates();
@@ -576,6 +682,28 @@ public class RadarMachine extends MultiblockControllerMachine
         } else {
             WFCore.LOGGER.info("[Radar@{}] NOT scanning (isActive={}, canScan={})", getPos(), isActive, canScan());
         }
+    }
+
+    private void onSecondaryClick(ClickData data) {
+        if (isRemote()) {
+            return;
+        }
+        if (hasSession() && !isActive) {
+            cancelSession();
+        }
+    }
+
+    private String getPrimaryButtonText() {
+        String key = isActive ? "wfcore.gui.radar.stop_scan"
+                : !hasSession() ? "wfcore.gui.radar.initiate_session"
+                        : "wfcore.gui.radar.start_scan";
+        return Component.translatable(key).getString();
+    }
+
+    private String getSecondaryButtonText() {
+        return hasSession() && !isActive
+                ? Component.translatable("wfcore.gui.radar.cancel_session").getString()
+                : "";
     }
 
     private void logScanGates() {
@@ -614,10 +742,19 @@ public class RadarMachine extends MultiblockControllerMachine
         if (!hasDataStick()) {
             return "§eInsert a data stick";
         }
+        if (sessionError == 1) {
+            return "§cCan't fit calibrators (world border)";
+        }
+        if (!hasSession()) {
+            return "§eInitiate a scan session";
+        }
+        if (!allCalibratorsPlaced()) {
+            return "§ePlace the satellite calibrators";
+        }
         if (!computationReady) {
             return String.format("§cNo computation (needs %d CWU/t)", getRequiredCWUt());
         }
-        return "§aReady";
+        return "§aReady to scan";
     }
 
     private String getProgressText() {

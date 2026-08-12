@@ -17,6 +17,8 @@ import com.gregtechceu.gtceu.api.machine.multiblock.WorkableElectricMultiblockMa
 import com.gregtechceu.gtceu.api.machine.property.GTMachineModelProperties;
 import com.gregtechceu.gtceu.api.pattern.FactoryBlockPattern;
 import com.gregtechceu.gtceu.api.pattern.MultiblockShapeInfo;
+import com.gregtechceu.gtceu.api.pattern.MultiblockState;
+import com.gregtechceu.gtceu.api.pattern.TraceabilityPredicate;
 import com.gregtechceu.gtceu.api.pattern.util.RelativeDirection;
 import com.gregtechceu.gtceu.api.registry.registrate.MachineBuilder;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
@@ -30,6 +32,7 @@ import com.gregtechceu.gtceu.common.machine.multiblock.steam.SteamParallelMultib
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.machine.*;
+import com.norwood.wfcore.radar.RadarConfig;
 import com.norwood.wfcore.common.machine.compute.CPUSlotPartMachine;
 import com.norwood.wfcore.common.machine.crafting.CraftingStationMachine;
 import com.norwood.wfcore.common.machine.compute.CoolingPartMachine;
@@ -38,11 +41,13 @@ import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 import com.norwood.wfcore.integration.warforge.WarforgeMachines;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 
 import java.util.List;
+import java.util.function.Predicate;
 
 import static com.gregtechceu.gtceu.api.pattern.Predicates.*;
 import static com.gregtechceu.gtceu.common.data.models.GTMachineModels.createWorkableCasingMachineModel;
@@ -73,6 +78,7 @@ public class WFMachines {
     public static MultiblockMachineDefinition MAINFRAME;
     public static MultiblockMachineDefinition RESEARCH_UNIT;
     public static MultiblockMachineDefinition RADAR;
+    public static MultiblockMachineDefinition SATELLITE_CALIBRATOR;
     public static MultiblockMachineDefinition LIGHT_GROUND_VEHICLE_FACTORY;
     public static MultiblockMachineDefinition TANK_ASSEMBLY;
     public static MultiblockMachineDefinition LIGHT_PLANE_ASSEMBLER;
@@ -711,6 +717,37 @@ public class WFMachines {
                 })
                 .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
                         WFCore.id("block/multiblock/radar"))
+                .register();
+
+        SATELLITE_CALIBRATOR = WF_MACHINES.multiblock("satellite_distance_calibrator", CalibratorMachine::new)
+                .langValue("Satellite Distance Calibrator")
+                .rotationState(RotationState.NON_Y_AXIS)
+                .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
+                .tooltips(Component.translatable("wfcore.machine.satellite_distance_calibrator.tooltip0"),
+                        Component.translatable("wfcore.machine.satellite_distance_calibrator.tooltip1"))
+                .pattern(definition -> {
+                    TraceabilityPredicate controllerPredicate = controller(blocks(definition.getBlock()));
+                    int seaLevel = RadarConfig.getCalibratorSeaLevel();
+                    controllerPredicate.common.forEach(sp -> {
+                        Predicate<MultiblockState> base = sp.predicate;
+                        sp.predicate = state -> (base == null || base.test(state))
+                                && (!(state.getWorld() instanceof ServerLevel) || state.getPos().getY() >= seaLevel);
+                    });
+                    return FactoryBlockPattern.start(
+                            RelativeDirection.FRONT, RelativeDirection.UP, RelativeDirection.RIGHT)
+                            .aisle("ASA", "F F", "F F", "AAA", "PPP")
+                            .aisle("AAA", " C ", " C ", "ACA", "PPP")
+                            .aisle("AAA", "F F", "F F", "AAA", "PPP")
+                            .where('S', controllerPredicate)
+                            .where('A', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()))
+                            .where('F', frames(WFMaterials.GalvanizedSteel))
+                            .where('C', blocks(WFBlocks.CONDENSED_CABLES.get()))
+                            .where('P', blocks(WFBlocks.BOLTABLE_CASING_BOLTED.get()))
+                            .where(' ', any())
+                            .build();
+                })
+                .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
+                        GTCEu.id("block/machines/air_scrubber"))
                 .register();
 
         LIGHT_GROUND_VEHICLE_FACTORY = WF_MACHINES

@@ -22,17 +22,37 @@ public final class RadarConfig {
     public static final int DEFAULT_EPS = 200;
     public static final int DEFAULT_MIN_PTS = 10;
 
+    public static final int DEFAULT_CALIB_MIN_DISTANCE = 2000;
+    public static final int DEFAULT_CALIB_MAX_DISTANCE = 5000;
+    public static final int DEFAULT_CALIB_TOLERANCE = 128;
+    public static final int DEFAULT_CALIB_BASE_COUNT = 3;
+    public static final int DEFAULT_CALIB_SEA_LEVEL = 63;
+    public static final int DEFAULT_CALIB_BORDER_MARGIN = 16;
+
     private static final Object2IntOpenHashMap<ResourceLocation> WHITELIST = new Object2IntOpenHashMap<>();
 
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> MACHINES;
     private static final ForgeConfigSpec.IntValue EPS;
     private static final ForgeConfigSpec.IntValue MIN_PTS;
+    private static final ForgeConfigSpec.IntValue CALIB_MIN_DISTANCE;
+    private static final ForgeConfigSpec.IntValue CALIB_MAX_DISTANCE;
+    private static final ForgeConfigSpec.IntValue CALIB_TOLERANCE;
+    private static final ForgeConfigSpec.IntValue CALIB_BASE_COUNT;
+    private static final ForgeConfigSpec.IntValue CALIB_SEA_LEVEL;
+    private static final ForgeConfigSpec.IntValue CALIB_BORDER_MARGIN;
     public static final ForgeConfigSpec SPEC;
 
     // Baked DBSCAN tuning: the default eps/minPts a scan uses when no per-scan override is given. Pre-seeded
     // with the config defaults so they are valid even before the first bake().
     private static int eps = DEFAULT_EPS;
     private static int minPts = DEFAULT_MIN_PTS;
+
+    private static int calibMinDistance = DEFAULT_CALIB_MIN_DISTANCE;
+    private static int calibMaxDistance = DEFAULT_CALIB_MAX_DISTANCE;
+    private static int calibTolerance = DEFAULT_CALIB_TOLERANCE;
+    private static int calibBaseCount = DEFAULT_CALIB_BASE_COUNT;
+    private static int calibSeaLevel = DEFAULT_CALIB_SEA_LEVEL;
+    private static int calibBorderMargin = DEFAULT_CALIB_BORDER_MARGIN;
 
     // KubeJS overrides (via the WFRadar binding). Re-applied on top of the config whitelist at the end of every
     // bake() so a pack's additions/removals/tunables survive a config reload instead of being clobbered by it.
@@ -68,6 +88,26 @@ public final class RadarConfig {
                 "Minimum points: the fewest neighbouring targets needed to seed a cluster.",
                 "Higher values report only dense bases; lower values pick up smaller groupings (more noise).")
                 .defineInRange("minPts", DEFAULT_MIN_PTS, 1, 100_000);
+        builder.pop();
+
+        builder.comment("Satellite Distance Calibrator scan-session tuning.",
+                "A scan session generates target points the player must build calibrators at before scanning.")
+                .push("calibrator");
+        CALIB_MIN_DISTANCE = builder.comment("Closest a generated calibrator target may be to the radar (blocks).")
+                .defineInRange("minDistance", DEFAULT_CALIB_MIN_DISTANCE, 1, 30_000_000);
+        CALIB_MAX_DISTANCE = builder.comment("Farthest a generated calibrator target may be from the radar (blocks).")
+                .defineInRange("maxDistance", DEFAULT_CALIB_MAX_DISTANCE, 1, 30_000_000);
+        CALIB_TOLERANCE = builder.comment(
+                "How close (blocks, horizontal) a built calibrator must be to a target point to satisfy it.")
+                .defineInRange("tolerance", DEFAULT_CALIB_TOLERANCE, 1, 30_000_000);
+        CALIB_BASE_COUNT = builder.comment(
+                "Calibrators required at the radar's minimum tier (HV); +1 per voltage tier above that.")
+                .defineInRange("baseCount", DEFAULT_CALIB_BASE_COUNT, 1, 32);
+        CALIB_SEA_LEVEL = builder.comment("Minimum Y a calibrator's controller must sit at for the structure to form.")
+                .defineInRange("seaLevel", DEFAULT_CALIB_SEA_LEVEL, -64, 320);
+        CALIB_BORDER_MARGIN = builder.comment(
+                "Keep generated targets at least this many blocks inside the world border.")
+                .defineInRange("borderMargin", DEFAULT_CALIB_BORDER_MARGIN, 0, 30_000_000);
         builder.pop();
 
         SPEC = builder.build();
@@ -107,6 +147,36 @@ public final class RadarConfig {
         return minPts;
     }
 
+    /** Closest a generated calibrator target may be to the radar (blocks). */
+    public static int getCalibratorMinDistance() {
+        return calibMinDistance;
+    }
+
+    /** Farthest a generated calibrator target may be from the radar (blocks). */
+    public static int getCalibratorMaxDistance() {
+        return calibMaxDistance;
+    }
+
+    /** How close (blocks, horizontal) a built calibrator must be to a target point to satisfy it. */
+    public static int getCalibratorTolerance() {
+        return calibTolerance;
+    }
+
+    /** Calibrators required at the radar's minimum tier (HV); +1 per voltage tier above that. */
+    public static int getCalibratorBaseCount() {
+        return calibBaseCount;
+    }
+
+    /** Minimum Y a calibrator's controller must sit at for the structure to form. */
+    public static int getCalibratorSeaLevel() {
+        return calibSeaLevel;
+    }
+
+    /** Keep generated targets at least this many blocks inside the world border. */
+    public static int getCalibratorBorderMargin() {
+        return calibBorderMargin;
+    }
+
     /** KubeJS: force {@code id} onto the whitelist with {@code value}, overriding the config. */
     public static synchronized void scriptAdd(ResourceLocation id, int value) {
         SCRIPT_ADDITIONS.put(id, value);
@@ -144,6 +214,13 @@ public final class RadarConfig {
     public static synchronized void bake() {
         eps = EPS.get();
         minPts = MIN_PTS.get();
+
+        calibMinDistance = CALIB_MIN_DISTANCE.get();
+        calibMaxDistance = Math.max(CALIB_MAX_DISTANCE.get(), calibMinDistance);
+        calibTolerance = CALIB_TOLERANCE.get();
+        calibBaseCount = CALIB_BASE_COUNT.get();
+        calibSeaLevel = CALIB_SEA_LEVEL.get();
+        calibBorderMargin = CALIB_BORDER_MARGIN.get();
 
         WHITELIST.clear();
         for (String raw : MACHINES.get()) {
