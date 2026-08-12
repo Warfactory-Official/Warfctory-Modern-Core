@@ -20,6 +20,8 @@ public final class WFCoreConfig {
     private static final int DEFAULT_REFUEL_INTERVAL_TICKS = 20;
     private static final boolean DEFAULT_CLEAR_STRUCTURE_LOOT = true;
     private static final boolean DEFAULT_DISABLE_NETHER = true;
+    private static final boolean DEFAULT_DISABLE_ENDER_PEARLS = true;
+    private static final boolean DEFAULT_DISABLE_BOAT_THIRD_PERSON = true;
     private static final int DEFAULT_DEPOSIT_YIELD_MIN = 2000;
     private static final int DEFAULT_DEPOSIT_YIELD_MAX = 8000;
     private static final boolean DEFAULT_DEPOSIT_WORLDGEN_ENABLED = true;
@@ -92,6 +94,8 @@ public final class WFCoreConfig {
     private static volatile int refuelIntervalTicks = DEFAULT_REFUEL_INTERVAL_TICKS;
     private static volatile boolean clearStructureLoot = DEFAULT_CLEAR_STRUCTURE_LOOT;
     private static volatile boolean disableNether = DEFAULT_DISABLE_NETHER;
+    private static volatile boolean disableEnderPearls = DEFAULT_DISABLE_ENDER_PEARLS;
+    private static volatile boolean disableBoatThirdPerson = DEFAULT_DISABLE_BOAT_THIRD_PERSON;
     private static volatile int depositYieldMin = DEFAULT_DEPOSIT_YIELD_MIN;
     private static volatile int depositYieldMax = DEFAULT_DEPOSIT_YIELD_MAX;
     private static volatile boolean depositWorldgenEnabled = DEFAULT_DEPOSIT_WORLDGEN_ENABLED;
@@ -158,6 +162,8 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.IntValue REFUEL_INTERVAL_TICKS;
     private static final ForgeConfigSpec.BooleanValue CLEAR_STRUCTURE_LOOT;
     private static final ForgeConfigSpec.BooleanValue DISABLE_NETHER;
+    private static final ForgeConfigSpec.BooleanValue DISABLE_ENDER_PEARLS;
+    private static final ForgeConfigSpec.BooleanValue DISABLE_BOAT_THIRD_PERSON;
     private static final ForgeConfigSpec.BooleanValue MODEL_TRANSFORM_DEBUG_ENABLED;
     private static final ForgeConfigSpec.BooleanValue BALLISTICS_ENABLED;
     private static final ForgeConfigSpec.BooleanValue BALLISTICS_DEBUG_LOGGING;
@@ -243,6 +249,16 @@ public final class WFCoreConfig {
                 .comment(
                         "Make the Nether inaccessible: nether portals never form and any travel to the_nether (portals, commands) is blocked.")
                 .define("disableNether", DEFAULT_DISABLE_NETHER);
+
+        DISABLE_ENDER_PEARLS = builder
+                .comment(
+                        "Make ender pearls inert")
+                .define("disableEnderPearls", DEFAULT_DISABLE_ENDER_PEARLS);
+
+        DISABLE_BOAT_THIRD_PERSON = builder
+                .comment(
+                        "Lock the camera to first person while riding a vanilla boat (including chest boats)")
+                .define("disableBoatThirdPerson", DEFAULT_DISABLE_BOAT_THIRD_PERSON);
 
         MODEL_TRANSFORM_DEBUG_ENABLED = builder
                 .comment(
@@ -622,6 +638,16 @@ public final class WFCoreConfig {
         return disableNether;
     }
 
+    /** When true, ender pearls are inert: throwing one does nothing and a thrown pearl never teleports its owner. */
+    public static boolean isEnderPearlsDisabled() {
+        return disableEnderPearls;
+    }
+
+    /** When true, the camera is held in first person while the player rides a vanilla boat. */
+    public static boolean isBoatThirdPersonDisabled() {
+        return disableBoatThirdPerson;
+    }
+
     /** Default per-block deposit yield range, used when a deposit type does not set its own. */
     public static int getDefaultYieldMin() {
         return depositYieldMin;
@@ -928,6 +954,8 @@ public final class WFCoreConfig {
         refuelIntervalTicks = REFUEL_INTERVAL_TICKS.get();
         clearStructureLoot = CLEAR_STRUCTURE_LOOT.get();
         disableNether = DISABLE_NETHER.get();
+        disableEnderPearls = DISABLE_ENDER_PEARLS.get();
+        disableBoatThirdPerson = DISABLE_BOAT_THIRD_PERSON.get();
         modelTransformDebugEnabled = MODEL_TRANSFORM_DEBUG_ENABLED.get();
         ballisticsEnabled = BALLISTICS_ENABLED.get();
         ballisticsDebugLogging = BALLISTICS_DEBUG_LOGGING.get();
