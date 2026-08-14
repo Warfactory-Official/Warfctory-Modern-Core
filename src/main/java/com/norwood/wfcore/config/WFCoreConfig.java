@@ -30,6 +30,9 @@ public final class WFCoreConfig {
     private static final boolean DEFAULT_DEPOSIT_LOG_PLACEMENTS = false;
     private static final boolean DEFAULT_DEPOSIT_HEAL = true;
     private static final boolean DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED = false;
+    private static final boolean DEFAULT_VEHICLE_GUN_DATA_CACHE = true;
+    private static final boolean DEFAULT_SBW_DRONE_HOT_PATH_CACHE = true;
+    private static final boolean DEFAULT_GT_MACHINE_CAPABILITY_CACHE = true;
     private static final boolean DEFAULT_BALLISTICS_ENABLED = true;
     private static final boolean DEFAULT_BALLISTICS_DEBUG_LOGGING = false;
     private static final boolean DEFAULT_PLAYER_RANKS_ENABLED = true;
@@ -86,6 +89,14 @@ public final class WFCoreConfig {
     private static final String DEFAULT_MAINTENANCE_KICK_MESSAGE =
             "The server is currently down for maintenance. Only operators can join right now.";
 
+    private static final boolean DEFAULT_ANTI_STALL_ENABLED = true;
+    private static final int DEFAULT_ANTI_STALL_STALE_TICKS = 15;
+    private static final int DEFAULT_ANTI_STALL_GRACE_TICKS = 100;
+    private static final double DEFAULT_ANTI_STALL_PITCH_GAIN = 0.02;
+    private static final double DEFAULT_ANTI_STALL_VERTICAL_DAMPING = 0.35;
+    private static final double DEFAULT_ANTI_STALL_POWER_FLOOR = 0.9;
+    private static final double DEFAULT_ANTI_STALL_MIN_CLEARANCE = 24.0;
+
     // -------------------------------------------------------------------------
     // Volatile cache fields — pre-initialised to defaults so getters are safe
     // even before the config file is loaded.
@@ -104,6 +115,9 @@ public final class WFCoreConfig {
     private static volatile boolean depositLogPlacements = DEFAULT_DEPOSIT_LOG_PLACEMENTS;
     private static volatile boolean depositHeal = DEFAULT_DEPOSIT_HEAL;
     private static volatile boolean modelTransformDebugEnabled = DEFAULT_MODEL_TRANSFORM_DEBUG_ENABLED;
+    private static volatile boolean vehicleGunDataCache = DEFAULT_VEHICLE_GUN_DATA_CACHE;
+    private static volatile boolean sbwDroneHotPathCache = DEFAULT_SBW_DRONE_HOT_PATH_CACHE;
+    private static volatile boolean gtMachineCapabilityCache = DEFAULT_GT_MACHINE_CAPABILITY_CACHE;
     private static volatile boolean ballisticsEnabled = DEFAULT_BALLISTICS_ENABLED;
     private static volatile boolean ballisticsDebugLogging = DEFAULT_BALLISTICS_DEBUG_LOGGING;
     private static volatile boolean playerRanksEnabled = DEFAULT_PLAYER_RANKS_ENABLED;
@@ -154,6 +168,13 @@ public final class WFCoreConfig {
     private static volatile List<String> chatBlacklist = List.of();
     private static volatile boolean maintenanceEnabled = DEFAULT_MAINTENANCE_ENABLED;
     private static volatile String maintenanceKickMessage = DEFAULT_MAINTENANCE_KICK_MESSAGE;
+    private static volatile boolean antiStallEnabled = DEFAULT_ANTI_STALL_ENABLED;
+    private static volatile int antiStallStaleTicks = DEFAULT_ANTI_STALL_STALE_TICKS;
+    private static volatile int antiStallGraceTicks = DEFAULT_ANTI_STALL_GRACE_TICKS;
+    private static volatile double antiStallPitchGain = DEFAULT_ANTI_STALL_PITCH_GAIN;
+    private static volatile double antiStallVerticalDamping = DEFAULT_ANTI_STALL_VERTICAL_DAMPING;
+    private static volatile double antiStallPowerFloor = DEFAULT_ANTI_STALL_POWER_FLOOR;
+    private static volatile double antiStallMinClearance = DEFAULT_ANTI_STALL_MIN_CLEARANCE;
 
     // -------------------------------------------------------------------------
     // ForgeConfigSpec handles
@@ -165,6 +186,9 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.BooleanValue DISABLE_ENDER_PEARLS;
     private static final ForgeConfigSpec.BooleanValue DISABLE_BOAT_THIRD_PERSON;
     private static final ForgeConfigSpec.BooleanValue MODEL_TRANSFORM_DEBUG_ENABLED;
+    private static final ForgeConfigSpec.BooleanValue VEHICLE_GUN_DATA_CACHE;
+    private static final ForgeConfigSpec.BooleanValue SBW_DRONE_HOT_PATH_CACHE;
+    private static final ForgeConfigSpec.BooleanValue GT_MACHINE_CAPABILITY_CACHE;
     private static final ForgeConfigSpec.BooleanValue BALLISTICS_ENABLED;
     private static final ForgeConfigSpec.BooleanValue BALLISTICS_DEBUG_LOGGING;
     private static final ForgeConfigSpec.BooleanValue PLAYER_RANKS_ENABLED;
@@ -221,6 +245,13 @@ public final class WFCoreConfig {
     private static final ForgeConfigSpec.BooleanValue DEPOSIT_HEAL;
     private static final ForgeConfigSpec.BooleanValue MAINTENANCE_ENABLED;
     private static final ForgeConfigSpec.ConfigValue<String> MAINTENANCE_KICK_MESSAGE;
+    private static final ForgeConfigSpec.BooleanValue ANTI_STALL_ENABLED;
+    private static final ForgeConfigSpec.IntValue ANTI_STALL_STALE_TICKS;
+    private static final ForgeConfigSpec.IntValue ANTI_STALL_GRACE_TICKS;
+    private static final ForgeConfigSpec.DoubleValue ANTI_STALL_PITCH_GAIN;
+    private static final ForgeConfigSpec.DoubleValue ANTI_STALL_VERTICAL_DAMPING;
+    private static final ForgeConfigSpec.DoubleValue ANTI_STALL_POWER_FLOOR;
+    private static final ForgeConfigSpec.DoubleValue ANTI_STALL_MIN_CLEARANCE;
 
     public static final ForgeConfigSpec SPEC;
 
@@ -606,6 +637,100 @@ public final class WFCoreConfig {
 
         builder.pop();
 
+        builder.comment(
+                "Aircraft anti-stall. Superb Warfare flies aircraft on the SERVER but takes attitude from client",
+                "input, and VehicleEntity#tick decays that input by 0.95 every tick. When a pilot's connection",
+                "hiccups the stick therefore recentres itself within about two seconds, updateRotation drags the",
+                "nose down along the gravity-biased velocity vector, and the aircraft flies itself into the ground -",
+                "even on a server running a clean 20 TPS. This holds altitude for a pilot whose link has gone quiet",
+                "and hands control straight back on their next movement packet. Fixed-wing only; helicopters use a",
+                "different flight model.")
+                .push("antiStall");
+
+        ANTI_STALL_ENABLED = builder
+                .comment("Whether to hold altitude for aircraft whose pilot has stopped sending input.")
+                .define("enabled", DEFAULT_ANTI_STALL_ENABLED);
+
+        ANTI_STALL_STALE_TICKS = builder
+                .comment(
+                        "Server ticks of silence from a pilot before the autopilot takes over. Counted in ticks, not",
+                        "wall-clock, so a server-side hitch does not make every pilot look disconnected at once.",
+                        "Too low and it fights pilots on ordinary jitter; too high and the nose is already down.")
+                .defineInRange("staleTicks", DEFAULT_ANTI_STALL_STALE_TICKS, 1, 200);
+
+        ANTI_STALL_GRACE_TICKS = builder
+                .comment(
+                        "Ticks after link loss during which terrain impact (VEHICLE_STRIKE) damage is forgiven, so a",
+                        "pilot who reconnects mid-dive is not handed a crater. Weapon and explosion damage is never",
+                        "affected - a dropped link buys immunity to the ground, not to the enemy.")
+                .defineInRange("graceTicks", DEFAULT_ANTI_STALL_GRACE_TICKS, 0, 1200);
+
+        ANTI_STALL_PITCH_GAIN = builder
+                .comment("Proportional gain on altitude error. Higher recovers faster but overshoots.")
+                .defineInRange("pitchGain", DEFAULT_ANTI_STALL_PITCH_GAIN, 0.0001, 1.0);
+
+        ANTI_STALL_VERTICAL_DAMPING = builder
+                .comment("Damping on vertical speed. Raise this if the held aircraft porpoises.")
+                .defineInRange("verticalDamping", DEFAULT_ANTI_STALL_VERTICAL_DAMPING, 0.0, 5.0);
+
+        ANTI_STALL_POWER_FLOOR = builder
+                .comment("Throttle floor while holding, so the aircraft cannot mush into a stall.")
+                .defineInRange("powerFloor", DEFAULT_ANTI_STALL_POWER_FLOOR, 0.0, 3.0);
+
+        ANTI_STALL_MIN_CLEARANCE = builder
+                .comment("Blocks of clearance kept above the surface; the hold altitude is raised over rising terrain.")
+                .defineInRange("minClearance", DEFAULT_ANTI_STALL_MIN_CLEARANCE, 0.0, 256.0);
+
+        builder.pop();
+
+        builder.comment(
+                "Stopgap server-thread optimisations for bugs in the currently shipped versions of other mods.",
+                "Each of these is expected to become redundant once the mod in question is updated; leaving one on",
+                "against a fixed build is harmless (it just never wins anything) but they are togglable so a bad",
+                "interaction can be ruled out without a rebuild.")
+                .push("performance");
+
+        VEHICLE_GUN_DATA_CACHE = builder
+                .comment(
+                        "Memoise Superb Warfare's VehicleEntity.getGunDataMap for the duration of a tick.",
+                        "SBW builds before the upstream 'gunDataMapCache' fix rebuild that map on every call, copying",
+                        "each weapon's ItemStack and re-resolving it through a Guava cache that is keyed by identity",
+                        "(weakKeys), so the copy can never hit and every lookup reconstructs GunData from NBT. The map",
+                        "is read several times per vehicle per tick, which measured at ~45s of server thread per hour.",
+                        "The cache is dropped when the game time advances and whenever setGunDataMap writes back, so a",
+                        "read-modify-write cycle still sees its own change. Server side only.",
+                        "Turn this off if you are running an SBW build that already has the upstream fix.")
+                .define("vehicleGunDataCache", DEFAULT_VEHICLE_GUN_DATA_CACHE);
+
+        SBW_DRONE_HOT_PATH_CACHE = builder
+                .comment(
+                        "Take three hot paths out of the SBW Drone Warfare addon (modid sbwdroneconfig).",
+                        "Its isMonitor and isSupportedStackableStack checks resolve an item's registry name on every",
+                        "call just to compare it, which is a reverse registry lookup (a linear seek through Guava's",
+                        "HashBiMap inverse) on a per-ItemStack path; together they measured ~28s of server thread per",
+                        "hour. Both depend only on the item, which cannot change once registries freeze, so the result",
+                        "is memoised per item using the addon's own answer.",
+                        "Separately, a drone sitting in water re-runs its full control disconnect every tick, which",
+                        "rebroadcasts an unchanged spotlight state to every player on the server (~10s/hour); those",
+                        "no-op broadcasts are dropped. Directed syncs and real state changes are never skipped.")
+                .define("sbwDroneHotPathCache", DEFAULT_SBW_DRONE_HOT_PATH_CACHE);
+
+        GT_MACHINE_CAPABILITY_CACHE = builder
+                .comment(
+                        "Cache GTCEu's MetaMachineBlockEntity.getCapability for the duration of a tick.",
+                        "GTCEu builds a new LazyOptional on every call and re-scans the machine's traits to do it,",
+                        "rather than handing back a cached instance the way Forge's capability contract expects. The",
+                        "pipe networks resolve their endpoint handlers every tick and a machine with several energy or",
+                        "item sources pointed at it is resolved once per source, which measured 64.8s of server thread",
+                        "per hour.",
+                        "Scope is one tick on purpose: per-side capabilities really do change (IO config, covers, the",
+                        "machine being broken) and a longer-lived cache risks a machine that silently stops accepting",
+                        "power. Entries that have been invalidated mid-tick are recomputed rather than served.",
+                        "Turn this off first if machines start behaving oddly around pipes or covers.")
+                .define("gtMachineCapabilityCache", DEFAULT_GT_MACHINE_CAPABILITY_CACHE);
+
+        builder.pop();
+
         SPEC = builder.build();
     }
 
@@ -687,6 +812,21 @@ public final class WFCoreConfig {
     /** Dev tool gate: the numpad model-transform debugger (see IAnimatedMachine) only arms when this is true. */
     public static boolean isModelTransformDebugEnabled() {
         return modelTransformDebugEnabled;
+    }
+
+    /** Whether to memoise SBW's {@code VehicleEntity.getGunDataMap} per tick (stopgap; see config comment). */
+    public static boolean isVehicleGunDataCacheEnabled() {
+        return vehicleGunDataCache;
+    }
+
+    /** Whether to memoise the SBW drone addon's registry-name checks and drop no-op spotlight broadcasts. */
+    public static boolean isSbwDroneHotPathCacheEnabled() {
+        return sbwDroneHotPathCache;
+    }
+
+    /** Whether to cache GTCEu machine capability lookups for the duration of a tick. */
+    public static boolean isGtMachineCapabilityCacheEnabled() {
+        return gtMachineCapabilityCache;
     }
 
     /** Master switch for the off-thread long-range ballistics engine (TACZ bullets + SBW projectiles). */
@@ -924,6 +1064,34 @@ public final class WFCoreConfig {
         return maintenanceEnabled;
     }
 
+    public static boolean isAntiStallEnabled() {
+        return antiStallEnabled;
+    }
+
+    public static int getAntiStallStaleTicks() {
+        return antiStallStaleTicks;
+    }
+
+    public static int getAntiStallGraceTicks() {
+        return antiStallGraceTicks;
+    }
+
+    public static double getAntiStallPitchGain() {
+        return antiStallPitchGain;
+    }
+
+    public static double getAntiStallVerticalDamping() {
+        return antiStallVerticalDamping;
+    }
+
+    public static double getAntiStallPowerFloor() {
+        return antiStallPowerFloor;
+    }
+
+    public static double getAntiStallMinClearance() {
+        return antiStallMinClearance;
+    }
+
     /** Disconnect message shown to non-operators kicked or refused while maintenance mode is active. */
     public static String getMaintenanceKickMessage() {
         return maintenanceKickMessage;
@@ -957,6 +1125,9 @@ public final class WFCoreConfig {
         disableEnderPearls = DISABLE_ENDER_PEARLS.get();
         disableBoatThirdPerson = DISABLE_BOAT_THIRD_PERSON.get();
         modelTransformDebugEnabled = MODEL_TRANSFORM_DEBUG_ENABLED.get();
+        vehicleGunDataCache = VEHICLE_GUN_DATA_CACHE.get();
+        sbwDroneHotPathCache = SBW_DRONE_HOT_PATH_CACHE.get();
+        gtMachineCapabilityCache = GT_MACHINE_CAPABILITY_CACHE.get();
         ballisticsEnabled = BALLISTICS_ENABLED.get();
         ballisticsDebugLogging = BALLISTICS_DEBUG_LOGGING.get();
         playerRanksEnabled = PLAYER_RANKS_ENABLED.get();
@@ -1011,6 +1182,13 @@ public final class WFCoreConfig {
         chatFilterExemptOps = CHAT_FILTER_EXEMPT_OPS.get();
         maintenanceEnabled = MAINTENANCE_ENABLED.get();
         maintenanceKickMessage = MAINTENANCE_KICK_MESSAGE.get();
+        antiStallEnabled = ANTI_STALL_ENABLED.get();
+        antiStallStaleTicks = ANTI_STALL_STALE_TICKS.get();
+        antiStallGraceTicks = ANTI_STALL_GRACE_TICKS.get();
+        antiStallPitchGain = ANTI_STALL_PITCH_GAIN.get();
+        antiStallVerticalDamping = ANTI_STALL_VERTICAL_DAMPING.get();
+        antiStallPowerFloor = ANTI_STALL_POWER_FLOOR.get();
+        antiStallMinClearance = ANTI_STALL_MIN_CLEARANCE.get();
         List<String> blacklist = new ArrayList<>();
         for (String word : CHAT_BLACKLIST.get()) {
             blacklist.add(word);

@@ -25,6 +25,11 @@
     "NoBrewingMixin",
     "WFBallisticsGasMaskMixin",
     "AmmoConsumerToItemMixin",
+    "VehicleGunDataMapCacheMixin",
+    "SbwMonitorLookupCacheMixin",
+    "SbwStackingRuleLookupCacheMixin",
+    "DroneSpotlightSyncDedupMixin",
+    "MetaMachineCapabilityCacheMixin",
     "AmmoResupplyDisableMixin",
     "DronePayloadVehicleDetectionMixin",
     "MEStorageMenuWirelessWithdrawMixin",
@@ -37,7 +42,9 @@
     "BrimmConfigHashOrderMixin",
     "GTOreLoaderTransplantMixin",
     "PlayerListMaintenanceGateMixin",
-    "BackpackStorageCellBlockMixin"
+    "BackpackStorageCellBlockMixin",
+    "ServerGamePacketPilotLinkMixin",
+    "VehicleEntityCrashGraceMixin"
   ],
   "client": [
     "NamePlateMixin",
