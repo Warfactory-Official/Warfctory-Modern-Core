@@ -1,0 +1,83 @@
+{
+  "parent": "wfcore:block/pipe/quadruple_ac_pipe/center",
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "east": {
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "north": {
+          "cullface": "north",
+          "texture": "#end",
+          "tintindex": 1
+        },
+        "south": {
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "up": {
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#side",
+          "tintindex": 0
+        }
+      },
+      "from": [
+        4,
+        4,
+        0
+      ],
+      "to": [
+        12,
+        12,
+        16
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "east": {
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "south": {
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "up": {
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "west": {
+          "texture": "#side_overlay",
+          "tintindex": 2
+        }
+      },
+      "from": [
+        3.968,
+        3.968,
+        -0.032
+      ],
+      "to": [
+        12.032,
+        12.032,
+        16.032
+      ]
+    }
+  ],
+  "textures": {
+    "end": "gtceu:block/pipe/pipe_laser_in",
+    "side": "wfcore:block/pipe/ac_cable_side",
+    "side_overlay": "gtceu:block/pipe/pipe_laser_side_overlay"
+  }
+}

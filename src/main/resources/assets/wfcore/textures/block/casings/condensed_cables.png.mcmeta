@@ -1,0 +1,5 @@
+{
+    "ldlib": {
+        "connection": "wfcore:block/casings/condensed_cables_ctm"
+    }
+}

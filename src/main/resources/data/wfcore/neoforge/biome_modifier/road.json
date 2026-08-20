@@ -1,0 +1,7 @@
+{
+  "_comment": "top_layer_modification is the last decoration step, so the road is stamped after lakes, springs and vegetation have had their turn - a tree cannot grow through a finished road, and a spring cannot flood one.",
+  "type": "neoforge:add_features",
+  "biomes": "#minecraft:is_overworld",
+  "features": "wfcore:road",
+  "step": "top_layer_modification"
+}

@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "wfcore:block/machine/large_transformer",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "wfcore:block/machine/large_transformer"
+    },
+    "facing=south": {
+      "model": "wfcore:block/machine/large_transformer",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "wfcore:block/machine/large_transformer",
+      "y": 270
+    }
+  }
+}

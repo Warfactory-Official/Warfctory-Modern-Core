@@ -1,0 +1,71 @@
+{
+  "mining_charge_blast": {
+    "category": "blocks",
+    "subtitle": "wfcore.subtitle.mining_charge_blast",
+    "sounds": [
+      "wfcore:mining_charge/blast_1",
+      "wfcore:mining_charge/blast_2",
+      "wfcore:mining_charge/blast_3",
+      "wfcore:mining_charge/blast_4"
+    ]
+  },
+  "mining_charge_blast_distant": {
+    "category": "blocks",
+    "subtitle": "wfcore.subtitle.mining_charge_blast",
+    "sounds": [
+      "wfcore:mining_charge/blast_distant_1",
+      "wfcore:mining_charge/blast_distant_2"
+    ]
+  },
+  "detonator_arm": {
+    "category": "blocks",
+    "subtitle": "wfcore.subtitle.detonator_arm",
+    "sounds": [
+      "wfcore:detonator/arm"
+    ]
+  },
+  "detonator_detonate": {
+    "category": "players",
+    "subtitle": "wfcore.subtitle.detonator_detonate",
+    "sounds": [
+      "wfcore:detonator/detonate"
+    ]
+  },
+  "bolt_tool_fire": {
+    "category": "players",
+    "subtitle": "wfcore.subtitle.bolt_tool_fire",
+    "sounds": [
+      "wfcore:tool/boltgun"
+    ]
+  },
+  "missile_gas_drone": {
+    "category": "hostile",
+    "subtitle": "wfcore.subtitle.missile_drone",
+    "sounds": [
+      {
+        "name": "wfcore:missile/drone",
+        "stream": false
+      }
+    ]
+  },
+  "missile_jartydrone": {
+    "category": "hostile",
+    "subtitle": "wfcore.subtitle.missile_drone",
+    "sounds": [
+      {
+        "name": "wfcore:missile/jartydrone",
+        "stream": false
+      }
+    ]
+  },
+  "missile_emp": {
+    "category": "hostile",
+    "subtitle": "wfcore.subtitle.missile_emp",
+    "sounds": [
+      {
+        "name": "wfcore:missile/emp",
+        "stream": false
+      }
+    ]
+  }
+}

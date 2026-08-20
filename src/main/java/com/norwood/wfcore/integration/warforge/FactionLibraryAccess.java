@@ -1,0 +1,148 @@
+package com.norwood.wfcore.integration.warforge;
+
+import com.gregtechceu.gtceu.common.data.GTItems;
+import com.gregtechceu.gtceu.common.data.item.GTDataComponents;
+
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.items.IItemHandler;
+
+import com.flansmod.warforge.api.WarforgeAPI;
+import com.flansmod.warforge.common.WarForgeMod;
+import com.flansmod.warforge.common.util.DimBlockPos;
+import com.flansmod.warforge.common.util.DimChunkPos;
+import com.flansmod.warforge.server.Faction;
+import com.norwood.wfcore.api.research.ResearchAccessCache;
+import com.norwood.wfcore.api.research.ResearchDataItem;
+import com.norwood.wfcore.common.machine.ResearchUnitMachine;
+
+import org.jetbrains.annotations.Nullable;
+
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * Bridges WarForge factions with WFCore's research/data systems: a machine gains access to the entire
+ * blueprint library when the faction that owns its chunk keeps some loaded data storage with data inside it
+ * (a research unit with stored research, or any inventory holding research data sticks) anywhere in its
+ * claimed, loaded territory.
+ *
+ * <p>
+ * Only referenced once WarForge is confirmed loaded, so the hard {@code com.flansmod.warforge} imports are
+ * safe.
+ */
+public final class FactionLibraryAccess {
+
+    private FactionLibraryAccess() {}
+
+    /** Whether the faction owning the chunk at {@code pos} has qualifying data storage in its loaded claims. */
+    public static boolean hasLibraryAccess(Level world, BlockPos pos) {
+        if (world == null || world.isClientSide || pos == null) return false;
+        UUID faction = WarForgeMod.FACTIONS.getClaim(new DimChunkPos(world.dimension(), pos));
+        if (faction == null || Faction.nullUuid.equals(faction)) return false;
+        return WarforgeAPI.anyLoadedClaimedTile(faction, FactionLibraryAccess::tileHoldsData);
+    }
+
+    /**
+     * Whether the faction owning the chunk at {@code pos} holds the given research - the primary unlock route
+     * for research-gated recipes. A provider qualifies when it is a research unit whose state has the full
+     * research path complete, or any inventory holding a data item imprinted with that research id.
+     */
+    public static boolean hasResearch(Level world, BlockPos pos, String researchId) {
+        if (world == null || world.isClientSide || pos == null || researchId == null) return false;
+        UUID faction = WarForgeMod.FACTIONS.getClaim(new DimChunkPos(world.dimension(), pos));
+        if (faction == null || Faction.nullUuid.equals(faction)) return false;
+
+        Boolean cached = ResearchAccessCache.peek(faction, researchId);
+        if (cached != null) {
+            return cached;
+        }
+        boolean result = WarforgeAPI.anyLoadedClaimedTile(faction, be -> tileHasResearch(be, researchId));
+        UUID factionId = faction;
+        ResearchAccessCache.record(faction, researchId, result, () -> collectClaimedChunks(factionId));
+        return result;
+    }
+
+    private static Set<ResearchAccessCache.ChunkKey> collectClaimedChunks(UUID factionId) {
+        Faction faction = WarForgeMod.FACTIONS.getFaction(factionId);
+        if (faction == null) return Set.of();
+        Set<ResearchAccessCache.ChunkKey> chunks = new HashSet<>();
+        for (DimBlockPos claim : faction.claims.keySet()) {
+            DimChunkPos cpos = claim.toChunkPos();
+            chunks.add(new ResearchAccessCache.ChunkKey(cpos.dim, ChunkPos.asLong(cpos.x, cpos.z)));
+        }
+        return chunks;
+    }
+
+    private static boolean tileHoldsData(BlockEntity be) {
+        Level level = be.getLevel();
+        if (level == null) return false;
+        BlockPos pos = be.getBlockPos();
+        // A research unit that has stored/completed research counts as data storage with data.
+        // GT 8.0.0 merged MetaMachineBlockEntity into MetaMachine, so the BlockEntity *is* the machine.
+        if (be instanceof ResearchUnitMachine unit && unit.getResearchState().hasAnyData()) {
+            return true;
+        }
+        // Any reachable inventory holding a research data stick (GregTech assembly-line or WFCore research).
+        if (scanHandler(itemHandler(level, pos, null))) return true;
+        for (Direction side : Direction.values()) {
+            if (scanHandler(itemHandler(level, pos, side))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** NeoForge resolves capabilities through the level at a position, returning the value or {@code null}. */
+    @Nullable
+    private static IItemHandler itemHandler(Level level, BlockPos pos, @Nullable Direction side) {
+        return level.getCapability(Capabilities.ItemHandler.BLOCK, pos, side);
+    }
+
+    private static boolean scanHandler(IItemHandler inv) {
+        if (inv == null) return false;
+        for (int slot = 0; slot < inv.getSlots(); slot++) {
+            ItemStack stack = inv.getStackInSlot(slot);
+            if (stack.isEmpty()) continue;
+            // 8.0.0 keeps the research id in a data component rather than a readResearchId helper.
+            if (stack.has(GTDataComponents.RESEARCH_ITEM)) return true;
+            // The research blueprint list is a data component now, so ResearchDataItem is the only reader.
+            if (stack.is(GTItems.TOOL_DATA_STICK.asItem()) && !ResearchDataItem.readAll(stack).isEmpty()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean tileHasResearch(BlockEntity be, String researchId) {
+        Level level = be.getLevel();
+        if (level == null) return false;
+        BlockPos pos = be.getBlockPos();
+        if (be instanceof ResearchUnitMachine unit && unit.getResearchState().isPathComplete(researchId)) {
+            return true;
+        }
+        if (handlerHasResearch(itemHandler(level, pos, null), researchId)) {
+            return true;
+        }
+        for (Direction side : Direction.values()) {
+            if (handlerHasResearch(itemHandler(level, pos, side), researchId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean handlerHasResearch(IItemHandler inv, String researchId) {
+        if (inv == null) return false;
+        for (int slot = 0; slot < inv.getSlots(); slot++) {
+            if (ResearchDataItem.matches(inv.getStackInSlot(slot), researchId)) return true;
+        }
+        return false;
+    }
+}

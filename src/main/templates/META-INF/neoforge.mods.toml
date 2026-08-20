@@ -1,0 +1,91 @@
+modLoader = "javafml"
+loaderVersion = "${loader_version_range}"
+license = "${mod_license}"
+
+[[mods]]
+    modId = "${mod_id}"
+    version = "${mod_version}"
+    displayName = "${mod_name}"
+    authors = "${mod_authors}"
+    description = '''${mod_description}'''
+
+[[mixins]]
+    config = "wfcore.mixins.json"
+
+# Separate config because TACZ is optional: required=false lets it no-op when the target is absent,
+# where wfcore.mixins.json's required=true would be a hard crash.
+[[mixins]]
+    config = "wfcore.tacz.mixins.json"
+
+[[dependencies.${mod_id}]]
+    modId = "neoforge"
+    type = "required"
+    versionRange = "${neo_version_range}"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.${mod_id}]]
+    modId = "minecraft"
+    type = "required"
+    versionRange = "${minecraft_version_range}"
+    ordering = "NONE"
+    side = "BOTH"
+
+[[dependencies.${mod_id}]]
+    modId = "gtceu"
+    type = "required"
+    versionRange = "${gtceu_version_range}"
+    ordering = "AFTER"
+    side = "BOTH"
+
+# Missile entities/items for the missile factory + launch silo multiblocks.
+[[dependencies.${mod_id}]]
+    modId = "wfballistics"
+    type = "required"
+    versionRange = "[${wfballistics_version},)"
+    ordering = "AFTER"
+    side = "BOTH"
+
+# Client-side glTF renderer for the animated machine models (radar dish, drill rig, iron dome).
+[[dependencies.${mod_id}]]
+    modId = "mcgltf"
+    type = "required"
+    versionRange = "*"
+    ordering = "AFTER"
+    side = "CLIENT"
+
+# Limitless Vehicle — spawn target for the 7 vehicle-factory multiblocks.
+# TODO(port, phase 7): promote to "required" once the vehicle-factory retarget lands.
+[[dependencies.${mod_id}]]
+    modId = "ywzj_vehicle"
+    type = "optional"
+    versionRange = "*"
+    ordering = "AFTER"
+    side = "BOTH"
+
+# Optional: WarForge faction integration (research sharing + chunk reinforcer).
+# Must load before wfcore so its capabilities are registered first.
+[[dependencies.${mod_id}]]
+    modId = "warforge"
+    type = "optional"
+    versionRange = "*"
+    ordering = "AFTER"
+    side = "BOTH"
+
+# Optional: TACZ off-thread ballistics adapter + gas-mask compat.
+# TODO(port, phase 7): promote to "required" once the MUKSC 1.21.1 fork is wired in.
+[[dependencies.${mod_id}]]
+    modId = "tacz"
+    type = "optional"
+    versionRange = "*"
+    ordering = "AFTER"
+    side = "BOTH"
+
+# Optional: without it, reinforced_glass/reinforced_concrete render with their plain texture
+# instead of the "_ctm" anti-tiling variant.
+[[dependencies.${mod_id}]]
+    modId = "fusion"
+    type = "optional"
+    versionRange = "*"
+    ordering = "NONE"
+    side = "CLIENT"

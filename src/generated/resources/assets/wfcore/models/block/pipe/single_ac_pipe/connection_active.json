@@ -1,0 +1,97 @@
+{
+  "parent": "minecraft:block/block",
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "cullface": "down",
+          "texture": "#end",
+          "tintindex": 1
+        },
+        "east": {
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "north": {
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "south": {
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#side",
+          "tintindex": 0
+        }
+      },
+      "from": [
+        6,
+        0,
+        6
+      ],
+      "to": [
+        10,
+        6,
+        10
+      ]
+    },
+    {
+      "faces": {
+        "east": {
+          "neoforge_data": {
+            "ambient_occlusion": false,
+            "block_light": 15,
+            "sky_light": 15
+          },
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "north": {
+          "neoforge_data": {
+            "ambient_occlusion": false,
+            "block_light": 15,
+            "sky_light": 15
+          },
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "south": {
+          "neoforge_data": {
+            "ambient_occlusion": false,
+            "block_light": 15,
+            "sky_light": 15
+          },
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "west": {
+          "neoforge_data": {
+            "ambient_occlusion": false,
+            "block_light": 15,
+            "sky_light": 15
+          },
+          "texture": "#side_overlay",
+          "tintindex": 2
+        }
+      },
+      "from": [
+        5.968,
+        -0.032,
+        5.968
+      ],
+      "to": [
+        10.032,
+        6.032,
+        10.032
+      ]
+    }
+  ],
+  "render_type": "minecraft:cutout_mipped",
+  "textures": {
+    "end": "gtceu:block/pipe/pipe_laser_in",
+    "particle": "#side",
+    "side": "wfcore:block/pipe/ac_cable_side",
+    "side_overlay": "gtceu:block/pipe/pipe_laser_side_overlay_emissive"
+  }
+}

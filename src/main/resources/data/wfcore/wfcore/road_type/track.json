@@ -1,0 +1,85 @@
+{
+  "_comment": "Unpaved dendritic track, and the fallback for any link no other type claims - 'kinds' is empty, so it matches everything at the lowest priority. Steeper grade budget than the paved types on purpose: a track goes up a hill where a road would switchback around it.",
+  "match": {
+    "priority": 10
+  },
+  "deck": {
+    "width": 5,
+    "shoulder": 1,
+    "clearance": 4,
+    "surface": {
+      "type": "minecraft:weighted_state_provider",
+      "entries": [
+        {
+          "weight": 5,
+          "data": {
+            "Name": "minecraft:dirt_path"
+          }
+        },
+        {
+          "weight": 3,
+          "data": {
+            "Name": "minecraft:gravel"
+          }
+        },
+        {
+          "weight": 2,
+          "data": {
+            "Name": "minecraft:coarse_dirt"
+          }
+        }
+      ]
+    },
+    "edge": "minecraft:coarse_dirt"
+  },
+  "earthworks": {
+    "base": "minecraft:packed_mud",
+    "base_depth": 2,
+    "embankment": "minecraft:coarse_dirt",
+    "margin": 3,
+    "batter": 1.2
+  },
+  "grade": {
+    "max": 0.11,
+    "smoothing_radius": 4,
+    "relax_passes": 6,
+    "sample_spacing": 16,
+    "attraction": 0.9
+  },
+  "water": {
+    "min_deck_y": 70,
+    "clearance": 3,
+    "sea_crossing_length": 64
+  },
+  "bridge": {
+    "deck": "minecraft:gravel",
+    "structure": "minecraft:spruce_planks",
+    "accent": "minecraft:spruce_planks",
+    "railing": "minecraft:oak_fence",
+    "railing_height": 1,
+    "pier_spacing": 8,
+    "pier_radius": 1,
+    "min_height": 4
+  },
+  "tunnel": {
+    "wall": "minecraft:cobblestone",
+    "ceiling": "minecraft:cobblestone",
+    "light": "minecraft:shroomlight",
+    "light_spacing": 10,
+    "height": 5,
+    "min_cover": 8
+  },
+  "themes": [
+    {
+      "biomes": [
+        "minecraft:desert",
+        "minecraft:badlands",
+        "minecraft:eroded_badlands",
+        "minecraft:wooded_badlands"
+      ],
+      "structure": "minecraft:sandstone",
+      "accent": "minecraft:cut_sandstone",
+      "wall": "minecraft:sandstone"
+    }
+  ]
+}

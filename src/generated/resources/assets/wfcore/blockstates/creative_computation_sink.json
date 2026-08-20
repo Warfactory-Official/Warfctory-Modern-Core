@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "wfcore:block/machine/creative_computation_sink"
+    }
+  }
+}

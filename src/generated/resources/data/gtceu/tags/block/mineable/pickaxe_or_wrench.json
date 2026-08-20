@@ -1,0 +1,16 @@
+{
+  "values": [
+    "wfcore:aluminium_sheet_casing",
+    "wfcore:galvanized_steel_casing",
+    "wfcore:reinforced_stainless_casing",
+    "wfcore:machine_casing_turbine_titanium",
+    "wfcore:solar_panel_casing",
+    "wfcore:condensed_cables",
+    "wfcore:concrete_base",
+    "wfcore:drill_head",
+    "wfcore:hardened_steel",
+    "wfcore:tungsten_plating",
+    "wfcore:boltable_casing",
+    "wfcore:boltable_casing_bolted"
+  ]
+}

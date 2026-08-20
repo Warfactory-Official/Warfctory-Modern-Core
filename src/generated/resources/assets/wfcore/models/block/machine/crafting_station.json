@@ -1,0 +1,42 @@
+{
+  "parent": "minecraft:block/block",
+  "loader": "gtceu:machine",
+  "machine": "wfcore:crafting_station",
+  "texture_overrides": {
+    "all": "gtceu:block/treated_wood_planks"
+  },
+  "variants": {
+    "recipe_logic_status=idle": {
+      "model": {
+        "parent": "gtceu:block/machine/template/cube_all/sided",
+        "textures": {
+          "all": "gtceu:block/treated_wood_planks"
+        }
+      }
+    },
+    "recipe_logic_status=suspend": {
+      "model": {
+        "parent": "gtceu:block/machine/template/cube_all/sided",
+        "textures": {
+          "all": "gtceu:block/treated_wood_planks"
+        }
+      }
+    },
+    "recipe_logic_status=waiting": {
+      "model": {
+        "parent": "gtceu:block/machine/template/cube_all/sided",
+        "textures": {
+          "all": "gtceu:block/treated_wood_planks"
+        }
+      }
+    },
+    "recipe_logic_status=working": {
+      "model": {
+        "parent": "gtceu:block/machine/template/cube_all/sided",
+        "textures": {
+          "all": "gtceu:block/treated_wood_planks"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{
+    "ldlib": {
+        "connection": "wfcore:block/casings/galvanized_steel_casing_ctm"
+    }
+}

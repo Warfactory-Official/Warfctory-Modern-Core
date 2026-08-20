@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "wfcore:block/tungsten_plating"
+    }
+  }
+}

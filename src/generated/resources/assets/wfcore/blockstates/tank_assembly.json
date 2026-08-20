@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=east": {
+      "model": "wfcore:block/machine/tank_assembly",
+      "y": 90
+    },
+    "facing=north": {
+      "model": "wfcore:block/machine/tank_assembly"
+    },
+    "facing=south": {
+      "model": "wfcore:block/machine/tank_assembly",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "wfcore:block/machine/tank_assembly",
+      "y": 270
+    }
+  }
+}

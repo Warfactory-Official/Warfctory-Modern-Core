@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/cube_bottom_top",
+  "textures": {
+    "bottom": "wfcore:block/hesco_barrier_bottom",
+    "side": "wfcore:block/hesco_barrier_side",
+    "top": "wfcore:block/hesco_barrier_top"
+  }
+}

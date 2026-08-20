@@ -1,0 +1,30 @@
+{
+  "minVersion": "0.8",
+  "required": true,
+  "package": "com.norwood.wfcore.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "BlockBehaviourAccessor",
+    "ConsumableUseMixin",
+    "LevelBlockEntityChangedMixin",
+    "NoBrewingMixin",
+    "PlayerListMaintenanceGateMixin",
+    "ProjectileBallisticsMixin",
+    "SplashPotionMixin"
+  ],
+  "client": [
+    "BlockRenderDispatcherMixin",
+    "BlockShouldRenderFaceMixin",
+    "DebugRemover",
+    "EditBoxAccessor",
+    "EditBoxCursorRecursionMixin",
+    "ForceFirstPersonCameraMixin",
+    "GuiDebugRemover",
+    "LightTextureAccessor",
+    "NamePlateMixin",
+    "PlayerTabRankMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

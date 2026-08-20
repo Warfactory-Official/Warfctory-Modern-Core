@@ -1,0 +1,5 @@
+{
+    "ldlib": {
+        "connection": "wfcore:block/casings/concrete_base_ctm"
+    }
+}

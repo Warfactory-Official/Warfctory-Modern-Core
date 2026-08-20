@@ -1,0 +1,5 @@
+{
+    "ldlib": {
+        "connection": "wfcore:block/casings/aluminium_sheet_casing_ctm"
+    }
+}

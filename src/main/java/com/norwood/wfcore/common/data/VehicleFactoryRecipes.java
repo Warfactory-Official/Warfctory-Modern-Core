@@ -1,0 +1,117 @@
+package com.norwood.wfcore.common.data;
+
+import com.gregtechceu.gtceu.api.GTValues;
+import com.gregtechceu.gtceu.api.capability.recipe.IO;
+import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
+import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
+import com.gregtechceu.gtceu.common.data.GTMaterials;
+import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
+import com.gregtechceu.gtceu.common.data.GTSoundEntries;
+import com.gregtechceu.gtceu.data.recipe.builder.GTRecipeBuilder;
+
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.data.recipes.RecipeOutput;
+import net.minecraft.resources.ResourceLocation;
+
+import com.norwood.wfcore.WFCore;
+import com.norwood.wfcore.common.item.PackagedVehicleItem;
+
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.UnaryOperator;
+
+/**
+ * Per-machine GT recipe maps for the vehicle factories. Every vehicle-assembly multiblock owns its own
+ * recipe type, so each factory has a separate, independently-programmable recipe list and its own JEI
+ * category (a tank recipe can't be built in a plane assembler, and vice versa). All maps share the same
+ * IO layout and are fully programmable from coremods, KubeJS and GroovyScript. Recipes use ordinary
+ * item/fluid/EU inputs; the single item output is a
+ * {@link com.norwood.wfcore.common.item.PackagedVehicleItem} that encodes which vehicle to spawn on
+ * completion.
+ */
+public class VehicleFactoryRecipes {
+
+    /** {@code wfcore:light_ground_vehicle_factory} — the MV Light Ground Vehicle Factory. */
+    public static GTRecipeType LIGHT_GROUND_VEHICLE_FACTORY;
+    /** {@code wfcore:tank_assembly} — the Tank Assembly Line. */
+    public static GTRecipeType TANK_ASSEMBLY;
+    /** {@code wfcore:light_plane_assembler} — the Light Plane Assembler. */
+    public static GTRecipeType LIGHT_PLANE_ASSEMBLER;
+    /** {@code wfcore:heavy_plane_assembler} — the Heavy Plane Assembler. */
+    public static GTRecipeType HEAVY_PLANE_ASSEMBLER;
+    /** {@code wfcore:heavy_vehicle_depot} — the Heavy Vehicle Depot. */
+    public static GTRecipeType HEAVY_VEHICLE_DEPOT;
+    /** {@code wfcore:helicopter_assembler} — the Helicopter Assembler. */
+    public static GTRecipeType HELICOPTER_ASSEMBLER;
+    /** {@code wfcore:naval_vehicle_deployer} — the Naval Vehicle Deployer (boat dock). */
+    public static GTRecipeType NAVAL_VEHICLE_DEPLOYER;
+
+    /** Every map keyed by its machine path, so KubeJS/GroovyScript can resolve a map by name. */
+    private static final Map<String, GTRecipeType> BY_NAME = new LinkedHashMap<>();
+
+    public static void init() {
+        LIGHT_GROUND_VEHICLE_FACTORY = register("light_ground_vehicle_factory");
+        TANK_ASSEMBLY = register("tank_assembly");
+        LIGHT_PLANE_ASSEMBLER = register("light_plane_assembler");
+        HEAVY_PLANE_ASSEMBLER = register("heavy_plane_assembler");
+        HEAVY_VEHICLE_DEPOT = register("heavy_vehicle_depot");
+        HELICOPTER_ASSEMBLER = register("helicopter_assembler");
+        NAVAL_VEHICLE_DEPLOYER = register("naval_vehicle_deployer");
+    }
+
+    /**
+     * Register one vehicle-factory recipe map. Every map shares the same IO layout (9 item + 2 fluid inputs,
+     * one packaged-vehicle output, EU in) and the assembler sound; only the id and JEI category differ, which
+     * is exactly what gives each factory its own separate recipe list.
+     */
+    private static GTRecipeType register(String name) {
+        // GTRecipeTypes.register is public in 8.0.0 and does the whole dance — recipe type, serializer and
+        // the GTRegistries.RECIPE_TYPES entry — so the hand-rolled version this used to do is gone.
+        GTRecipeType type = GTRecipeTypes.register(WFCore.id(name), "electric");
+        type.setMaxIOSize(9, 1, 2, 0).setEUIO(IO.IN).setMaxTooltips(3)
+                .setSound(GTSoundEntries.ASSEMBLER);
+        BY_NAME.put(name, type);
+        return type;
+    }
+
+    /**
+     * Look up a vehicle-factory recipe map by its machine path (e.g. {@code "tank_assembly"}). Accepts a bare
+     * path or a {@code wfcore:}-prefixed id, and throws if no such map exists — used by the KubeJS binding so
+     * scripts can pick which factory a recipe belongs to.
+     */
+    public static GTRecipeType byName(String name) {
+        String path = name.contains(":") ? name.substring(name.indexOf(':') + 1) : name;
+        GTRecipeType type = BY_NAME.get(path);
+        if (type == null) {
+            throw new IllegalArgumentException("Unknown vehicle factory '" + name + "'. Valid factories: "
+                    + String.join(", ", BY_NAME.keySet()));
+        }
+        return type;
+    }
+
+    /**
+     * No baked recipes. Every vehicle-factory recipe is supplied by the pack via KubeJS
+     * (kubejs/server_scripts/vehicles/vehicle_factory.js, through the {@code WFVehicles} binding); baking
+     * defaults here duplicated/overrode those pack recipes, so they were all removed. The {@link #vehicle}
+     * helper below is kept for anyone who wants to re-add a built-in example.
+     */
+    public static void addDefaultRecipes(RecipeOutput provider) {
+        // intentionally empty — all vehicle recipes come from the pack (KubeJS).
+    }
+
+    /**
+     * One vehicle-factory recipe: {@code customize} adds the material inputs, then the standard EU/duration
+     * and the packaged-vehicle output are appended. The recipe id is {@code wfcore:<recipeId>}; the item
+     * output encodes {@code vehicleId}, a Limitless vehicle id resolved at spawn time, so this carries no
+     * compile-time dependency on the vehicle roster.
+     */
+    private static void vehicle(RecipeOutput provider, GTRecipeType type, String recipeId,
+                                String vehicleId, int voltageTier, int duration,
+                                UnaryOperator<GTRecipeBuilder> customize) {
+        customize.apply(type.recipeBuilder(WFCore.id(recipeId)))
+                .EUt(GTValues.VA[voltageTier])
+                .duration(duration)
+                .outputItems(PackagedVehicleItem.of(ResourceLocation.parse(vehicleId)))
+                .save(provider);
+    }
+}

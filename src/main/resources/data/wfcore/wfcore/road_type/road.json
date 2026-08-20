@@ -1,0 +1,78 @@
+{
+  "_comment": "Ordinary paved road. Matches every paved link highway.json did not claim.",
+  "match": {
+    "kinds": [
+      "paved"
+    ],
+    "priority": 20
+  },
+  "deck": {
+    "width": 7,
+    "shoulder": 1,
+    "clearance": 5,
+    "surface": "minecraft:gray_concrete",
+    "edge": "minecraft:light_gray_concrete",
+    "markings": {
+      "block": "minecraft:white_concrete",
+      "width": 1,
+      "dash": 5,
+      "gap": 5
+    }
+  },
+  "earthworks": {
+    "base": "minecraft:stone",
+    "base_depth": 3,
+    "embankment": "minecraft:stone",
+    "margin": 5,
+    "batter": 1.0
+  },
+  "grade": {
+    "max": 0.07,
+    "smoothing_radius": 6,
+    "relax_passes": 8,
+    "sample_spacing": 16,
+    "attraction": 0.85
+  },
+  "water": {
+    "min_deck_y": 90,
+    "clearance": 4,
+    "sea_crossing_length": 48
+  },
+  "bridge": {
+    "structure": "minecraft:stone_bricks",
+    "accent": "minecraft:smooth_stone",
+    "railing": "minecraft:stone_brick_wall",
+    "railing_height": 1,
+    "pier_spacing": 12,
+    "pier_radius": 2,
+    "min_height": 4
+  },
+  "tunnel": {
+    "wall": "minecraft:stone_bricks",
+    "ceiling": "minecraft:stone_bricks",
+    "floor": "minecraft:gray_concrete",
+    "light": "minecraft:glowstone",
+    "light_spacing": 8,
+    "height": 6,
+    "min_cover": 8
+  },
+  "themes": [
+    {
+      "biomes": [
+        "minecraft:desert",
+        "minecraft:badlands",
+        "minecraft:eroded_badlands",
+        "minecraft:wooded_badlands"
+      ],
+      "structure": "minecraft:sandstone",
+      "accent": "minecraft:smooth_sandstone",
+      "wall": "minecraft:cut_sandstone"
+    },
+    {
+      "biomes": "#minecraft:is_jungle",
+      "structure": "minecraft:mossy_stone_bricks",
+      "accent": "minecraft:mossy_cobblestone",
+      "wall": "minecraft:mossy_stone_bricks"
+    }
+  ]
+}

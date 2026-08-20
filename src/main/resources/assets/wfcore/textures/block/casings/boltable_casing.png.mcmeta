@@ -1,0 +1,5 @@
+{
+    "ldlib": {
+        "connection": "wfcore:block/casings/boltable_casing_ctm"
+    }
+}

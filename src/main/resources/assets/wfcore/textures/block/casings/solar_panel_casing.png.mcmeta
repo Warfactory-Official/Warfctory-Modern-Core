@@ -1,0 +1,5 @@
+{
+    "ldlib": {
+        "connection": "wfcore:block/casings/solar_panel_casing_ctm"
+    }
+}

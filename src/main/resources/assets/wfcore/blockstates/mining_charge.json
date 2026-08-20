@@ -1,0 +1,6 @@
+{
+  "variants": {
+    "armed=false": { "model": "wfcore:block/mining_charge" },
+    "armed=true": { "model": "wfcore:block/mining_charge_armed" }
+  }
+}

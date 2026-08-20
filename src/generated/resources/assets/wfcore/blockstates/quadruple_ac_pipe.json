@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "active=false": {
+      "model": "wfcore:block/quadruple_ac_pipe"
+    },
+    "active=true": {
+      "model": "wfcore:block/quadruple_ac_pipe_active"
+    }
+  }
+}

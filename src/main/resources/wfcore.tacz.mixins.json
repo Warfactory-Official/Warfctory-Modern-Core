@@ -1,0 +1,12 @@
+{
+  "minVersion": "0.8",
+  "required": false,
+  "package": "com.norwood.wfcore.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "EntityKineticBulletAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 0
+  }
+}

@@ -1,0 +1,87 @@
+{
+  "parent": "minecraft:block/block",
+  "elements": [
+    {
+      "faces": {
+        "down": {
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "east": {
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "north": {
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "south": {
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "up": {
+          "texture": "#side",
+          "tintindex": 0
+        },
+        "west": {
+          "texture": "#side",
+          "tintindex": 0
+        }
+      },
+      "from": [
+        2,
+        2,
+        2
+      ],
+      "to": [
+        14,
+        14,
+        14
+      ]
+    },
+    {
+      "faces": {
+        "down": {
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "east": {
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "north": {
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "south": {
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "up": {
+          "texture": "#side_overlay",
+          "tintindex": 2
+        },
+        "west": {
+          "texture": "#side_overlay",
+          "tintindex": 2
+        }
+      },
+      "from": [
+        1.968,
+        1.968,
+        1.968
+      ],
+      "to": [
+        14.032,
+        14.032,
+        14.032
+      ]
+    }
+  ],
+  "render_type": "minecraft:cutout_mipped",
+  "textures": {
+    "particle": "#side",
+    "side": "wfcore:block/pipe/ac_cable_side",
+    "side_overlay": "gtceu:block/pipe/pipe_laser_side_overlay"
+  }
+}

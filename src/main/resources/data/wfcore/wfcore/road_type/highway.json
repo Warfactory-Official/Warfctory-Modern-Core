@@ -1,0 +1,79 @@
+{
+  "_comment": "Trunk route. Claims the long paved links; road.json picks up the rest. Everything here is live - change a block id and reload the world.",
+  "match": {
+    "kinds": [
+      "paved"
+    ],
+    "min_length": 6000,
+    "priority": 30
+  },
+  "deck": {
+    "width": 11,
+    "shoulder": 2,
+    "clearance": 6,
+    "surface": "minecraft:gray_concrete",
+    "edge": "minecraft:smooth_stone",
+    "markings": {
+      "block": "minecraft:white_concrete",
+      "width": 1,
+      "dash": 6,
+      "gap": 6
+    }
+  },
+  "earthworks": {
+    "base": "minecraft:stone",
+    "base_depth": 4,
+    "embankment": "minecraft:stone",
+    "margin": 6,
+    "batter": 0.8
+  },
+  "grade": {
+    "max": 0.05,
+    "smoothing_radius": 8,
+    "relax_passes": 8,
+    "sample_spacing": 16,
+    "attraction": 0.85
+  },
+  "water": {
+    "min_deck_y": 90,
+    "clearance": 5,
+    "sea_crossing_length": 48
+  },
+  "bridge": {
+    "structure": "minecraft:stone_bricks",
+    "accent": "minecraft:smooth_stone",
+    "railing": "minecraft:stone_brick_wall",
+    "railing_height": 1,
+    "pier_spacing": 16,
+    "pier_radius": 3,
+    "min_height": 4
+  },
+  "tunnel": {
+    "wall": "minecraft:stone_bricks",
+    "ceiling": "minecraft:smooth_stone",
+    "floor": "minecraft:gray_concrete",
+    "light": "minecraft:sea_lantern",
+    "light_spacing": 8,
+    "height": 7,
+    "min_cover": 10
+  },
+  "themes": [
+    {
+      "biomes": [
+        "minecraft:desert",
+        "minecraft:badlands",
+        "minecraft:eroded_badlands",
+        "minecraft:wooded_badlands"
+      ],
+      "structure": "minecraft:sandstone",
+      "accent": "minecraft:smooth_sandstone",
+      "wall": "minecraft:cut_sandstone"
+    },
+    {
+      "biomes": "#minecraft:is_jungle",
+      "structure": "minecraft:mossy_stone_bricks",
+      "accent": "minecraft:mossy_cobblestone",
+      "wall": "minecraft:mossy_stone_bricks"
+    }
+  ]
+}

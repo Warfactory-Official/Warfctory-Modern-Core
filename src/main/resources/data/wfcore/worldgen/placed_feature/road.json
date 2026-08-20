@@ -1,0 +1,10 @@
+{
+  "_comment": "count 1 with no in_square and no biome filter: the feature is invoked exactly once per chunk, at the chunk origin, and rasterises the whole 16x16 itself. An in_square offset would move the origin off the chunk it is meant to fill, and a biome filter would let a road stop dead at a biome edge.",
+  "feature": "wfcore:road",
+  "placement": [
+    {
+      "type": "minecraft:count",
+      "count": 1
+    }
+  ]
+}

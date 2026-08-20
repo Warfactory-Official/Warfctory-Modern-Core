@@ -1,0 +1,10 @@
+{
+  "pack": {
+    "description": "Warfactory Modern Core resources",
+    "pack_format": 34,
+    "supported_formats": [34, 48]
+  },
+  "fusion": {
+    "min_version": "1.3.9"
+  }
+}

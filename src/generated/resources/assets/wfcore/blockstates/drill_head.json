@@ -1,0 +1,7 @@
+{
+  "variants": {
+    "": {
+      "model": "wfcore:block/drill_head"
+    }
+  }
+}
