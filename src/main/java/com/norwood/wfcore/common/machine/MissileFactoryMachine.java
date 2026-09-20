@@ -77,7 +77,7 @@ public class MissileFactoryMachine extends WorkableElectricMultiblockMachine imp
 
     /** Every stored missile (strike + interceptor) by item registry id, for the factory's own readout. */
     public Map<String, Integer> storedAll() {
-        return stored(stack -> stack.getItem() instanceof com.wf.wfballistics.item.MissileItem);
+        return stored(stack -> stack.getItem() instanceof com.wf.wflib.item.MissileItem);
     }
 
     private Map<String, Integer> stored(java.util.function.Predicate<ItemStack> filter) {

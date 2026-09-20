@@ -56,7 +56,7 @@ public class WFRecipeTypes {
                 .setSound(GTSoundEntries.MINER);
         DRILLING.addCustomRecipeLogic(new DrillingCustomRecipeLogic());
 
-        // Missile factory: assembles WF-Ballistics missile items (wfballistics:missile_<preset>) from
+        // Missile factory: assembles WFLib missile items (wflib:missile_<preset>) from
         // materials + fuel. Recipes are fully programmable from KubeJS/GroovyScript like the others.
         var missileId = WFCore.id("missile_factory");
         MISSILE_FACTORY = GTRecipeTypes.register(missileId, "multiblock");

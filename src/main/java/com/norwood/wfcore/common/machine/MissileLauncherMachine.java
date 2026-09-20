@@ -42,17 +42,17 @@ import net.minecraft.world.phys.Vec3;
 
 import brachy.modularui.factory.BlockEntityUIFactory;
 import com.norwood.wfcore.common.data.WFDataComponents;
-import com.wf.wfballistics.MissileEntity;
-import com.wf.wfballistics.api.MissileData;
-import com.wf.wfballistics.api.MissileTelemetry;
-import com.wf.wfballistics.api.MissileTelemetryEvent;
-import com.wf.wfballistics.api.WFBallisticsAPI;
-import com.wf.wfballistics.compat.WarforgeCompat;
-import com.wf.wfballistics.flight.AttackProfile;
-import com.wf.wfballistics.item.MissileItem;
-import com.wf.wfballistics.item.MissilePreset;
-import com.wf.wfballistics.sim.IMissileListener;
-import com.wf.wfballistics.sim.MissileListenerRegistry;
+import com.wf.wflib.MissileEntity;
+import com.wf.wflib.api.MissileData;
+import com.wf.wflib.api.MissileTelemetry;
+import com.wf.wflib.api.MissileTelemetryEvent;
+import com.wf.wflib.api.WFLibAPI;
+import com.wf.wflib.compat.WarforgeCompat;
+import com.wf.wflib.flight.AttackProfile;
+import com.wf.wflib.item.MissileItem;
+import com.wf.wflib.item.MissilePreset;
+import com.wf.wflib.sim.IMissileListener;
+import com.wf.wflib.sim.MissileListenerRegistry;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -743,7 +743,7 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
                 new Vec3(pendingTargetX + 0.5, y, pendingTargetZ + 0.5));
         missile.setControlId(controlId());
         // Own the missile for the WarForge faction claiming the silo's chunk, so friendly interceptor
-        // batteries don't engage it. wfballistics' own compat no-ops safely without WarForge installed.
+        // batteries don't engage it. wflib' own compat no-ops safely without WarForge installed.
         missile.setTeamId(WarforgeCompat.factionClaiming(serverLevel, getBlockPos()));
         if (!pendingAttackProfile.equals("AUTO")) {
             missile.setAttackProfile(AttackProfile.byName(pendingAttackProfile));
@@ -760,7 +760,7 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
         if (serverLevel.addFreshEntity(missile)) {
             trackedMissileId = missile.getUUID();
             trackedMissileIds.add(trackedMissileId);
-            WFBallisticsAPI.openTelemetry(missile);
+            WFLibAPI.openTelemetry(missile);
             refreshTelemetry();
         }
     }
@@ -772,9 +772,9 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
         Iterator<UUID> tracked = trackedMissileIds.iterator();
         while (tracked.hasNext()) {
             UUID id = tracked.next();
-            MissileData data = WFBallisticsAPI.getMissileData(serverLevel, id);
+            MissileData data = WFLibAPI.getMissileData(serverLevel, id);
             if (data == null) {
-                MissileTelemetry missingTelemetry = WFBallisticsAPI.getTelemetry(id);
+                MissileTelemetry missingTelemetry = WFLibAPI.getTelemetry(id);
                 int misses = trackedMissileMisses.merge(id, 1, Integer::sum);
                 if (isTerminalTelemetry(missingTelemetry) || misses >= 12) {
                     tracked.remove();
@@ -806,7 +806,7 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
             tag.putUUID("Id", trackedMissileId);
             boolean sameTrackedMissile = telemetry.hasUUID("Id") &&
                     trackedMissileId.equals(telemetry.getUUID("Id"));
-            MissileData data = WFBallisticsAPI.getMissileData(serverLevel, trackedMissileId);
+            MissileData data = WFLibAPI.getMissileData(serverLevel, trackedMissileId);
             if (data != null) {
                 tag.putBoolean("Active", true);
                 tag.putBoolean("Simulated", data.simulated());
@@ -821,12 +821,12 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
                 tag.putInt("Eta", data.etaTicks());
                 tag.putBoolean("CanReach", data.canReach());
             }
-            MissileTelemetry missileTelemetry = WFBallisticsAPI.getTelemetry(trackedMissileId);
+            MissileTelemetry missileTelemetry = WFLibAPI.getTelemetry(trackedMissileId);
             if (missileTelemetry == null && data != null) {
                 if (serverLevel.getEntity(trackedMissileId) instanceof MissileEntity missile) {
-                    missileTelemetry = WFBallisticsAPI.openTelemetry(missile);
+                    missileTelemetry = WFLibAPI.openTelemetry(missile);
                 } else {
-                    missileTelemetry = WFBallisticsAPI.openTelemetry(trackedMissileId, serverLevel.getGameTime());
+                    missileTelemetry = WFLibAPI.openTelemetry(trackedMissileId, serverLevel.getGameTime());
                 }
             }
             if (missileTelemetry != null) {

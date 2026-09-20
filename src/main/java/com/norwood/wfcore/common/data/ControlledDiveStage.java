@@ -1,9 +1,9 @@
 package com.norwood.wfcore.common.data;
 
-import com.wf.wfballistics.MissileEntity;
-import com.wf.wfballistics.flight.FlightContext;
-import com.wf.wfballistics.flight.FlightStage;
-import com.wf.wfballistics.flight.FlightStageRegistry;
+import com.wf.wflib.MissileEntity;
+import com.wf.wflib.flight.FlightContext;
+import com.wf.wflib.flight.FlightStage;
+import com.wf.wflib.flight.FlightStageRegistry;
 import net.minecraft.world.phys.Vec3;
 
 
@@ -24,7 +24,7 @@ import net.minecraft.world.phys.Vec3;
  */
 public final class ControlledDiveStage implements FlightStage {
 
-    /** Stage ids. WF-B namespaces its own ({@code wfballistics:...}); the {@code wfcore_} prefix keeps these ours. */
+    /** Stage ids. WF-B namespaces its own ({@code wflib:...}); the {@code wfcore_} prefix keeps these ours. */
     public static final String ID = "wfcore_controlled_dive";
     public static final String ICBM_ID = "wfcore_icbm_dive";
     public static final String MEDIUM_ID = "wfcore_medium_dive";

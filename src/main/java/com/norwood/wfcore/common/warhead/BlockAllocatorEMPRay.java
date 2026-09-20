@@ -1,7 +1,7 @@
 package com.norwood.wfcore.common.warhead;
 
-import com.wf.wfballistics.aef.ExplosionAEF;
-import com.wf.wfballistics.aef.interfaces.IBlockAllocator;
+import com.wf.wflib.aef.ExplosionAEF;
+import com.wf.wflib.aef.interfaces.IBlockAllocator;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.Level;

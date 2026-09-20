@@ -6,25 +6,25 @@ import com.norwood.wfcore.common.sound.WFDelayedSounds;
 import com.norwood.wfcore.common.sound.WFSounds;
 import com.norwood.wfcore.common.warhead.BlockAllocatorEMPRay;
 import com.norwood.wfcore.common.warhead.BlockProcessorPulverize;
-import com.wf.wfballistics.MissileEntity;
-import com.wf.wfballistics.MissileModels;
-import com.wf.wfballistics.ModEntities;
-import com.wf.wfballistics.aef.ExplosionAEF;
-import com.wf.wfballistics.aef.nuke.MiniNuke;
-import com.wf.wfballistics.aef.nuke.MiniNuke.MukeParams;
-import com.wf.wfballistics.aef.standard.*;
-import com.wf.wfballistics.client.fx.ClientSoundScheduler;
-import com.wf.wfballistics.entity.BombletEntity;
-import com.wf.wfballistics.entity.mist.GasCloud;
-import com.wf.wfballistics.flight.FlightStageRegistry;
-import com.wf.wfballistics.fluid.WFFluids;
-import com.wf.wfballistics.fx.EMPCreator;
-import com.wf.wfballistics.fx.ExplosionCreator;
-import com.wf.wfballistics.fx.ExplosionSmallCreator;
-import com.wf.wfballistics.swarm.SwarmManager;
-import com.wf.wfballistics.util.FragmentationUtil;
-import com.wf.wfballistics.warhead.BombletWarhead;
-import com.wf.wfballistics.warhead.WarheadRegistry;
+import com.wf.wflib.MissileEntity;
+import com.wf.wflib.MissileModels;
+import com.wf.wflib.ModEntities;
+import com.wf.wflib.aef.ExplosionAEF;
+import com.wf.wflib.aef.nuke.MiniNuke;
+import com.wf.wflib.aef.nuke.MiniNuke.MukeParams;
+import com.wf.wflib.aef.standard.*;
+import com.wf.wflib.client.fx.ClientSoundScheduler;
+import com.wf.wflib.entity.BombletEntity;
+import com.wf.wflib.entity.mist.GasCloud;
+import com.wf.wflib.flight.FlightStageRegistry;
+import com.wf.wflib.fluid.WFFluids;
+import com.wf.wflib.fx.EMPCreator;
+import com.wf.wflib.fx.ExplosionCreator;
+import com.wf.wflib.fx.ExplosionSmallCreator;
+import com.wf.wflib.swarm.SwarmManager;
+import com.wf.wflib.util.FragmentationUtil;
+import com.wf.wflib.warhead.BombletWarhead;
+import com.wf.wflib.warhead.WarheadRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -51,7 +51,7 @@ import java.util.UUID;
 import static com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialIconType.seed;
 
 /**
- * WFCore's custom missile warheads, registered into WF-Ballistics' {@link WarheadRegistry} so the
+ * WFCore's custom missile warheads, registered into WFLib' {@link WarheadRegistry} so the
  * {@link WFMissiles} presets can reference them by id. Each is a self-contained detonation assembled from WF-B's
  * public Advanced Explosion Framework strategies ({@link ExplosionAEF}) — or, for the cluster/skyfall/interceptor
  * warheads, by spawning child {@link MissileEntity}s directly — so the ids resolve at detonation time.
@@ -476,7 +476,7 @@ public final class WFWarheads {
      * Bore a shaft down {@code source.angle()} up to {@link #TUNNEL_MAX_DEPTH} blocks, stopping early when the
      * dig budget runs out or it meets a tungsten-class block, then detonate a modest secondary blast at the end.
      */
-    private static void tunneller(com.wf.wfballistics.warhead.WarheadCarrier source, Vec3 pos) {
+    private static void tunneller(com.wf.wflib.warhead.WarheadCarrier source, Vec3 pos) {
         Level level = source.level();
         if (level.isClientSide) {
             return;
@@ -572,7 +572,7 @@ public final class WFWarheads {
     }
 
     /** Skyfall: spawn a spread of entity-seeking submunitions around the burst point. */
-    private static void skyfall(com.wf.wfballistics.warhead.WarheadCarrier source, Vec3 pos) {
+    private static void skyfall(com.wf.wflib.warhead.WarheadCarrier source, Vec3 pos) {
         Level level = source.level();
         if (!(level instanceof ServerLevel server)) {
             return;
@@ -631,7 +631,7 @@ public final class WFWarheads {
     }
 
     /** Fragmentation storm: scatter FRAG_STORM_CHILDREN small frag missiles over a wide area around the burst. */
-    private static void fragStorm(com.wf.wfballistics.warhead.WarheadCarrier source, Vec3 pos) {
+    private static void fragStorm(com.wf.wflib.warhead.WarheadCarrier source, Vec3 pos) {
         Level level = source.level();
         if (!(level instanceof ServerLevel server)) {
             return;
@@ -675,7 +675,7 @@ public final class WFWarheads {
     }
 
     /** Cluster interceptor: airburst into several small homing child interceptors. */
-    private static void interceptCluster(com.wf.wfballistics.warhead.WarheadCarrier source, Vec3 pos) {
+    private static void interceptCluster(com.wf.wflib.warhead.WarheadCarrier source, Vec3 pos) {
         Level level = source.level();
         if (level.isClientSide) {
             return;

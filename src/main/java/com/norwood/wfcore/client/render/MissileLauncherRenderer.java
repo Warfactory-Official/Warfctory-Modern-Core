@@ -15,15 +15,15 @@ import net.minecraft.world.level.Level;
 
 import com.norwood.wfcore.common.machine.MissileLauncherMachine;
 import com.norwood.wfcore.common.machine.MissileLauncherMachine;
-import com.wf.wfballistics.client.flywheel.FlywheelEffectManager;
-import com.wf.wfballistics.client.render.MissileItemRenderer;
-import com.wf.wfballistics.item.MissileItem;
+import com.wf.wflib.client.flywheel.FlywheelEffectManager;
+import com.wf.wflib.client.render.MissileItemRenderer;
+import com.wf.wflib.item.MissileItem;
 
 /**
  * Renders the loaded missile as a 3D model on the silo's launch pad (the 3x3 steel frame at the base),
  * including the launch sequence: on fire, the model streaks up from the pad to the spawn height over
  * {@link MissileLauncherMachine#ANIM_TICKS} ticks, then hides while the real entity flies and the silo
- * reloads. Reuses WF-Ballistics' {@link MissileItemRenderer}, which fits the airframe's baked model into a
+ * reloads. Reuses WFLib' {@link MissileItemRenderer}, which fits the airframe's baked model into a
  * 1-block, nose-up unit pose (long axis local +Y), so we only place/scale it. Drawn only while formed.
  */
 public class MissileLauncherRenderer implements BlockEntityRenderer<MissileLauncherMachine> {
@@ -61,7 +61,7 @@ public class MissileLauncherRenderer implements BlockEntityRenderer<MissileLaunc
             float frac = Mth.clamp(elapsed / MissileLauncherMachine.ANIM_TICKS, 0f, 1f);
             lift = MissileLauncherMachine.BASE_LIFT
                     + frac * (MissileLauncherMachine.MUZZLE_HEIGHT - MissileLauncherMachine.BASE_LIFT);
-            // Rocket exhaust from the tail as it climbs: WF-Ballistics' real Flywheel trail when the backend
+            // Rocket exhaust from the tail as it climbs: WFLib' real Flywheel trail when the backend
             // is on (kicked off here, then tick-driven by MissileLaunchTrail), else vanilla particles.
             Level level = be.getLevel();
             if (level != null) {
@@ -103,7 +103,7 @@ public class MissileLauncherRenderer implements BlockEntityRenderer<MissileLaunc
 
     /**
      * Emits rocket exhaust — a hot flame core + smoke plume — streaming down from the tail (the model's
-     * base). Uses vanilla FLAME/LARGE_SMOKE rather than WF-Ballistics' {@code rocket_flame}: that trail
+     * base). Uses vanilla FLAME/LARGE_SMOKE rather than WFLib' {@code rocket_flame}: that trail
      * particle lives ~300 ticks (fine for a fast missile that leaves it far behind, but it piles up and
      * lingers on a near-stationary silo launch). Called per render frame during the rise, so keep the
      * per-call count low — it still reads as a continuous plume at any framerate.

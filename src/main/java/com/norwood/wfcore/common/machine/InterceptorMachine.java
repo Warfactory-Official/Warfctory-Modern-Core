@@ -50,13 +50,13 @@ import com.norwood.wfcore.common.data.WFMissiles;
 import com.tterrag.registrate.util.entry.ItemEntry;
 import com.norwood.wfcore.integration.warforge.FactionNotifier;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
-import com.wf.wfballistics.MissileEntity;
-import com.wf.wfballistics.compat.WarforgeCompat;
-import com.wf.wfballistics.flight.FlightStageRegistry;
-import com.wf.wfballistics.item.MissileItem;
-import com.wf.wfballistics.item.MissilePreset;
-import com.wf.wfballistics.sim.MissileSimConfig;
-import com.wf.wfballistics.warhead.WarheadRegistry;
+import com.wf.wflib.MissileEntity;
+import com.wf.wflib.compat.WarforgeCompat;
+import com.wf.wflib.flight.FlightStageRegistry;
+import com.wf.wflib.item.MissileItem;
+import com.wf.wflib.item.MissilePreset;
+import com.wf.wflib.sim.MissileSimConfig;
+import com.wf.wflib.warhead.WarheadRegistry;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -83,7 +83,7 @@ import com.norwood.wfcore.common.gui.InterceptorGui;
  * an EU cost. Interceptor missiles are drawn from {@link MissileFactoryMachine}s linked with a GT Data Stick
  * (shift-click a factory to copy its position, click the battery to link; shift-click the battery to clear) —
  * the same "missiles are too large to carry" premise as the Missile Launch Silo. The engage/launch algorithm
- * mirrors WF-Ballistics' own {@code TurretInterceptorBlockEntity}. A small status GUI (hosted by
+ * mirrors WFLib' own {@code TurretInterceptorBlockEntity}. A small status GUI (hosted by
  * {@link InterceptorBlockEntity}) shows links, ammo and state.
  */
 public class InterceptorMachine extends MultiblockControllerMachine
@@ -97,9 +97,9 @@ public class InterceptorMachine extends MultiblockControllerMachine
     public static final int MAX_LINKS = 8;
     /** EU drained per interception (a burst; must fit inside a single EV+ energy hatch's buffer). */
     public static final long EU_PER_INTERCEPT = 40_000L;
-    /** Ticks between interception attempts (matches WF-Ballistics' turret FIRE_INTERVAL). */
+    /** Ticks between interception attempts (matches WFLib' turret FIRE_INTERVAL). */
     public static final int FIRE_COOLDOWN = 40;
-    /** Engagement radius in blocks (matches WF-Ballistics' turret RANGE). */
+    /** Engagement radius in blocks (matches WFLib' turret RANGE). */
     public static final double DETECT_RANGE = 200.0;
     /** Blocks above the controller the interceptor is released from. */
     public static final int MUZZLE_HEIGHT = 6;

@@ -1,9 +1,9 @@
 package com.norwood.wfcore.common.data;
 
-import com.wf.wfballistics.MissileEntity;
-import com.wf.wfballistics.flight.FlightContext;
-import com.wf.wfballistics.flight.FlightStage;
-import com.wf.wfballistics.flight.FlightStageRegistry;
+import com.wf.wflib.MissileEntity;
+import com.wf.wflib.flight.FlightContext;
+import com.wf.wflib.flight.FlightStage;
+import com.wf.wflib.flight.FlightStageRegistry;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
@@ -19,7 +19,7 @@ import org.jetbrains.annotations.Nullable;
  */
 public final class LoiterUntilDryStage implements FlightStage {
 
-    /** Stage id. The {@code wfcore_} prefix keeps it ours (WF-B namespaces its own as {@code wfballistics:...}). */
+    /** Stage id. The {@code wfcore_} prefix keeps it ours (WF-B namespaces its own as {@code wflib:...}). */
     public static final String ID = "wfcore_loiter_until_dry";
 
     public static final LoiterUntilDryStage INSTANCE = new LoiterUntilDryStage();

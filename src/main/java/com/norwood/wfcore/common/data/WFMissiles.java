@@ -5,12 +5,12 @@ import net.minecraft.resources.ResourceLocation;
 import com.norwood.wfcore.WFCore;
 import com.tterrag.registrate.util.entry.ItemEntry;
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
-import com.wf.wfballistics.MissileEntity;
-import com.wf.wfballistics.MissileModels;
-import com.wf.wfballistics.flight.FlightStageRegistry;
-import com.wf.wfballistics.item.MissileItem;
-import com.wf.wfballistics.item.MissilePreset;
-import com.wf.wfballistics.warhead.WarheadRegistry;
+import com.wf.wflib.MissileEntity;
+import com.wf.wflib.MissileModels;
+import com.wf.wflib.flight.FlightStageRegistry;
+import com.wf.wflib.item.MissileItem;
+import com.wf.wflib.item.MissilePreset;
+import com.wf.wflib.warhead.WarheadRegistry;
 import com.norwood.wfcore.common.sound.WFSounds;
 
 import java.util.Map;

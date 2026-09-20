@@ -1,9 +1,9 @@
 package com.norwood.wfcore.common.data;
 
 import com.norwood.wfcore.WFCore;
-import com.wf.wfballistics.MissileEntity;
-import com.wf.wfballistics.damage.MissileDamageRegistry;
-import com.wf.wfballistics.damage.MissileDamageResponse;
+import com.wf.wflib.MissileEntity;
+import com.wf.wflib.damage.MissileDamageRegistry;
+import com.wf.wflib.damage.MissileDamageResponse;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.DamageTypeTags;
@@ -11,7 +11,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.damagesource.DamageType;
 
 /**
- * WFCore's default missile damage response, registered into WF-Ballistics' {@link MissileDamageRegistry} and
+ * WFCore's default missile damage response, registered into WFLib' {@link MissileDamageRegistry} and
  * applied to every wfcore missile (see {@code WFMissiles.missile}). A missile shrugs off small-arms and flames —
  * TaCZ gun fire (the {@code tacz:bullets} damage-type tag) and anything fire-typed — while still taking explosion
  * damage. Interceptor/CIWS hits go through WF-B's separate {@code damageMissile} path and are unaffected.

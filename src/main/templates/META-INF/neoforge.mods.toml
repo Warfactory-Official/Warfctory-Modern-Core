@@ -40,9 +40,9 @@ license = "${mod_license}"
 
 # Missile entities/items for the missile factory + launch silo multiblocks.
 [[dependencies.${mod_id}]]
-    modId = "wfballistics"
+    modId = "wflib"
     type = "required"
-    versionRange = "[${wfballistics_version},)"
+    versionRange = "[${wflib_version},)"
     ordering = "AFTER"
     side = "BOTH"
 

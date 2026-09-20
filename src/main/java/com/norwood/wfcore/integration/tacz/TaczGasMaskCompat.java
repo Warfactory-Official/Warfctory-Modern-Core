@@ -13,8 +13,8 @@ import java.lang.reflect.Method;
  *
  * <p>Its {@code GasMaskHandler.hasWorkingGasMask(Player)} check (a gas mask in the head slot backed by a
  * non-empty filter) is package-private, so we bind it reflectively once and no-op if the mod is absent —
- * no compile-time dependency on the addon. Used by {@link com.norwood.wfcore.mixin.WFBallisticsGasMaskMixin}
- * so a working gas mask blocks wfballistics gas clouds.
+ * no compile-time dependency on the addon. Used by {@link com.norwood.wfcore.mixin.WFLibGasMaskMixin}
+ * so a working gas mask blocks wflib gas clouds.
  */
 public final class TaczGasMaskCompat {
 
@@ -49,7 +49,7 @@ public final class TaczGasMaskCompat {
                 } catch (Throwable t) {
                     WFCore.LOGGER.warn("[wfcore] TACZ Tactical Breaching is present but "
                             + "GasMaskHandler.hasWorkingGasMask(Player) could not be bound; gas masks will not "
-                            + "block wfballistics gas", t);
+                            + "block wflib gas", t);
                 }
             }
         }

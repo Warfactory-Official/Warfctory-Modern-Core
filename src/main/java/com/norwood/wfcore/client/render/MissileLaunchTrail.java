@@ -16,16 +16,16 @@ import net.neoforged.fml.common.EventBusSubscriber;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.machine.MissileLauncherMachine;
-import com.wf.wfballistics.ModEntities;
-import com.wf.wfballistics.client.flywheel.FlywheelEffectManager;
-import com.wf.wfballistics.client.flywheel.InstancedTrailEffect;
+import com.wf.wflib.ModEntities;
+import com.wf.wflib.client.flywheel.FlywheelEffectManager;
+import com.wf.wflib.client.flywheel.InstancedTrailEffect;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Drives WF-Ballistics' real Flywheel exhaust trail for the launch-rise animation. On fire, the display
+ * Drives WFLib' real Flywheel exhaust trail for the launch-rise animation. On fire, the display
  * missile isn't a real entity, so we attach the trail to a lightweight stand-in {@link Entity} (a bare
  * missile entity that is never added to the world — it only carries a position + heading for the effect to
  * read) and steer it up the silo each client tick to track the rising model. When the missile leaves the

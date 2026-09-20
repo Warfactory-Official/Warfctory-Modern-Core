@@ -100,7 +100,7 @@ sourceSets.main.java {
     // transformer list (e.g. `pl:mixin:APP:wfcore.mixins.json:GuiDebugRemover`) — which is the runtime
     // proof the phase 5 descriptor audit could not give. Four real defects were found and fixed getting
     // there, none of them visible to javac:
-    //   1. wfballistics hard-requires flywheel and warforge needs LDLib2 (it neither declares nor JiJs
+    //   1. wflib hard-requires flywheel and warforge needs LDLib2 (it neither declares nor JiJs
     //      it) — both are now localRuntime. LDLib2's presence does NOT walk back plan §2: no wfcore
     //      class imports com.lowdragmc.*, it is there for warforge alone.
     //   2. NeoForge 21.1 throws on NeoForge.EVENT_BUS.register(obj) when obj has no @SubscribeEvent
@@ -215,7 +215,7 @@ sourceSets.main.java {
     exclude 'com/norwood/wfcore/mixin/ServerLifecycleHooksMixin.java'
     exclude 'com/norwood/wfcore/mixin/WarforgeFobWarpGuardMixin.java'
     exclude 'com/norwood/wfcore/mixin/WarforgeNamePlateMixin.java'
-    exclude 'com/norwood/wfcore/mixin/WFBallisticsGasMaskMixin.java'
+    exclude 'com/norwood/wfcore/mixin/WFLibGasMaskMixin.java'
     // ---------------------------------------------------------------------------------------
 }
 
@@ -325,8 +325,8 @@ dependencies {
     compileOnly "brachy.modularui:modularui-mc1.21.1:${mui_version}"
 
     // --- Ported sibling mods (local jars) ----------------------------------------------------
-    compileOnly files('libs/wfballistics-1.1.6.jar')
-    localRuntime files('libs/wfballistics-1.1.6.jar')
+    compileOnly files('libs/wflib-1.2.0.jar')
+    localRuntime files('libs/wflib-1.2.0.jar')
     compileOnly files('libs/warforge-remaintained-2.4.3.jar')
     localRuntime files('libs/warforge-remaintained-2.4.3.jar')
     compileOnly files('libs/mcgltf-1.21.1.jar')
@@ -342,7 +342,7 @@ dependencies {
     // Neither of these is used by wfcore's own code; both are needed for a dev launch to get past
     // mod construction, because the sibling jars reach for them and supply them themselves.
     //
-    // wfballistics declares flywheel as a REQUIRED dependency in its mods.toml.
+    // wflib declares flywheel as a REQUIRED dependency in its mods.toml.
     localRuntime "dev.engine-room.flywheel:flywheel-neoforge-1.21.1:${flywheel_version}"
     // warforge builds its GUIs on LDLib2 but neither declares it in mods.toml nor jar-in-jars it,
     // so it dies in mod construction with NoClassDefFoundError on LDLib2's BlockUIMenuType$BlockUI.
@@ -424,7 +424,7 @@ var generateModMetadata = tasks.register('generateModMetadata', ProcessResources
             neo_version_range      : neo_version_range,
             loader_version_range   : loader_version_range,
             gtceu_version_range    : gtceu_version_range,
-            wfballistics_version   : wfballistics_version,
+            wflib_version   : wflib_version,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,

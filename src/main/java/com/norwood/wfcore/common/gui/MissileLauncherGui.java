@@ -111,7 +111,7 @@ public final class MissileLauncherGui {
     private static final int STATUS_Y = LAUNCH_Y + LAUNCH_H + 4;
     private static final int STATUS_H = 26; // two text lines of headroom
 
-    // telemetry pane: live state and the most recent WF-Ballistics lifecycle events for this silo's last launch
+    // telemetry pane: live state and the most recent WFLib lifecycle events for this silo's last launch
     private static final int TELEMETRY_X = MAP_PANE_X + MAP_PANE_W + GAP;
     private static final int TELEMETRY_Y = MISS_Y;
     private static final int TELEMETRY_W = 192;
