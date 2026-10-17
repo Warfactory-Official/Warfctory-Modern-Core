@@ -23,7 +23,7 @@ import com.wf.combinedassault.entity.vehicle.AbstractVehicle;
  */
 public final class CombinedAssaultVehicles {
 
-    /** Fallback footprint edge, in blocks, for a vehicle whose model declares no size. */
+    /** Footprint edge, in blocks, for a vehicle that isn't loaded. */
     private static final double DEFAULT_SIZE = 3.0;
 
     private CombinedAssaultVehicles() {}
@@ -57,16 +57,17 @@ public final class CombinedAssaultVehicles {
     }
 
     /**
-     * The volume the vehicle would occupy if deployed at {@code pos}. Horizontally that is CombinedAssault's
-     * {@code structureLength} (the widest span of the model's collision boxes); the vertical extent is the
-     * caller's, so the hard check can never exceed the "keep clear" box drawn for players.
+     * The volume the vehicle would occupy if deployed at {@code pos} facing {@code yRot}: its collider extents
+     * horizontally; the vertical extent is the caller's, so the hard check can never exceed the "keep clear"
+     * box drawn for players.
      */
-    public static AABB footprint(@Nullable BaseVehicleData<?> data, BlockPos pos, double height) {
-        double size = data != null && data.getStructureLength() > 0 ? data.getStructureLength() : DEFAULT_SIZE;
-        double half = size / 2.0;
-        double x = pos.getX() + 0.5;
-        double z = pos.getZ() + 0.5;
-        return new AABB(x - half, pos.getY(), z - half, x + half, pos.getY() + height, z + half);
+    public static AABB footprint(@Nullable BaseVehicleData<?> data, BlockPos pos, float yRot, double height) {
+        Vec3 at = new Vec3(pos.getX() + 0.5, pos.getY(), pos.getZ() + 0.5);
+        if (data == null) {
+            double half = DEFAULT_SIZE / 2.0;
+            return new AABB(at.x - half, at.y, at.z - half, at.x + half, at.y + height, at.z + half);
+        }
+        return data.footprint(at, yRot, height);
     }
 
     /**

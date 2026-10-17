@@ -21,18 +21,22 @@ import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.data.VehicleFactoryRecipes;
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
 import com.norwood.wfcore.common.recipe.condition.ResearchRecipeCondition;
 import com.norwood.wfcore.integration.combinedassault.CombinedAssaultVehicles;
+import com.norwood.wfcore.integration.combinedassault.VehicleOverrides;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * KubeJS binding exposed as {@code WFVehicles}: a custom handler for authoring vehicle-factory recipes.
+ * KubeJS binding exposed as {@code WFVehicles}: vehicle-factory recipes ({@link #recipe}) and CombinedAssault
+ * {@code energy_info} overrides ({@link #override}).
  *
  * <p>
  * GTCEu's generic KubeJS recipe builder is unusable for this recipe on this pack's Rhino: every
@@ -72,6 +76,74 @@ public class WFVehicleBindings {
     /** Every currently-loaded CombinedAssault vehicle id, sorted — the roster a pack can write recipes against. */
     public List<String> roster() {
         return CombinedAssaultVehicles.roster();
+    }
+
+    /**
+     * Open an {@code energy_info} override for CombinedAssault vehicle {@code vehicleId}, or {@code "*"} for every
+     * fuel vehicle. startup_scripts only: both sides must apply it before content loads.
+     *
+     * <pre>{@code
+     * WFVehicles.override('*').fuel('gtceu:diesel', 1.0).fuel('#combinedassault:fuel', 1.0).register()
+     * WFVehicles.override('combinedassault:m1a2').tank(1600).register()
+     * WFVehicles.override('combinedassault:mavic').electric(20, 2048).register()
+     * }</pre>
+     */
+    public VehicleEnergy override(String vehicleId) {
+        if (!vehicleId.equals(VehicleOverrides.ALL) && ResourceLocation.tryParse(vehicleId) == null) {
+            throw new IllegalArgumentException("Invalid vehicle id: '" + vehicleId + "'");
+        }
+        return new VehicleEnergy(vehicleId);
+    }
+
+    /** {@code energy_info} fields set over the vehicle's def; unset fields keep the def's. */
+    public static final class VehicleEnergy {
+
+        private final String vehicle;
+        private final JsonObject info = new JsonObject();
+        private JsonArray fuels;
+
+        private VehicleEnergy(String vehicle) {
+            this.vehicle = vehicle;
+        }
+
+        /** Tank size, mB. */
+        public VehicleEnergy tank(int mb) {
+            info.addProperty("tank_capacity", mb);
+            return this;
+        }
+
+        /** Burn at full power, energy units (mB at efficiency 1) per tick. */
+        public VehicleEnergy consumption(double perTick) {
+            info.addProperty("energy_consumption_per_tick", perTick);
+            return this;
+        }
+
+        /** Accepted fluid id or {@code #tag}, matched in call order. First call replaces the def's list. */
+        public VehicleEnergy fuel(String fluid, double efficiency) {
+            if (fuels == null) {
+                fuels = new JsonArray();
+                info.add("fuels", fuels);
+            }
+            JsonObject entry = new JsonObject();
+            entry.addProperty("fluid", fluid);
+            entry.addProperty("efficiency", efficiency);
+            fuels.add(entry);
+            return this;
+        }
+
+        /** Battery instead of tank: {@code fePerUnit} FE per energy unit, charge capped at {@code chargeRate} FE/t. */
+        public VehicleEnergy electric(int fePerUnit, int chargeRate) {
+            info.addProperty("energy_type", "electric");
+            info.addProperty("fe_per_unit", fePerUnit);
+            info.addProperty("charge_rate", chargeRate);
+            info.add("fuels", JsonNull.INSTANCE);
+            fuels = null;
+            return this;
+        }
+
+        public void register() {
+            VehicleOverrides.add(vehicle, info);
+        }
     }
 
     /** Open a builder for a Light Ground Vehicle Factory recipe. */

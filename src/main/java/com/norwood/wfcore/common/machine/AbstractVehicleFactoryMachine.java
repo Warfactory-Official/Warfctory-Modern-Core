@@ -107,7 +107,7 @@ public abstract class AbstractVehicleFactoryMachine extends WorkableElectricMult
 
     /** The volume that must be clear for {@code data} to deploy at {@link #getSpawnPos()}. */
     protected AABB spawnFootprint(@Nullable BaseVehicleData<?> data) {
-        return CombinedAssaultVehicles.footprint(data, getSpawnPos(), getClearanceHeight());
+        return CombinedAssaultVehicles.footprint(data, getSpawnPos(), getSpawnYaw(), getClearanceHeight());
     }
 
     /**
