@@ -9,17 +9,20 @@ import net.minecraft.world.level.chunk.ChunkGenerator;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.RandomState;
 
-import com.norwood.wfcore.WFCore;
+import com.mojang.logging.LogUtils;
+
+import org.slf4j.Logger;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.OptionalInt;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
@@ -27,22 +30,15 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Every road in a level: centrelines resampled and bucketed by chunk up front; terrain probe and elevation profile
- * per link resolved on first use.
+ * Every road in a level: topology + stations bucketed by chunk up front; probe and profile per link on first use.
  *
- * <p>Link i's final profile depends on:
- * <ul>
- * <li>its own probe;
- * <li>the unpinned profiles of every link meeting at its junctions (junction height = mean of their end decks);
- * <li>the final profile of the nearest lower-indexed road within {@link #SNAP_RADIUS} of its start, for tracks
- * with no {@code from}.
- * </ul>
- * Dependencies point at unpinned solves (leaves) or strictly lower indices => acyclic, and the result equals the
- * eager all-links solve.
+ * <p>Link i's final profile depends on its probe, the unpinned profiles of the links sharing its junctions, and
+ * the final profiles of lower-indexed links it attaches to or crosses ({@link RoadTopology} order). Acyclic =>
+ * lazy result == eager all-links solve.
  */
 public final class RoadIndex {
 
-    private static final double SNAP_RADIUS = 8.0;
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final ForkJoinPool PROBE_POOL = new ForkJoinPool(Runtime.getRuntime().availableProcessors(),
             pool -> {
@@ -51,47 +47,67 @@ public final class RoadIndex {
                 return thread;
             }, null, false);
 
-    public static final RoadIndex EMPTY = new RoadIndex(List.of(), new Long2ObjectOpenHashMap<>(), new Runs(), 0.0,
-            null, null, new int[0], new int[0], new int[0], new long[0], new Long2ObjectOpenHashMap<>());
+    public static final RoadIndex EMPTY = new RoadIndex(List.of(), List.of(), null, null, List.of());
 
     private final List<LinkGeometry> links;
-    private final Long2ObjectMap<int[]> byChunk;
-    private final Runs runs;
+    private final List<RoadType> types;
+    private final Long2ObjectMap<int[]> byChunk = new Long2ObjectOpenHashMap<>();
+    private final Runs runs = new Runs();
     private final int chunkMargin;
 
     private final RoadProfile.Terrain terrain;
     private final RoadProbeCache cache;
-    private final int[] from;
-    private final int[] to;
-    private final int[] network;
+    private final List<RoadTopology.Piece> pieces;
     private final long[] probeKeys;
-    private final Long2ObjectMap<IntArrayList> junctionEnds;
+    private final Long2ObjectMap<IntArrayList> junctionEnds = new Long2ObjectOpenHashMap<>();
     private final Once[] probed;
     private final Once[] unpinned;
     private final Once[] resolved;
-    private final int[] unpinnedFirst;
-    private final int[] unpinnedLast;
+    private final RoadProfile.Profile[] unpinnedProfile;
 
-    private RoadIndex(List<LinkGeometry> links, Long2ObjectMap<int[]> byChunk, Runs runs, double maxHalfWidth,
-            RoadProfile.Terrain terrain, RoadProbeCache cache, int[] from, int[] to, int[] network, long[] probeKeys,
-            Long2ObjectMap<IntArrayList> junctionEnds) {
-        this.links = links;
-        this.byChunk = byChunk;
-        this.runs = runs;
-        this.chunkMargin = Math.max(1, (int) Math.ceil(maxHalfWidth / 16.0));
+    /** One link's stations; {@code type} indexes the type list given to {@code build}, -1 junction = none. */
+    public record Source(int network, int from, int to, RoadSpec spec, int type, double[] xs, double[] zs) {
+
+        public static Source of(int network, RoadNetwork.Link link, RoadSpec spec, int type) {
+            double[][] stations = RoadCurve.stations(link);
+            return new Source(network, link.from().orElse(-1), link.to().orElse(-1), spec, type, stations[0],
+                    stations[1]);
+        }
+    }
+
+    private RoadIndex(List<RoadTopology.Piece> pieces, List<RoadType> types, RoadProfile.Terrain terrain,
+            RoadProbeCache cache, List<Long> keys) {
+        this.pieces = pieces;
+        this.types = types;
         this.terrain = terrain;
         this.cache = cache;
-        this.from = from;
-        this.to = to;
-        this.network = network;
-        this.probeKeys = probeKeys;
-        this.junctionEnds = junctionEnds;
-        int n = links.size();
+        int n = pieces.size();
+        this.links = new ArrayList<>(n);
+        this.probeKeys = new long[n];
+        double maxHalfWidth = 0.0;
+        Long2ObjectMap<IntArrayList> building = new Long2ObjectOpenHashMap<>();
+        for (int i = 0; i < n; i++) {
+            RoadTopology.Piece piece = pieces.get(i);
+            LinkGeometry link = new LinkGeometry(piece.origin.spec(), piece.origin.type(), piece.xs, piece.zs);
+            links.add(link);
+            probeKeys[i] = keys.get(i);
+            maxHalfWidth = Math.max(maxHalfWidth, link.spec.clearedHalfWidth());
+            if (piece.startJunction >= 0) {
+                junctionEnds.computeIfAbsent(piece.startJunction, k -> new IntArrayList()).add(i * 2);
+            }
+            if (piece.endJunction >= 0) {
+                junctionEnds.computeIfAbsent(piece.endJunction, k -> new IntArrayList()).add(i * 2 + 1);
+            }
+            bucket(building, runs, i, link);
+        }
+        for (Long2ObjectMap.Entry<IntArrayList> entry : building.long2ObjectEntrySet()) {
+            byChunk.put(entry.getLongKey(), entry.getValue().toIntArray());
+        }
+        this.chunkMargin = Math.max(1, (int) Math.ceil(maxHalfWidth / 16.0));
         this.probed = Once.array(n);
         this.unpinned = Once.array(n);
         this.resolved = Once.array(n);
-        this.unpinnedFirst = new int[n];
-        this.unpinnedLast = new int[n];
+        this.unpinnedProfile = new RoadProfile.Profile[n];
     }
 
     public boolean isEmpty() {
@@ -110,7 +126,16 @@ public final class RoadIndex {
         return total;
     }
 
-    /** Stations on the ground / bridge / tunnel, indexed by {@link RoadProfile} modes. Resolves every link. */
+    RoadTopology.Piece piece(int index) {
+        return pieces.get(index);
+    }
+
+    /** The datapack type a link was built from. */
+    public RoadType type(LinkGeometry link) {
+        return types.get(link.type);
+    }
+
+    /** Stations on ground / bridge / tunnel, indexed by {@link RoadProfile} modes. Resolves every link. */
     public long[] modeHistogram() {
         long[] counts = new long[3];
         for (int i = 0; i < links.size(); i++) {
@@ -122,14 +147,8 @@ public final class RoadIndex {
         return counts;
     }
 
-    /**
-     * Every contiguous slice of a link's stations, in flat parallel arrays rather than objects. The rasteriser
-     * touches these once per column of every chunk a road passes through, so the bounding box and the corridor
-     * width are precomputed here — recomputing {@code gradedHalfWidth()} down a chain of record accessors 256
-     * times per chunk is pure overhead, and the box is what lets most runs be rejected without looking at a
-     * single station.
-     */
-    public static final class Runs {
+    /** Per-chunk slices of a link's stations: flat arrays, box + corridor width precomputed for rejection. */
+    static final class Runs {
 
         int[] link = new int[64];
         int[] first = new int[64];
@@ -144,26 +163,24 @@ public final class RoadIndex {
         void add(int linkIndex, int firstStation, int lastStation, LinkGeometry geometry) {
             if (size == link.length) {
                 int capacity = size * 2;
-                link = java.util.Arrays.copyOf(link, capacity);
-                first = java.util.Arrays.copyOf(first, capacity);
-                last = java.util.Arrays.copyOf(last, capacity);
-                minX = java.util.Arrays.copyOf(minX, capacity);
-                minZ = java.util.Arrays.copyOf(minZ, capacity);
-                maxX = java.util.Arrays.copyOf(maxX, capacity);
-                maxZ = java.util.Arrays.copyOf(maxZ, capacity);
-                reach = java.util.Arrays.copyOf(reach, capacity);
+                link = Arrays.copyOf(link, capacity);
+                first = Arrays.copyOf(first, capacity);
+                last = Arrays.copyOf(last, capacity);
+                minX = Arrays.copyOf(minX, capacity);
+                minZ = Arrays.copyOf(minZ, capacity);
+                maxX = Arrays.copyOf(maxX, capacity);
+                maxZ = Arrays.copyOf(maxZ, capacity);
+                reach = Arrays.copyOf(reach, capacity);
             }
             double lowX = Double.MAX_VALUE;
             double lowZ = Double.MAX_VALUE;
             double highX = -Double.MAX_VALUE;
             double highZ = -Double.MAX_VALUE;
             for (int station = firstStation; station <= lastStation; station++) {
-                double x = geometry.x(station);
-                double z = geometry.z(station);
-                lowX = Math.min(lowX, x);
-                lowZ = Math.min(lowZ, z);
-                highX = Math.max(highX, x);
-                highZ = Math.max(highZ, z);
+                lowX = Math.min(lowX, geometry.x(station));
+                lowZ = Math.min(lowZ, geometry.z(station));
+                highX = Math.max(highX, geometry.x(station));
+                highZ = Math.max(highZ, geometry.z(station));
             }
             link[size] = linkIndex;
             first[size] = firstStation;
@@ -172,7 +189,7 @@ public final class RoadIndex {
             minZ[size] = (float) lowZ;
             maxX[size] = (float) highX;
             maxZ[size] = (float) highZ;
-            reach[size] = (float) geometry.type().clearedHalfWidth();
+            reach[size] = (float) geometry.spec.clearedHalfWidth();
             size++;
         }
     }
@@ -205,14 +222,14 @@ public final class RoadIndex {
         return runs.reach[run];
     }
 
-    /** True when any part of the run's bounding box comes within its corridor width of the given block box. */
+    /** Run's box, widened by its corridor, meets the block box. */
     public boolean runReaches(int run, int minBlockX, int minBlockZ, int maxBlockX, int maxBlockZ) {
         float r = runs.reach[run];
         return runs.maxX[run] >= minBlockX - r && runs.minX[run] <= maxBlockX + r
                 && runs.maxZ[run] >= minBlockZ - r && runs.minZ[run] <= maxBlockZ + r;
     }
 
-    /** Appends every run that can reach into the given chunk, including the corridor margin around it. */
+    /** Every run that can reach into the chunk, corridor margin included. */
     public void collectRuns(int chunkX, int chunkZ, IntArrayList out) {
         out.clear();
         for (int dx = -chunkMargin; dx <= chunkMargin; dx++) {
@@ -231,30 +248,20 @@ public final class RoadIndex {
 
     public static RoadIndex build(ResourceKey<Level> dimension, ChunkGenerator generator, RandomState randomState,
             LevelHeightAccessor heights, Registry<RoadNetwork> networks, Registry<RoadType> types, long seed,
-            java.nio.file.Path cacheFile) {
-        return build(dimension, new GeneratorTerrain(generator, randomState, heights), networks, types, seed,
-                cacheFile);
-    }
-
-    static RoadIndex build(ResourceKey<Level> dimension, RoadProfile.Terrain terrain, Registry<RoadNetwork> networks,
-            Registry<RoadType> types, long seed, java.nio.file.Path cacheFile) {
+            Path cacheFile) {
         if (networks.size() == 0) {
             return EMPTY;
         }
         List<RoadType> ranked = new ArrayList<>(types.stream().toList());
         if (ranked.isEmpty()) {
-            WFCore.LOGGER.warn("Road networks are loaded but no wfcore:road_type is defined; no roads will generate");
+            LOGGER.warn("Road networks are loaded but no wfcore:road_type is defined; no roads will generate");
             return EMPTY;
         }
         ranked.sort((a, b) -> Integer.compare(b.match().priority(), a.match().priority()));
 
-        List<LinkGeometry> links = new ArrayList<>();
-        List<RoadNetwork.Link> sources = new ArrayList<>();
-        IntArrayList networkOf = new IntArrayList();
+        List<Source> sources = new ArrayList<>();
         int unmatched = 0;
-        double maxHalfWidth = 0.0;
         int networkOrdinal = 0;
-
         for (Map.Entry<ResourceKey<RoadNetwork>, RoadNetwork> entry : networks.entrySet()) {
             RoadNetwork network = entry.getValue();
             if (!network.dimension().equals(dimension)) {
@@ -262,82 +269,77 @@ public final class RoadIndex {
             }
             for (RoadNetwork.Link link : network.links()) {
                 double[][] stations = RoadCurve.stations(link);
-                RoadType type = choose(ranked, link, stations[0].length);
-                if (type == null) {
+                int type = choose(ranked, link, stations[0].length);
+                if (type < 0) {
                     unmatched++;
                     continue;
                 }
-                links.add(new LinkGeometry(type, stations[0], stations[1]));
-                sources.add(link);
-                networkOf.add(networkOrdinal);
-                maxHalfWidth = Math.max(maxHalfWidth, type.clearedHalfWidth());
+                sources.add(new Source(networkOrdinal, link.from().orElse(-1), link.to().orElse(-1),
+                        ranked.get(type).spec(), type, stations[0], stations[1]));
             }
             networkOrdinal++;
         }
         if (unmatched > 0) {
-            WFCore.LOGGER.warn("{} road link(s) matched no wfcore:road_type and were skipped", unmatched);
+            LOGGER.warn("{} road link(s) matched no wfcore:road_type and were skipped", unmatched);
         }
-        if (links.isEmpty()) {
-            return EMPTY;
-        }
-
-        int duplicates = dropShadowed(links, sources, networkOf);
-        if (duplicates > 0) {
-            WFCore.LOGGER.info("Roads: dropped {} link(s) that duplicate an existing route", duplicates);
-        }
-
-        int n = links.size();
-        int[] from = new int[n];
-        int[] to = new int[n];
-        long[] probeKeys = new long[n];
-        Long2ObjectMap<IntArrayList> junctionEnds = new Long2ObjectOpenHashMap<>();
-        Long2ObjectMap<IntArrayList> building = new Long2ObjectOpenHashMap<>();
-        Runs runs = new Runs();
-        LongOpenHashSet validKeys = new LongOpenHashSet();
-        for (int i = 0; i < n; i++) {
-            RoadNetwork.Link source = sources.get(i);
-            from[i] = source.from().orElse(-1);
-            to[i] = source.to().orElse(-1);
-            if (from[i] >= 0) {
-                junctionEnds.computeIfAbsent(junctionKey(networkOf.getInt(i), from[i]), k -> new IntArrayList())
-                        .add(i * 2);
-            }
-            if (to[i] >= 0) {
-                junctionEnds.computeIfAbsent(junctionKey(networkOf.getInt(i), to[i]), k -> new IntArrayList())
-                        .add(i * 2 + 1);
-            }
-            probeKeys[i] = RoadProbeCache.key(seed, links.get(i));
-            validKeys.add(probeKeys[i]);
-            bucket(building, runs, i, links.get(i));
-        }
-        Long2ObjectMap<int[]> byChunk = new Long2ObjectOpenHashMap<>(building.size());
-        for (Long2ObjectMap.Entry<IntArrayList> entry : building.long2ObjectEntrySet()) {
-            byChunk.put(entry.getLongKey(), entry.getValue().toIntArray());
-        }
-
-        long cacheStarted = System.nanoTime();
-        RoadProbeCache cache = RoadProbeCache.open(cacheFile, validKeys);
-        WFCore.LOGGER.info("Roads: terrain cache opened in {} ms", (System.nanoTime() - cacheStarted) / 1_000_000L);
-        return new RoadIndex(links, byChunk, runs, maxHalfWidth, terrain, cache, from, to, networkOf.toIntArray(),
-                probeKeys, junctionEnds);
+        return build(new GeneratorTerrain(generator, randomState, heights), sources, ranked, seed, cacheFile);
     }
 
-    private static long junctionKey(int network, int junction) {
-        return ((long) network << 32) | junction;
+    /** {@code cacheFile == null} => no probe cache. */
+    static RoadIndex build(RoadProfile.Terrain terrain, List<Source> sources, List<RoadType> types, long seed,
+            Path cacheFile) {
+        if (sources.isEmpty()) {
+            return EMPTY;
+        }
+        Integer[] order = new Integer[sources.size()];
+        for (int i = 0; i < order.length; i++) {
+            order[i] = i;
+        }
+        Arrays.sort(order, (a, b) -> {
+            Source ca = sources.get(a);
+            Source cb = sources.get(b);
+            int byClass = Integer.compare(cb.spec().priority(), ca.spec().priority());
+            if (byClass != 0) {
+                return byClass;
+            }
+            int byLength = Integer.compare(cb.xs().length, ca.xs().length);
+            return byLength != 0 ? byLength : Integer.compare(a, b);
+        });
+        List<Source> ranked = new ArrayList<>(order.length);
+        for (Integer i : order) {
+            ranked.add(sources.get(i));
+        }
+
+        long started = System.nanoTime();
+        List<RoadTopology.Piece> pieces = RoadTopology.build(ranked);
+        LOGGER.info("Roads: {} link(s) -> {} piece(s) after overlap trimming in {} ms", sources.size(),
+                pieces.size(), (System.nanoTime() - started) / 1_000_000L);
+
+        List<Long> keys = new ArrayList<>(pieces.size());
+        LongOpenHashSet validKeys = new LongOpenHashSet();
+        for (RoadTopology.Piece piece : pieces) {
+            long key = RoadProbeCache.key(seed, piece.origin.spec().grade().sampleSpacing(), piece.xs, piece.zs);
+            keys.add(key);
+            validKeys.add(key);
+        }
+        RoadProbeCache cache = cacheFile == null ? null : RoadProbeCache.open(cacheFile, validKeys);
+        return new RoadIndex(pieces, types, terrain, cache, keys);
     }
 
     private void probe(int index) {
         probed[index].run(() -> {
             LinkGeometry link = links.get(index);
-            short[][] cached = cache.get(probeKeys[index]);
+            short[][] cached = cache == null ? null : cache.get(probeKeys[index]);
             if (cached != null && cached[0].length == link.stationCount()) {
                 link.setTerrain(cached[0], cached[1]);
                 return;
             }
             long started = System.nanoTime();
             awaitOnProbePool(() -> RoadProfile.probe(link, terrain));
-            cache.put(probeKeys[index], link.groundArray(), link.waterArray());
-            WFCore.LOGGER.info("Roads: probed link {} ({} stations) in {} ms", index, link.stationCount(),
+            if (cache != null) {
+                cache.put(probeKeys[index], link.ground, link.water);
+            }
+            LOGGER.debug("Roads: probed link {} ({} stations) in {} ms", index, link.stationCount(),
                     (System.nanoTime() - started) / 1_000_000L);
         });
     }
@@ -365,76 +367,286 @@ public final class RoadIndex {
         }
     }
 
-    private void solveUnpinned(int index) {
+    private RoadProfile.Profile unpinned(int index) {
         unpinned[index].run(() -> {
             probe(index);
-            RoadProfile.Profile profile = RoadProfile.solve(links.get(index), OptionalInt.empty(), OptionalInt.empty());
-            unpinnedFirst[index] = profile.deck()[0];
-            unpinnedLast[index] = profile.deck()[profile.deck().length - 1];
+            unpinnedProfile[index] = RoadProfile.solve(links.get(index));
         });
+        return unpinnedProfile[index];
     }
 
-    private OptionalInt junctionHeight(int network, int junction) {
-        IntArrayList ends = junctionEnds.get(junctionKey(network, junction));
+    private int junctionHeight(long junction) {
+        IntArrayList ends = junctionEnds.get(junction);
         double sum = 0.0;
         for (int i = 0; i < ends.size(); i++) {
             int end = ends.getInt(i);
-            int link = end >> 1;
-            solveUnpinned(link);
-            sum += (end & 1) == 0 ? unpinnedFirst[link] : unpinnedLast[link];
+            short[] deck = unpinned(end >> 1).deck();
+            sum += (end & 1) == 0 ? deck[0] : deck[deck.length - 1];
         }
-        return OptionalInt.of((int) Math.round(sum / ends.size()));
+        return (int) Math.round(sum / ends.size());
     }
 
     private void resolve(int index) {
         resolved[index].run(() -> {
             LinkGeometry geometry = links.get(index);
+            RoadTopology.Piece piece = pieces.get(index);
             probe(index);
-            OptionalInt pinStart = from[index] >= 0
-                    ? junctionHeight(network[index], from[index])
-                    : snapTo(index, geometry.x(0), geometry.z(0));
-            OptionalInt pinEnd = to[index] >= 0 ? junctionHeight(network[index], to[index]) : OptionalInt.empty();
-            RoadProfile.Profile profile = RoadProfile.solve(geometry, pinStart, pinEnd);
+            int last = geometry.stationCount() - 1;
+            Pins pins = new Pins();
+            if (piece.startJunction >= 0) {
+                pins.add(0, junctionHeight(piece.startJunction));
+            } else if (piece.startAttach >= 0) {
+                pins.add(0, link(piece.startAttach).deck(piece.startAttachAt));
+            }
+            if (piece.endJunction >= 0) {
+                pins.add(last, junctionHeight(piece.endJunction));
+            } else if (piece.endAttach >= 0) {
+                pins.add(last, link(piece.endAttach).deck(piece.endAttachAt));
+            }
+            IntArrayList forced = new IntArrayList();
+            int count = piece.crossings.size() / 3;
+            if (count > 0) {
+                RoadProfile.Profile own = unpinned(index);
+                Integer[] order = new Integer[count];
+                for (int c = 0; c < count; c++) {
+                    order[c] = c * 3;
+                }
+                Arrays.sort(order, (a, b) -> Integer.compare(piece.crossings.getInt(a), piece.crossings.getInt(b)));
+                int[] stations = new int[count];
+                int[][] options = new int[count][];
+                double[] skip = new double[count];
+                for (int c = 0; c < count; c++) {
+                    int station = piece.crossings.getInt(order[c]);
+                    int partner = piece.crossings.getInt(order[c] + 1);
+                    int partnerStation = piece.crossings.getInt(order[c] + 2);
+                    LinkGeometry other = link(partner);
+                    int slack = endSlack(geometry, other);
+                    stations[c] = station;
+                    options[c] = crossingOptions(geometry.spec, own.deck()[station], other.spec,
+                            other.deck(partnerStation), other.mode(partnerStation),
+                            partnerStation <= slack || partnerStation >= other.stationCount() - 1 - slack);
+                    skip[c] = SKIP_COST * (pieces.size() - partner);
+                }
+                int[] chosen = chooseCrossings(stations, options, skip, pins.at(), pins.value(),
+                        geometry.spec.grade().max() * RoadCurve.STATION_SPACING);
+                for (int c = 0; c < count; c++) {
+                    if (chosen[c] == Integer.MIN_VALUE) {
+                        continue;
+                    }
+                    pins.add(stations[c], chosen[c]);
+                    int partner = piece.crossings.getInt(order[c] + 1);
+                    int partnerStation = piece.crossings.getInt(order[c] + 2);
+                    LinkGeometry other = link(partner);
+                    if (chosen[c] - other.deck(partnerStation) >= headroom(other.spec, other.mode(partnerStation)) + 2) {
+                        int reach = overpassReach(geometry, stations[c], other, partnerStation);
+                        forced.add(stations[c] - reach);
+                        forced.add(stations[c] + reach);
+                    }
+                }
+            }
+            RoadProfile.Profile profile = RoadProfile.solve(geometry, pins.at(), pins.value(), forced.toIntArray());
             geometry.setProfile(profile.deck(), profile.mode(), profile.portal());
         });
     }
 
-    /** Deck of the nearest station within {@link #SNAP_RADIUS} on a link below {@code index}; ties keep the first. */
-    private OptionalInt snapTo(int index, double x, double z) {
-        int chunkX = (int) Math.floor(x) >> 4;
-        int chunkZ = (int) Math.floor(z) >> 4;
-        double best = SNAP_RADIUS * SNAP_RADIUS;
-        int bestLink = -1;
-        int bestStation = -1;
-        for (int dx = -1; dx <= 1; dx++) {
-            for (int dz = -1; dz <= 1; dz++) {
-                int[] found = byChunk.get(ChunkPos.asLong(chunkX + dx, chunkZ + dz));
-                if (found == null) {
-                    continue;
-                }
-                for (int run : found) {
-                    if (runs.link[run] >= index) {
+    /** Stations ascending; first-added wins on a shared station. */
+    private static final class Pins {
+
+        private final IntArrayList at = new IntArrayList(4);
+        private final IntArrayList value = new IntArrayList(4);
+
+        void add(int station, int height) {
+            int i = 0;
+            while (i < at.size() && at.getInt(i) < station) {
+                i++;
+            }
+            if (i < at.size() && at.getInt(i) == station) {
+                return;
+            }
+            at.add(i, station);
+            value.add(i, height);
+        }
+
+        int[] at() {
+            return at.toIntArray();
+        }
+
+        int[] value() {
+            return value.toIntArray();
+        }
+    }
+
+    static int headroom(RoadSpec spec, byte mode) {
+        return mode == RoadProfile.TUNNEL ? spec.tunnelHeight() + 1 : spec.clearance();
+    }
+
+    private static int endSlack(LinkGeometry geometry, LinkGeometry other) {
+        return (int) Math.ceil(geometry.spec.outerHalfWidth() + other.spec.outerHalfWidth()
+                + RoadTopology.SHADOW_GAP);
+    }
+
+    /** Per-crossing skip cost unit; above any height deviation, scaled by partner importance. */
+    static final double SKIP_COST = 1.0e6;
+    /** Per block two consecutive pins exceed grade by; between deviation and skip. */
+    static final double STEEP_COST = 1.0e5;
+    /** Consecutive pins may need at most this x grade; beyond => skip. */
+    static final double MAX_STEEPNESS = 3.0;
+
+    /**
+     * Heights the lesser road may take where it crosses the greater one at {@code partner}, as (height, cost =
+     * |height - own|) pairs: at grade, over / under by the lower road's headroom + deck, and its own height when
+     * already that clear. The lesser road's headroom assumes a tunnel: its final mode is unknown until pinned. A
+     * crossing at the greater road's end is a T => at grade only.
+     */
+    static int[] crossingOptions(RoadSpec spec, int own, RoadSpec partnerSpec, int partner, byte partnerMode,
+            boolean partnerEnd) {
+        int over = partner + headroom(partnerSpec, partnerMode) + 2;
+        int under = partner - Math.max(spec.clearance(), spec.tunnelHeight() + 1) - 2;
+        IntArrayList out = new IntArrayList(8);
+        out.add(partner);
+        out.add(Math.abs(partner - own));
+        if (!partnerEnd) {
+            out.add(over);
+            out.add(Math.abs(over - own));
+            out.add(under);
+            out.add(Math.abs(under - own));
+            if (own >= over || own <= under) {
+                out.add(own);
+                out.add(0);
+            }
+        }
+        return out.toIntArray();
+    }
+
+    /**
+     * Viterbi over crossings in station order: each takes one of its (height, cost) options or is skipped (cost
+     * {@code skip}); consecutive pins, fixed end pins included, must be reachable within {@code MAX_STEEPNESS x
+     * maxRise} per station, paying {@link #STEEP_COST} per block over {@code maxRise}. Minimises option costs +
+     * steepness + skips. Fixed pins never skip; two fixed pins are never tested against each other.
+     *
+     * @return height per crossing, {@link Integer#MIN_VALUE} = skipped
+     */
+    static int[] chooseCrossings(int[] stations, int[][] options, double[] skip, int[] fixedAt, int[] fixedY,
+            double maxRise) {
+        int crossings = stations.length;
+        int nodes = crossings + fixedAt.length;
+        int[] at = new int[nodes];
+        int[][] values = new int[nodes][];
+        double[] skipCost = new double[nodes];
+        int[] crossingOf = new int[nodes];
+        Integer[] order = new Integer[nodes];
+        for (int i = 0; i < nodes; i++) {
+            order[i] = i;
+        }
+        Arrays.sort(order, (a, b) -> {
+            int sa = a < crossings ? stations[a] : fixedAt[a - crossings];
+            int sb = b < crossings ? stations[b] : fixedAt[b - crossings];
+            return sa != sb ? Integer.compare(sa, sb) : Integer.compare(b, a);
+        });
+        for (int k = 0; k < nodes; k++) {
+            int i = order[k];
+            if (i < crossings) {
+                at[k] = stations[i];
+                values[k] = options[i];
+                skipCost[k] = skip[i];
+                crossingOf[k] = i;
+            } else {
+                at[k] = fixedAt[i - crossings];
+                values[k] = new int[] {fixedY[i - crossings], 0};
+                crossingOf[k] = -1;
+            }
+        }
+        // Fixed nodes cannot be skipped: counted apart, never summed as infinity (inf - inf = NaN).
+        double[] skipPrefix = new double[nodes + 1];
+        int[] fixedPrefix = new int[nodes + 1];
+        for (int k = 0; k < nodes; k++) {
+            skipPrefix[k + 1] = skipPrefix[k] + skipCost[k];
+            fixedPrefix[k + 1] = fixedPrefix[k] + (crossingOf[k] < 0 ? 1 : 0);
+        }
+        double[][] best = new double[nodes][];
+        int[][] fromNode = new int[nodes][];
+        int[][] fromOption = new int[nodes][];
+        for (int j = 0; j < nodes; j++) {
+            int m = values[j].length / 2;
+            best[j] = new double[m];
+            fromNode[j] = new int[m];
+            fromOption[j] = new int[m];
+            for (int o = 0; o < m; o++) {
+                int v = values[j][o * 2];
+                double local = values[j][o * 2 + 1];
+                best[j][o] = fixedPrefix[j] == 0 ? skipPrefix[j] + local : Double.POSITIVE_INFINITY;
+                fromNode[j][o] = -1;
+                for (int i = 0; i < j; i++) {
+                    if (fixedPrefix[j] != fixedPrefix[i + 1]) {
                         continue;
                     }
-                    LinkGeometry link = links.get(runs.link[run]);
-                    for (int s = runs.first[run]; s <= runs.last[run]; s++) {
-                        double dxs = link.x(s) - x;
-                        double dzs = link.z(s) - z;
-                        double distance = dxs * dxs + dzs * dzs;
-                        if (distance < best) {
-                            best = distance;
-                            bestLink = runs.link[run];
-                            bestStation = s;
+                    double between = skipPrefix[j] - skipPrefix[i + 1];
+                    for (int p = 0; p < values[i].length / 2; p++) {
+                        double rise = Math.abs(v - values[i][p * 2]);
+                        double budget = maxRise * (at[j] - at[i]);
+                        double steep = 0.0;
+                        if (crossingOf[i] >= 0 || crossingOf[j] >= 0) {
+                            if (rise > MAX_STEEPNESS * budget + 1e-9) {
+                                continue;
+                            }
+                            steep = Math.max(0.0, rise - budget) * STEEP_COST;
+                        }
+                        double cost = best[i][p] + between + local + steep;
+                        if (cost < best[j][o]) {
+                            best[j][o] = cost;
+                            fromNode[j][o] = i;
+                            fromOption[j][o] = p;
                         }
                     }
                 }
             }
         }
-        if (bestLink < 0) {
-            return OptionalInt.empty();
+        double total = fixedPrefix[nodes] == 0 ? skipPrefix[nodes] : Double.POSITIVE_INFINITY;
+        int lastNode = -1;
+        int lastOption = -1;
+        for (int i = 0; i < nodes; i++) {
+            if (fixedPrefix[nodes] != fixedPrefix[i + 1]) {
+                continue;
+            }
+            for (int p = 0; p < values[i].length / 2; p++) {
+                double cost = best[i][p] + skipPrefix[nodes] - skipPrefix[i + 1];
+                if (cost < total) {
+                    total = cost;
+                    lastNode = i;
+                    lastOption = p;
+                }
+            }
         }
-        resolve(bestLink);
-        return OptionalInt.of(links.get(bestLink).deck(bestStation));
+        int[] chosen = new int[crossings];
+        Arrays.fill(chosen, Integer.MIN_VALUE);
+        while (lastNode >= 0) {
+            if (crossingOf[lastNode] >= 0) {
+                chosen[crossingOf[lastNode]] = values[lastNode][lastOption * 2];
+            }
+            int previous = fromNode[lastNode][lastOption];
+            lastOption = previous >= 0 ? fromOption[lastNode][lastOption] : -1;
+            lastNode = previous;
+        }
+        return chosen;
+    }
+
+    /** Half-length, in stations, of the stretch of {@code link} over the partner's deck. */
+    private static int overpassReach(LinkGeometry link, int station, LinkGeometry other, int partnerStation) {
+        double ax = direction(link, station, true);
+        double az = direction(link, station, false);
+        double bx = direction(other, partnerStation, true);
+        double bz = direction(other, partnerStation, false);
+        double sin = Math.max(0.3, Math.abs(ax * bz - az * bx));
+        return (int) Math.ceil((other.spec.outerHalfWidth() + 1.0) / sin);
+    }
+
+    private static double direction(LinkGeometry link, int station, boolean x) {
+        int a = Math.max(0, station - 2);
+        int b = Math.min(link.stationCount() - 1, station + 2);
+        double dx = link.x(b) - link.x(a);
+        double dz = link.z(b) - link.z(a);
+        double length = Math.sqrt(dx * dx + dz * dz);
+        return length == 0.0 ? 0.0 : (x ? dx : dz) / length;
     }
 
     private static final class Once {
@@ -478,83 +690,16 @@ public final class RoadIndex {
         }
     }
 
-    /** Cell size for the shadow test — two roads within about this far apart read as the same road. */
-    private static final int SHADOW_CELL = 8;
-    /** Fraction of a link that has to lie on top of another before it is considered a duplicate. */
-    private static final double SHADOW_FRACTION = 0.75;
-
-    /**
-     * Removes links that run on top of one already kept, in place. Candidates are considered most-important
-     * first — higher road class, then longer — so the survivor is the one worth keeping, but the lists come back
-     * in their original file order because the profile solve depends on it for pinning tracks.
-     */
-    private static int dropShadowed(List<LinkGeometry> links, List<RoadNetwork.Link> sources,
-            IntArrayList networks) {
-        Integer[] order = new Integer[links.size()];
-        for (int i = 0; i < order.length; i++) {
-            order[i] = i;
-        }
-        java.util.Arrays.sort(order, (a, b) -> {
-            int byClass = Integer.compare(links.get(b).type().match().priority(),
-                    links.get(a).type().match().priority());
-            return byClass != 0 ? byClass : Integer.compare(links.get(b).stationCount(),
-                    links.get(a).stationCount());
-        });
-
-        it.unimi.dsi.fastutil.longs.LongOpenHashSet occupied = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
-        boolean[] drop = new boolean[links.size()];
-        for (int index : order) {
-            LinkGeometry link = links.get(index);
-            int samples = 0;
-            int shadowed = 0;
-            for (int station = 0; station < link.stationCount(); station += SHADOW_CELL) {
-                samples++;
-                if (occupied.contains(cell(link.x(station), link.z(station)))) {
-                    shadowed++;
-                }
-            }
-            if (samples > 0 && (double) shadowed / samples >= SHADOW_FRACTION) {
-                drop[index] = true;
-                continue;
-            }
-            // Every cell it passes through, plus the ring around it, so a road one cell off still counts as on top.
-            for (int station = 0; station < link.stationCount(); station++) {
-                for (int dx = -1; dx <= 1; dx++) {
-                    for (int dz = -1; dz <= 1; dz++) {
-                        occupied.add(cell(link.x(station) + dx * SHADOW_CELL, link.z(station) + dz * SHADOW_CELL));
-                    }
-                }
+    /** Index into {@code ranked} of the highest-priority type matching, or -1. */
+    private static int choose(List<RoadType> ranked, RoadNetwork.Link link, int length) {
+        for (int i = 0; i < ranked.size(); i++) {
+            if (ranked.get(i).match().matches(link, length)) {
+                return i;
             }
         }
-
-        int removed = 0;
-        for (int i = links.size() - 1; i >= 0; i--) {
-            if (drop[i]) {
-                links.remove(i);
-                sources.remove(i);
-                networks.removeInt(i);
-                removed++;
-            }
-        }
-        return removed;
+        return -1;
     }
 
-    private static long cell(double x, double z) {
-        return ChunkPos.asLong(Math.floorDiv((int) Math.floor(x), SHADOW_CELL),
-                Math.floorDiv((int) Math.floor(z), SHADOW_CELL));
-    }
-
-    /** Highest-priority type whose match the link satisfies, or null when a pack defines none that fits. */
-    private static RoadType choose(List<RoadType> ranked, RoadNetwork.Link link, int length) {
-        for (RoadType type : ranked) {
-            if (type.match().matches(link, length)) {
-                return type;
-            }
-        }
-        return null;
-    }
-
-    /** Files each maximal run of consecutive stations under the chunk it passes through. */
     private static void bucket(Long2ObjectMap<IntArrayList> byChunk, Runs runs, int index, LinkGeometry geometry) {
         int n = geometry.stationCount();
         int runStart = 0;
@@ -580,7 +725,8 @@ public final class RoadIndex {
     /** One road's resampled centreline plus the profile solved along it. */
     public static final class LinkGeometry {
 
-        private final RoadType type;
+        private final RoadSpec spec;
+        private final int type;
         private final double[] xs;
         private final double[] zs;
         private short[] ground;
@@ -589,7 +735,8 @@ public final class RoadIndex {
         private byte[] mode;
         private boolean[] portal;
 
-        LinkGeometry(RoadType type, double[] xs, double[] zs) {
+        LinkGeometry(RoadSpec spec, int type, double[] xs, double[] zs) {
+            this.spec = spec;
             this.type = type;
             this.xs = xs;
             this.zs = zs;
@@ -606,8 +753,8 @@ public final class RoadIndex {
             this.portal = portal;
         }
 
-        public RoadType type() {
-            return type;
+        public RoadSpec spec() {
+            return spec;
         }
 
         public int stationCount() {
@@ -620,14 +767,6 @@ public final class RoadIndex {
 
         public double z(int station) {
             return zs[station];
-        }
-
-        short[] groundArray() {
-            return ground;
-        }
-
-        short[] waterArray() {
-            return water;
         }
 
         public int ground(int station) {
@@ -651,10 +790,7 @@ public final class RoadIndex {
         }
     }
 
-    /**
-     * Terrain height straight from the noise router. This never loads or generates a chunk, which is what lets a
-     * profile be solved for a whole road from inside one chunk's feature without cascading generation.
-     */
+    /** Noise-router height: never loads or generates a chunk. */
     private record GeneratorTerrain(ChunkGenerator generator, RandomState randomState, LevelHeightAccessor heights,
             int seaLevel) implements RoadProfile.Terrain {
 
@@ -665,10 +801,7 @@ public final class RoadIndex {
         @Override
         public long sample(int x, int z) {
             int surface = generator.getBaseHeight(x, z, Heightmap.Types.WORLD_SURFACE_WG, heights, randomState) - 1;
-            // Above sea level there is nothing that could be holding water, so the first non-air block down from
-            // the top is also the ground and the second scan can be skipped outright. Roads are almost entirely
-            // on land, so this is the path nearly every probe takes — and each probe is a full evaluation of the
-            // dimension's density-function graph, which on a terrain mod is the most expensive call here by far.
+            // Above sea level nothing can hold water => skip the second density evaluation.
             int ground = surface > seaLevel ? surface
                     : generator.getBaseHeight(x, z, Heightmap.Types.OCEAN_FLOOR_WG, heights, randomState) - 1;
             return ((long) ground << 32) | (surface & 0xFFFFFFFFL);

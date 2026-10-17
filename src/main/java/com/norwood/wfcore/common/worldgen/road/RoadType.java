@@ -14,16 +14,8 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Everything about how one class of road looks: how wide it is, what it is made of, how steep it may get, and what
- * it turns into over a valley or inside a mountain. Datapack-defined at
- * {@code data/<ns>/wf_road_type/<id>.json}, so the whole block composition is retunable with a world reload.
- *
- * <p>A road type is not chosen by name. Every type carries a {@link Match} and each link in the
- * {@link RoadNetwork} takes the highest-priority type whose match it satisfies — so "paved links over 6 km become
- * highways" is a rule in a JSON file, not a branch in the generator.
- *
- * <p>Block slots all take {@link RoadPalettes#CODEC}: a bare id for the common case, a full
- * {@link BlockStateProvider} when a pack wants variation.
+ * One road class, datapack-defined at {@code data/<ns>/wfcore/road_type/<id>.json}. Each link takes the
+ * highest-priority type whose {@link Match} it satisfies. Block slots take {@link RoadPalettes#CODEC}.
  */
 public record RoadType(
         Match match,
@@ -46,30 +38,17 @@ public record RoadType(
             Theme.CODEC.listOf().optionalFieldOf("themes", List.of()).forGetter(RoadType::themes))
             .apply(i, RoadType::new));
 
-    /** Half the corridor that gets road blocks in it, in whole columns either side of the centreline. */
-    public double pavedHalfWidth() {
-        return deck.width() / 2.0;
+    public RoadSpec spec() {
+        Markings marks = deck.markings().orElse(null);
+        return new RoadSpec(match.priority(), deck.width(), deck.shoulder(), deck.clearance(),
+                deck.vegetationMargin(), marks == null ? 0 : marks.width(), marks == null ? 0 : marks.dash(),
+                marks == null ? 0 : marks.gap(), earthworks.baseDepth(), earthworks.margin(), earthworks.batter(),
+                grade, water, bridge.railing().isPresent(), bridge.railingHeight(), bridge.pierSpacing(),
+                bridge.pierRadius(), bridge.minHeight(), tunnel.light().isPresent(), tunnel.lightSpacing(),
+                tunnel.height(), tunnel.minCover());
     }
 
-    /** Half the corridor including the shoulder / edging ring. */
-    public double outerHalfWidth() {
-        return deck.width() / 2.0 + deck.shoulder();
-    }
-
-    /** Half the corridor including the graded embankment — the widest the generator will cut or fill. */
-    public double gradedHalfWidth() {
-        return outerHalfWidth() + earthworks.margin();
-    }
-
-    /** Half the corridor including the vegetation sweep, i.e. everything this road may touch at all. */
-    public double clearedHalfWidth() {
-        return outerHalfWidth() + Math.max(earthworks.margin(), deck.vegetationMargin());
-    }
-
-    /**
-     * Which links this type claims. All present conditions must hold; {@code priority} breaks ties when several
-     * types match the same link, highest wins.
-     */
+    /** All present conditions must hold; highest {@code priority} wins. */
     public record Match(List<String> kinds, int minLength, int maxLength, Optional<Boolean> seaPassage,
             int priority) {
 
@@ -93,12 +72,8 @@ public record RoadType(
     }
 
     /**
-     * The driving surface itself. {@code width} is the paved lane width; {@code shoulder} is the edging ring.
-     *
-     * <p>{@code vegetation_margin} widens the corridor for one purpose only: pulling logs and leaves out of the
-     * road's headroom. A tree whose trunk stands clear of the earthworks can still hang its canopy over the
-     * carriageway, and those leaves never decay on their own — worldgen places blocks without neighbour updates,
-     * so their distance property is stale from birth and the decay check never fires.
+     * {@code width}: paved; {@code shoulder}: edging ring each side. {@code vegetation_margin}: extra corridor
+     * swept of logs/leaves only.
      */
     public record Deck(int width, int shoulder, int clearance, int vegetationMargin, BlockStateProvider surface,
             BlockStateProvider edge, Optional<Markings> markings) {
@@ -114,7 +89,7 @@ public record RoadType(
                 .apply(i, Deck::new));
     }
 
-    /** A dashed centre line. {@code dash} and {@code gap} are measured in blocks along the road. */
+    /** Dashed centre line; {@code dash} / {@code gap} in blocks along the road. */
     public record Markings(BlockStateProvider block, int width, int dash, int gap) {
 
         public static final Codec<Markings> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -124,18 +99,9 @@ public record RoadType(
                 Codec.intRange(0, 64).optionalFieldOf("gap", 4).forGetter(Markings::gap))
                 .apply(i, Markings::new));
 
-        /** True on the stretch of centreline that should be painted, for a station at arc length {@code s}. */
-        public boolean paintedAt(double s) {
-            int period = dash + gap;
-            return period <= 0 || Math.floorMod((int) Math.floor(s), period) < dash;
-        }
     }
 
-    /**
-     * What holds the road up and what happens either side of it. {@code margin} is how far past the shoulder the
-     * generator may cut or fill, and {@code batter} is the slope it does that on — 1.0 is 45 degrees, lower is a
-     * gentler, wider flare.
-     */
+    /** {@code margin}: cut/fill reach past the shoulder; {@code batter}: flare slope, 1.0 = 45 deg. */
     public record Earthworks(BlockStateProvider base, int baseDepth, BlockStateProvider embankment, int margin,
             double batter) {
 
@@ -153,35 +119,24 @@ public record RoadType(
     }
 
     /**
-     * The vehicle-drivability budget. {@code max} is rise over run, so 0.06 is a 6% grade;
-     * {@code smoothing_radius} is how far the profile is averaged before the grade limit is re-applied, which is
-     * what turns a terrain-following line into vertical curves a vehicle can take at speed.
-     * {@code sample_spacing} is how often real terrain is probed — the only expensive knob here.
-     *
-     * <p>{@code attraction} is how hard each pass pulls the profile back onto the ground it just smoothed away.
-     * Without it, repeated blurring has no fixed point other than the average height of the whole road, and a
-     * road over rolling terrain drifts up onto a permanent viaduct. At 0.5 the profile tracks the terrain's low
-     * frequencies and only leaves it where the gradient limit genuinely forces it to — which is exactly where a
-     * bridge or a tunnel belongs.
+     * {@code max}: rise / run. {@code smoothing_radius}: box blur of the fitted profile => vertical curves.
+     * {@code sample_spacing}: terrain probe stride, the only expensive knob. {@code fill_cost}: cost per block of
+     * deck above ground relative to 1 per block below it; higher => more cuttings/tunnels, fewer
+     * embankments/bridges.
      */
-    public record Grade(double max, int smoothingRadius, int relaxPasses, int sampleSpacing, double attraction) {
+    public record Grade(double max, int smoothingRadius, int sampleSpacing, double fillCost) {
 
         public static final Codec<Grade> CODEC = RecordCodecBuilder.create(i -> i.group(
                 Codec.doubleRange(0.005, 1.0).optionalFieldOf("max", 0.06).forGetter(Grade::max),
-                Codec.intRange(1, 256).optionalFieldOf("smoothing_radius", 10).forGetter(Grade::smoothingRadius),
-                Codec.intRange(1, 64).optionalFieldOf("relax_passes", 8).forGetter(Grade::relaxPasses),
+                Codec.intRange(0, 256).optionalFieldOf("smoothing_radius", 8).forGetter(Grade::smoothingRadius),
                 Codec.intRange(1, 32).optionalFieldOf("sample_spacing", 16).forGetter(Grade::sampleSpacing),
-                Codec.doubleRange(0.0, 1.0).optionalFieldOf("attraction", 0.85).forGetter(Grade::attraction))
+                Codec.doubleRange(0.01, 100.0).optionalFieldOf("fill_cost", 2.0).forGetter(Grade::fillCost))
                 .apply(i, Grade::new));
 
-        static final Grade DEFAULT = new Grade(0.06, 8, 8, 16, 0.85);
+        static final Grade DEFAULT = new Grade(0.06, 8, 16, 2.0);
     }
 
-    /**
-     * Water crossings. Every deck clears the water surface by {@code clearance}; only crossings longer than
-     * {@code sea_crossing_length} are additionally pinned up to {@code min_deck_y}, so an ocean strait gets a
-     * high span with room to sail under it while a river gets an ordinary low bridge instead of a 30-block hump.
-     */
+    /** Deck >= water + {@code clearance}; wet runs >= {@code sea_crossing_length} also >= {@code min_deck_y}. */
     public record Water(int minDeckY, int clearance, int seaCrossingLength) {
 
         public static final Codec<Water> CODEC = RecordCodecBuilder.create(i -> i.group(
@@ -194,11 +149,7 @@ public record RoadType(
         static final Water DEFAULT = new Water(90, 4, 48);
     }
 
-    /**
-     * What a span over a valley or a strait is built from. {@code structure} is the load path — underside and
-     * piers — and {@code accent} trims the deck edge. {@code min_height} is how far the road has to stand off the
-     * ground before it stops being an embankment and becomes a bridge.
-     */
+    /** {@code structure}: underside + piers; {@code min_height}: deck - ground at which embankment => bridge. */
     public record Bridge(Optional<BlockStateProvider> deck, BlockStateProvider structure, BlockStateProvider accent,
             Optional<BlockStateProvider> railing, int railingHeight, int pierSpacing, int pierRadius,
             int minHeight) {
@@ -215,10 +166,7 @@ public record RoadType(
                 .apply(i, Bridge::new));
     }
 
-    /**
-     * What a bore through a mountain is lined with. {@code min_cover} is how much rock has to sit above the
-     * headroom before the generator stops cutting a trench and starts tunnelling.
-     */
+    /** {@code min_cover}: rock above the headroom before a cutting becomes a tunnel. */
     public record Tunnel(BlockStateProvider wall, Optional<BlockStateProvider> ceiling,
             Optional<BlockStateProvider> floor, Optional<BlockStateProvider> light, int lightSpacing, int height,
             int minCover) {
@@ -234,11 +182,7 @@ public record RoadType(
                 .apply(i, Tunnel::new));
     }
 
-    /**
-     * A biome-keyed swap of the structural palettes, which is how a bridge ends up sandstone in a desert and
-     * stone brick everywhere else without a second road type. Only the three structural slots are themable —
-     * the driving surface stays the same so a road still reads as the same road across a biome edge.
-     */
+    /** Biome swap of the structural slots only; the driving surface stays constant across biome edges. */
     public record Theme(HolderSet<Biome> biomes, Optional<BlockStateProvider> structure,
             Optional<BlockStateProvider> accent, Optional<BlockStateProvider> wall) {
 
@@ -250,7 +194,7 @@ public record RoadType(
                 .apply(i, Theme::new));
     }
 
-    /** The structural palettes to use at a position, after any {@link Theme} that claims its biome. */
+    /** First {@link Theme} claiming the biome wins. */
     public Palettes palettesFor(Holder<Biome> biome) {
         BlockStateProvider structure = bridge.structure();
         BlockStateProvider accent = bridge.accent();

@@ -29,9 +29,8 @@
   "grade": {
     "max": 0.07,
     "smoothing_radius": 6,
-    "relax_passes": 8,
     "sample_spacing": 16,
-    "attraction": 0.85
+    "fill_cost": 2.0
   },
   "water": {
     "min_deck_y": 90,

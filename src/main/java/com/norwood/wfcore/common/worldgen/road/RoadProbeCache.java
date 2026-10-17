@@ -1,6 +1,8 @@
 package com.norwood.wfcore.common.worldgen.road;
 
-import com.norwood.wfcore.WFCore;
+import com.mojang.logging.LogUtils;
+
+import org.slf4j.Logger;
 
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -19,11 +21,10 @@ import java.util.concurrent.Executors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
-/**
- * Probed terrain heights per link, keyed by seed + the columns sampled. Only probes are cached, not solved
- * profiles: retuning a road type must not invalidate them.
- */
+/** Probed terrain per link, keyed seed + sampled columns. Probes only: retuning a road type keeps them. */
 final class RoadProbeCache {
+
+    private static final Logger LOGGER = LogUtils.getLogger();
 
     private static final int MAGIC = 0x57465250;
     private static final int VERSION = 2;
@@ -43,13 +44,12 @@ final class RoadProbeCache {
         this.entries = entries;
     }
 
-    static long key(long seed, RoadIndex.LinkGeometry link) {
+    static long key(long seed, int spacing, double[] xs, double[] zs) {
         long hash = mix(seed ^ 0x9E3779B97F4A7C15L);
-        int spacing = link.type().grade().sampleSpacing();
-        hash = mix(hash ^ link.stationCount());
+        hash = mix(hash ^ xs.length);
         hash = mix(hash ^ spacing);
-        for (int station = 0; station < link.stationCount(); station += spacing) {
-            hash = mix(hash ^ ((long) Math.floor(link.x(station)) * 31 + (long) Math.floor(link.z(station))));
+        for (int station = 0; station < xs.length; station += spacing) {
+            hash = mix(hash ^ ((long) Math.floor(xs[station]) * 31 + (long) Math.floor(zs[station])));
         }
         return hash;
     }
@@ -62,7 +62,7 @@ final class RoadProbeCache {
         return value ^ (value >>> 33);
     }
 
-    /** Entries absent from {@code validKeys} are dropped, so the file does not accumulate retired routes. */
+    /** Drops entries absent from {@code validKeys}. */
     static RoadProbeCache open(Path file, LongSet validKeys) {
         Long2ObjectOpenHashMap<short[][]> entries = new Long2ObjectOpenHashMap<>();
         boolean pruned = false;
@@ -83,7 +83,7 @@ final class RoadProbeCache {
                     }
                 }
             } catch (IOException e) {
-                WFCore.LOGGER.warn("Could not read the road terrain cache at {}; re-probing", file, e);
+                LOGGER.warn("Could not read the road terrain cache at {}; re-probing", file, e);
                 entries.clear();
             }
         }
@@ -131,7 +131,7 @@ final class RoadProbeCache {
             Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
             dirty = false;
         } catch (IOException e) {
-            WFCore.LOGGER.warn("Could not write the road terrain cache to {}", file, e);
+            LOGGER.warn("Could not write the road terrain cache to {}", file, e);
         }
     }
 

@@ -431,3 +431,14 @@ idea {
         downloadJavadoc = true
     }
 }
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+neoForge.addModdingDependenciesTo(sourceSets.test)
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}

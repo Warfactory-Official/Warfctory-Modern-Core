@@ -14,18 +14,12 @@ import com.mojang.brigadier.context.CommandContext;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 
-/**
- * Inspection for the road system. {@code /wfcore_road info} answers what the generator decided at a position —
- * which road, how high its deck sits, whether it is on the ground, on a bridge or in a tunnel — which is the only
- * practical way to tell a badly-tuned grade budget from a bug without flying the whole network.
- */
+/** {@code /wfcore_road status | info [pos]}: what the generator decided at a column. */
 public final class RoadCommands {
 
     public static final RoadCommands INSTANCE = new RoadCommands();
 
-    /** How far from the queried column to look for a road before giving up. */
     private static final int SEARCH_CHUNKS = 2;
-    /** Half-window, in stations, that the reported gradient is measured over. */
     private static final int GRADE_WINDOW = 20;
 
     private RoadCommands() {}
@@ -105,7 +99,7 @@ public final class RoadCommands {
         int station = nearestStation;
         double offset = nearestDistance;
         String typeId = level.registryAccess().registry(RoadRegistries.ROAD_TYPE)
-                .flatMap(registry -> registry.getResourceKey(link.type()))
+                .flatMap(registry -> registry.getResourceKey(index.type(link)))
                 .map(key -> key.location().toString())
                 .orElse("<unregistered>");
         String mode = switch (link.mode(station)) {
@@ -113,9 +107,7 @@ public final class RoadCommands {
             case RoadProfile.TUNNEL -> link.portal(station) ? "tunnel (portal)" : "tunnel";
             default -> "ground";
         };
-        // Measured over a window, not between neighbours. Deck height is whole blocks and stations are a block
-        // apart, so an adjacent-station grade can only ever read 0% or 100% — which says nothing about whether
-        // the road is drivable.
+        // Whole-block decks 1 station apart: an adjacent-station grade reads only 0% or 100%.
         int previous = Math.max(0, station - GRADE_WINDOW);
         int next = Math.min(link.stationCount() - 1, station + GRADE_WINDOW);
         double grade = next == previous ? 0.0
@@ -126,8 +118,8 @@ public final class RoadCommands {
                         + "  grade %.1f%% (budget %.1f%%), width %d + %d shoulder",
                 typeId, station, link.stationCount() - 1, offset,
                 link.deck(station), link.ground(station), link.water(station), mode,
-                grade * 100.0, link.type().grade().max() * 100.0,
-                link.type().deck().width(), link.type().deck().shoulder()))
+                grade * 100.0, link.spec().grade().max() * 100.0,
+                link.spec().width(), link.spec().shoulder()))
                 .withStyle(ChatFormatting.GRAY), false);
         return 1;
     }
