@@ -52,6 +52,13 @@ jobs:
           chmod +x ./gradlew
           ./gradlew build --no-daemon --stacktrace
 
+      - name: Publish snapshot
+        if: github.event_name != 'pull_request'
+        env:
+          WARFACTORY_MAVEN_USER: ${{ secrets.WARFACTORY_MAVEN_USER }}
+          WARFACTORY_MAVEN_TOKEN: ${{ secrets.WARFACTORY_MAVEN_TOKEN }}
+        run: ./gradlew publish --no-daemon --stacktrace
+
       - uses: actions/upload-artifact@v4
         continue-on-error: true  # org artifact quota full => still publish
         with:
