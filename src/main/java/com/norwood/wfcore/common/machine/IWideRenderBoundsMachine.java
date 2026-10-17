@@ -11,8 +11,12 @@ import net.minecraft.world.phys.AABB;
  * ({@code IBlockEntityRendererExtension#getRenderBoundingBox(T)}), so the block entity can no longer answer
  * for itself. Rather than push each machine's dimensions out to the renderer registration site — where the
  * reason for a given number would be invisible — the machines keep the knowledge and expose it here, and
- * wfcore's two block entity renderers ({@code GltfMachineRenderer} and {@code MissileLauncherRenderer})
- * consult it.
+ * {@code MissileLauncherRenderer} consults it.
+ *
+ * <p>
+ * The animated GLTF machines no longer do: their models are Flywheel instances now, culled on the GPU
+ * against the bounding sphere of the posed model that {@code PoseCache} hands back. Their
+ * {@link #getRenderBounds()} is inert until something draws them through a renderer again.
  */
 public interface IWideRenderBoundsMachine {
 

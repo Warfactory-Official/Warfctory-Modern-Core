@@ -4,6 +4,7 @@ import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.capability.recipe.IO;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.GTRecipeTypeEntry;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 import com.gregtechceu.gtceu.common.data.GTSoundEntries;
@@ -20,6 +21,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.UnaryOperator;
 
+import static com.norwood.wfcore.WFCore.WF_MACHINES;
+
 /**
  * Per-machine GT recipe maps for the vehicle factories. Every vehicle-assembly multiblock owns its own
  * recipe type, so each factory has a separate, independently-programmable recipe list and its own JEI
@@ -32,22 +35,22 @@ import java.util.function.UnaryOperator;
 public class VehicleFactoryRecipes {
 
     /** {@code wfcore:light_ground_vehicle_factory} — the MV Light Ground Vehicle Factory. */
-    public static GTRecipeType LIGHT_GROUND_VEHICLE_FACTORY;
+    public static GTRecipeTypeEntry LIGHT_GROUND_VEHICLE_FACTORY;
     /** {@code wfcore:tank_assembly} — the Tank Assembly Line. */
-    public static GTRecipeType TANK_ASSEMBLY;
+    public static GTRecipeTypeEntry TANK_ASSEMBLY;
     /** {@code wfcore:light_plane_assembler} — the Light Plane Assembler. */
-    public static GTRecipeType LIGHT_PLANE_ASSEMBLER;
+    public static GTRecipeTypeEntry LIGHT_PLANE_ASSEMBLER;
     /** {@code wfcore:heavy_plane_assembler} — the Heavy Plane Assembler. */
-    public static GTRecipeType HEAVY_PLANE_ASSEMBLER;
+    public static GTRecipeTypeEntry HEAVY_PLANE_ASSEMBLER;
     /** {@code wfcore:heavy_vehicle_depot} — the Heavy Vehicle Depot. */
-    public static GTRecipeType HEAVY_VEHICLE_DEPOT;
+    public static GTRecipeTypeEntry HEAVY_VEHICLE_DEPOT;
     /** {@code wfcore:helicopter_assembler} — the Helicopter Assembler. */
-    public static GTRecipeType HELICOPTER_ASSEMBLER;
+    public static GTRecipeTypeEntry HELICOPTER_ASSEMBLER;
     /** {@code wfcore:naval_vehicle_deployer} — the Naval Vehicle Deployer (boat dock). */
-    public static GTRecipeType NAVAL_VEHICLE_DEPLOYER;
+    public static GTRecipeTypeEntry NAVAL_VEHICLE_DEPLOYER;
 
     /** Every map keyed by its machine path, so KubeJS/GroovyScript can resolve a map by name. */
-    private static final Map<String, GTRecipeType> BY_NAME = new LinkedHashMap<>();
+    private static final Map<String, GTRecipeTypeEntry> BY_NAME = new LinkedHashMap<>();
 
     public static void init() {
         LIGHT_GROUND_VEHICLE_FACTORY = register("light_ground_vehicle_factory");
@@ -64,12 +67,11 @@ public class VehicleFactoryRecipes {
      * one packaged-vehicle output, EU in) and the assembler sound; only the id and JEI category differ, which
      * is exactly what gives each factory its own separate recipe list.
      */
-    private static GTRecipeType register(String name) {
-        // GTRecipeTypes.register is public in 8.0.0 and does the whole dance — recipe type, serializer and
-        // the GTRegistries.RECIPE_TYPES entry — so the hand-rolled version this used to do is gone.
-        GTRecipeType type = GTRecipeTypes.register(WFCore.id(name), "electric");
-        type.setMaxIOSize(9, 1, 2, 0).setEUIO(IO.IN).setMaxTooltips(3)
-                .setSound(GTSoundEntries.ASSEMBLER);
+    private static GTRecipeTypeEntry register(String name) {
+        GTRecipeTypeEntry type = WF_MACHINES.recipeType(name, GTRecipeTypes.ELECTRIC)
+                .setMaxIOSize(9, 1, 2, 0).setEUIO(IO.IN)
+                .setSound(GTSoundEntries.ASSEMBLER)
+                .register();
         BY_NAME.put(name, type);
         return type;
     }
@@ -81,12 +83,12 @@ public class VehicleFactoryRecipes {
      */
     public static GTRecipeType byName(String name) {
         String path = name.contains(":") ? name.substring(name.indexOf(':') + 1) : name;
-        GTRecipeType type = BY_NAME.get(path);
+        GTRecipeTypeEntry type = BY_NAME.get(path);
         if (type == null) {
             throw new IllegalArgumentException("Unknown vehicle factory '" + name + "'. Valid factories: "
                     + String.join(", ", BY_NAME.keySet()));
         }
-        return type;
+        return type.get();
     }
 
     /**
@@ -102,10 +104,10 @@ public class VehicleFactoryRecipes {
     /**
      * One vehicle-factory recipe: {@code customize} adds the material inputs, then the standard EU/duration
      * and the packaged-vehicle output are appended. The recipe id is {@code wfcore:<recipeId>}; the item
-     * output encodes {@code vehicleId}, a Limitless vehicle id resolved at spawn time, so this carries no
+     * output encodes {@code vehicleId}, a CombinedAssault vehicle id resolved at spawn time, so this carries no
      * compile-time dependency on the vehicle roster.
      */
-    private static void vehicle(RecipeOutput provider, GTRecipeType type, String recipeId,
+    private static void vehicle(RecipeOutput provider, GTRecipeTypeEntry type, String recipeId,
                                 String vehicleId, int voltageTier, int duration,
                                 UnaryOperator<GTRecipeBuilder> customize) {
         customize.apply(type.recipeBuilder(WFCore.id(recipeId)))

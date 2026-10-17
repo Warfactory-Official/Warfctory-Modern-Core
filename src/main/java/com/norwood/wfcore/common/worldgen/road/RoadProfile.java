@@ -1,6 +1,5 @@
 package com.norwood.wfcore.common.worldgen.road;
 
-import java.util.List;
 import java.util.OptionalInt;
 import java.util.stream.IntStream;
 
@@ -55,61 +54,32 @@ public final class RoadProfile {
         }
     }
 
-    /**
-     * Probes terrain for every link at once, spreading the columns over all cores.
-     *
-     * <p>Batched across links rather than per link because link lengths vary by a factor of five: probing them
-     * one at a time leaves most of the pool idle waiting on the longest one. Probing is a pure function of
-     * position, so running it out of order changes nothing about the result — only the profile solve that follows
-     * has to stay sequential, and that part is arithmetic.
-     */
-    public static void probeAll(List<RoadIndex.LinkGeometry> links, Terrain terrain) {
-        int[][] stations = new int[links.size()][];
-        int total = 0;
-        for (int i = 0; i < links.size(); i++) {
-            stations[i] = probeStations(links.get(i));
-            total += stations[i].length;
-        }
+    /** Fills {@code link}'s ground and water arrays; samples run in parallel on the caller's pool. */
+    public static void probe(RoadIndex.LinkGeometry link, Terrain terrain) {
+        int[] stations = probeStations(link);
+        long[] samples = new long[stations.length];
+        IntStream.range(0, stations.length).parallel().forEach(k ->
+                samples[k] = terrain.sample((int) Math.floor(link.x(stations[k])), (int) Math.floor(link.z(stations[k]))));
 
-        int[] owner = new int[total];
-        int[] station = new int[total];
-        int at = 0;
-        for (int i = 0; i < links.size(); i++) {
-            for (int index : stations[i]) {
-                owner[at] = i;
-                station[at] = index;
-                at++;
+        int n = link.stationCount();
+        short[] ground = new short[n];
+        short[] water = new short[n];
+        int previous = -1;
+        for (int k = 0; k < stations.length; k++) {
+            int index = stations[k];
+            ground[index] = (short) Terrain.ground(samples[k]);
+            water[index] = (short) Math.max(Terrain.ground(samples[k]), Terrain.surface(samples[k]));
+            if (previous >= 0) {
+                interpolate(ground, previous, index);
+                interpolate(water, previous, index);
             }
+            previous = index;
         }
-
-        long[] samples = new long[total];
-        IntStream.range(0, total).parallel().forEach(k -> {
-            RoadIndex.LinkGeometry link = links.get(owner[k]);
-            samples[k] = terrain.sample((int) Math.floor(link.x(station[k])), (int) Math.floor(link.z(station[k])));
-        });
-
-        at = 0;
-        for (int i = 0; i < links.size(); i++) {
-            RoadIndex.LinkGeometry link = links.get(i);
-            int n = link.stationCount();
-            short[] ground = new short[n];
-            short[] water = new short[n];
-            int previous = -1;
-            for (int index : stations[i]) {
-                long packed = samples[at++];
-                ground[index] = (short) Terrain.ground(packed);
-                water[index] = (short) Math.max(Terrain.ground(packed), Terrain.surface(packed));
-                if (previous >= 0) {
-                    interpolate(ground, previous, index);
-                    interpolate(water, previous, index);
-                }
-                previous = index;
-            }
-            link.setTerrain(ground, water);
-        }
+        link.setTerrain(ground, water);
     }
 
-    /** Station indices to probe: every {@code sample_spacing} along the link, and always both ends. */
+    public record Profile(short[] deck, byte[] mode, boolean[] portal) {}
+
     private static int[] probeStations(RoadIndex.LinkGeometry link) {
         int n = link.stationCount();
         int spacing = link.type().grade().sampleSpacing();
@@ -126,12 +96,12 @@ public final class RoadProfile {
     }
 
     /**
-     * Fills in {@code geometry}'s deck and mode arrays. {@link #probeAll} must have run first.
+     * Solves {@code geometry}'s profile from its probed terrain.
      *
      * @param pinStart deck height the first station must take, when it lands on a junction or on another road
      * @param pinEnd   deck height the last station must take
      */
-    public static void solve(RoadIndex.LinkGeometry geometry, OptionalInt pinStart, OptionalInt pinEnd) {
+    public static Profile solve(RoadIndex.LinkGeometry geometry, OptionalInt pinStart, OptionalInt pinEnd) {
         RoadType type = geometry.type();
         int n = geometry.stationCount();
         int[] ground = new int[n];
@@ -190,7 +160,7 @@ public final class RoadProfile {
 
         byte[] mode = classify(type, ground, deck);
         smoothRuns(mode);
-        geometry.setProfile(deck, mode, portals(mode));
+        return new Profile(deck, mode, portals(mode));
     }
 
     private static void interpolate(short[] values, int from, int to) {

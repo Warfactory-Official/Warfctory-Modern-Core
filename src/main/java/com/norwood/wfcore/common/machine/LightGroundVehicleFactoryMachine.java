@@ -15,12 +15,12 @@ import net.minecraft.world.phys.AABB;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
-import com.norwood.wfcore.integration.limitless.LimitlessVehicles;
+import com.norwood.wfcore.integration.combinedassault.CombinedAssaultVehicles;
 import org.jetbrains.annotations.Nullable;
-import org.ywzj.vehicle.custom.vehicle.BaseVehicleData;
+import com.wf.combinedassault.custom.vehicle.BaseVehicleData;
 
 /**
- * MV light ground vehicle factory: spawns a Limitless vehicle from the recipe's
+ * MV light ground vehicle factory: spawns a CombinedAssault vehicle from the recipe's
  * {@link PackagedVehicleItem} output, after checking the spawn point is clear of blocks and entities.
  */
 public class LightGroundVehicleFactoryMachine extends AbstractVehicleFactoryMachine {
@@ -133,7 +133,7 @@ public class LightGroundVehicleFactoryMachine extends AbstractVehicleFactoryMach
     @Override
     protected boolean deploy(ServerLevel level, BlockPos pos, ItemStack vehicleItem) {
         ResourceLocation id = PackagedVehicleItem.getVehicleId(vehicleItem);
-        BaseVehicleData<?> data = LimitlessVehicles.data(id);
+        BaseVehicleData<?> data = CombinedAssaultVehicles.data(id);
         if (data == null) {
             // Consume rather than retry: an unknown vehicle would wedge the factory forever.
             WFCore.LOGGER.warn("{} produced unknown vehicle '{}'; discarding", getBlockPos(), id);
@@ -142,6 +142,6 @@ public class LightGroundVehicleFactoryMachine extends AbstractVehicleFactoryMach
         if (!isSpawnClear(level, spawnFootprint(data))) {
             return false;
         }
-        return LimitlessVehicles.summon(level, pos, getSpawnYaw(), id) != null;
+        return CombinedAssaultVehicles.summon(level, pos, getSpawnYaw(), id) != null;
     }
 }

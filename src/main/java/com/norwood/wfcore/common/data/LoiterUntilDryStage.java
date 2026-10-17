@@ -35,7 +35,7 @@ public final class LoiterUntilDryStage implements FlightStage {
 
     @Override
     public Vec3 guide(MissileEntity missile, FlightContext ctx) {
-        double maxSpeed = missile.getCruiseSpeed();
+        double maxSpeed = missile.flight().getCruiseSpeed();
         double vy = Mth.clamp((ctx.safeAltitude() - missile.getY()) * ALTITUDE_GAIN, -maxSpeed, maxSpeed);
 
         double dist = ctx.horizontalDist();

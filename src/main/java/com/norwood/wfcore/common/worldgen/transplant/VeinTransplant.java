@@ -13,6 +13,7 @@ import com.gregtechceu.gtceu.integration.map.cache.server.ServerCache;
 import com.mojang.logging.LogUtils;
 import com.norwood.wfcore.WFCore;
 
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
@@ -52,7 +53,7 @@ public final class VeinTransplant {
      */
     private static final Set<ResourceLocation> EXCLUDED = new LinkedHashSet<>();
 
-    private static IWorldGenLayer layer;
+    private static Holder<IWorldGenLayer> layer;
 
     private VeinTransplant() {}
 
@@ -61,11 +62,11 @@ public final class VeinTransplant {
             return;
         }
         RuleTest target = new TagMatchTest(TRANSPLANT_REPLACEABLES);
-        layer = new SimpleWorldGenLayer(WFCore.id(LAYER_NAME), () -> target, Set.of(Level.OVERWORLD));
-        LOGGER.info("[WFCore] Registered overworld transplant worldgen layer '{}'", LAYER_NAME);
+        layer = WFCore.WF_MACHINES.simple(LAYER_NAME, GTRegistries.Keys.WORLD_GEN_LAYER,
+                () -> new SimpleWorldGenLayer(WFCore.id(LAYER_NAME), () -> target, Set.of(Level.OVERWORLD)));
     }
 
-    public static IWorldGenLayer layer() {
+    public static Holder<IWorldGenLayer> layer() {
         return layer;
     }
 

@@ -63,14 +63,14 @@ public final class ControlledDiveStage implements FlightStage {
 
     @Override
     public Vec3 guide(MissileEntity missile, FlightContext ctx) {
-        if (missile.isDiveCommitted()) {
+        if (missile.flight().isDiveCommitted()) {
             return holdHeading(missile, ctx);
         }
         if (reachedAimDescending(missile, ctx)) {
-            missile.setDiveCommitted(true);
+            missile.flight().setDiveCommitted(true);
             return holdHeading(missile, ctx);
         }
-        return guideAngled(missile, ctx, missile.resolveDiveAngle(ctx));
+        return guideAngled(missile, ctx, missile.flight().resolveDiveAngle(ctx));
     }
 
     /** @return true once the missile is within {@link #COMMIT_RADIUS} of its aim point on a descending pass. */
@@ -89,7 +89,7 @@ public final class ControlledDiveStage implements FlightStage {
         double len = v.length();
         double speed = diveSpeed(missile);
         return len > 1.0E-4 ? v.scale(speed / len)
-                : guideAngled(missile, ctx, missile.resolveDiveAngle(ctx));
+                : guideAngled(missile, ctx, missile.flight().resolveDiveAngle(ctx));
     }
 
     /** Pure-pursuit onto the line through the target at {@code angleDeg} below horizontal, at the dive speed. */
@@ -111,7 +111,7 @@ public final class ControlledDiveStage implements FlightStage {
 
     /** Never dive slower than the missile already cruises, but otherwise hold this variant's commanded speed. */
     private double diveSpeed(MissileEntity missile) {
-        return Math.max(missile.getCruiseSpeed(), this.approachSpeed);
+        return Math.max(missile.flight().getCruiseSpeed(), this.approachSpeed);
     }
 
     @Override

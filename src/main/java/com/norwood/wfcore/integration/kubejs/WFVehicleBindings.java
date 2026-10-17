@@ -26,7 +26,7 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.data.VehicleFactoryRecipes;
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
 import com.norwood.wfcore.common.recipe.condition.ResearchRecipeCondition;
-import com.norwood.wfcore.integration.limitless.LimitlessVehicles;
+import com.norwood.wfcore.integration.combinedassault.CombinedAssaultVehicles;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,30 +48,30 @@ import java.util.List;
  * // server_scripts:
  * ServerEvents.recipes(event => {
  *     // 2-arg form defaults to the Light Ground Vehicle Factory map:
- *     event.custom(WFVehicles.recipe('wfcore:test_truck', 'ywzj_vehicle:lav150').build())
+ *     event.custom(WFVehicles.recipe('wfcore:test_truck', 'combinedassault:lav150').build())
  *     // 3-arg form picks which factory map the recipe belongs to:
- *     WFVehicles.recipe('wfcore:test_tank', 'ywzj_vehicle:t72', 'tank_assembly')
+ *     WFVehicles.recipe('wfcore:test_tank', 'combinedassault:t72', 'tank_assembly')
  *         .item('gtceu:steel_plate', 8).EUt(120).duration(600).add(event)
  * })
  * }</pre>
  *
  * <p>
- * The second argument is a <b>Limitless vehicle id</b>, not an entity type: Limitless vehicles are
- * data-driven entries resolved through {@link LimitlessVehicles}. The third is the factory's machine path —
+ * The second argument is a <b>CombinedAssault vehicle id</b>, not an entity type: CombinedAssault vehicles are
+ * data-driven entries resolved through {@link CombinedAssaultVehicles}. The third is the factory's machine path —
  * one of {@code light_ground_vehicle_factory}, {@code tank_assembly}, {@code light_plane_assembler},
  * {@code heavy_plane_assembler}, {@code heavy_vehicle_depot}, {@code helicopter_assembler},
  * {@code naval_vehicle_deployer}.
  */
 public class WFVehicleBindings {
 
-    /** Whether {@code vehicleId} is a Limitless vehicle that is currently loaded. */
+    /** Whether {@code vehicleId} is a CombinedAssault vehicle that is currently loaded. */
     public boolean known(String vehicleId) {
-        return LimitlessVehicles.isKnown(ResourceLocation.tryParse(vehicleId));
+        return CombinedAssaultVehicles.isKnown(ResourceLocation.tryParse(vehicleId));
     }
 
-    /** Every currently-loaded Limitless vehicle id, sorted — the roster a pack can write recipes against. */
+    /** Every currently-loaded CombinedAssault vehicle id, sorted — the roster a pack can write recipes against. */
     public List<String> roster() {
-        return LimitlessVehicles.roster();
+        return CombinedAssaultVehicles.roster();
     }
 
     /** Open a builder for a Light Ground Vehicle Factory recipe. */
@@ -84,7 +84,7 @@ public class WFVehicleBindings {
      * for {@code vehicleId}.
      *
      * @param recipeId  a recipe id, e.g. {@code "wfcore:mv_truck"}
-     * @param vehicleId the Limitless vehicle to spawn, e.g. {@code "ywzj_vehicle:lav150"}
+     * @param vehicleId the CombinedAssault vehicle to spawn, e.g. {@code "combinedassault:lav150"}
      * @param factory   which factory map the recipe belongs to
      */
     public VehicleRecipe recipe(String recipeId, String vehicleId, String factory) {
@@ -96,11 +96,11 @@ public class WFVehicleBindings {
         if (vid == null) {
             throw new IllegalArgumentException("Invalid vehicle id: '" + vehicleId + "'");
         }
-        // An empty roster means Limitless' reload listener has not run yet, not "no such vehicle" — it
+        // An empty roster means CombinedAssault's reload listener has not run yet, not "no such vehicle" — it
         // usually loses the race with recipe scripts, so only warn once there is something to compare to.
-        if (!LimitlessVehicles.roster().isEmpty() && !LimitlessVehicles.isKnown(vid)) {
-            WFCore.LOGGER.warn("[WFVehicles] {}: no Limitless vehicle '{}'; the factory will discard this "
-                    + "recipe's output. Loaded vehicles: {}", rid, vehicleId, LimitlessVehicles.roster());
+        if (!CombinedAssaultVehicles.roster().isEmpty() && !CombinedAssaultVehicles.isKnown(vid)) {
+            WFCore.LOGGER.warn("[WFVehicles] {}: no CombinedAssault vehicle '{}'; the factory will discard this "
+                    + "recipe's output. Loaded vehicles: {}", rid, vehicleId, CombinedAssaultVehicles.roster());
         }
         // Resolve the factory now so a bad name fails fast with the valid-factories list.
         VehicleFactoryRecipes.byName(factory);

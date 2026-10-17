@@ -18,24 +18,14 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executor;
 
 /**
- * Owns one {@link RoadIndex} per level and decides when it gets built.
- *
- * <p>Building means probing this world's terrain along every road, which is thousands of noise columns and takes
- * real time, so it starts on a background thread the moment a level loads rather than on whichever chunk happens
- * to hit a road first. A generator thread that arrives before the build finishes blocks on it. That is deliberate:
- * generating the chunk without its road would leave a permanent gap in the network, and there is no second chance
- * to fix it once the chunk is saved.
+ * One {@link RoadIndex} per level, built off-thread at level load (geometry + cache read; terrain probes are lazy,
+ * per link). Generator threads reaching a road before the build ends block on it: skipping => permanent road gap.
  */
 public final class RoadIndexManager {
 
     public static final RoadIndexManager INSTANCE = new RoadIndexManager();
 
-    /**
-     * A thread of its own rather than {@link net.minecraft.Util#backgroundExecutor()}. The generation threads
-     * that wait on this build run on that same pool, so scheduling the build there means the work everyone is
-     * blocked on is queued behind the blocked work — survivable only because ForkJoinPool compensates by
-     * spawning threads, which is not a mechanism to rely on.
-     */
+    // Not Util.backgroundExecutor(): waiters run on that pool.
     private static final Executor BUILDER = command -> {
         Thread thread = new Thread(command, "wfcore-road-index");
         thread.setDaemon(true);
@@ -61,7 +51,10 @@ public final class RoadIndexManager {
     @SubscribeEvent
     public void onLevelUnload(LevelEvent.Unload event) {
         if (event.getLevel() instanceof ServerLevel level) {
-            indexes.remove(level.dimension());
+            CompletableFuture<RoadIndex> index = indexes.remove(level.dimension());
+            if (index != null && index.isDone() && !index.isCompletedExceptionally()) {
+                index.join().flush();
+            }
         }
     }
 
@@ -70,7 +63,6 @@ public final class RoadIndexManager {
                 key -> CompletableFuture.supplyAsync(() -> build(level), BUILDER));
     }
 
-    /** Cache location, alongside the world's other saved data and named for the dimension it belongs to. */
     private static Path cacheFile(ServerLevel level) {
         String dimension = level.dimension().location().toString().replace(':', '_').replace('/', '_');
         return level.getServer().getWorldPath(LevelResource.ROOT)
@@ -95,14 +87,12 @@ public final class RoadIndexManager {
                     level.getSeed(),
                     cacheFile(level));
             if (!index.isEmpty()) {
-                WFCore.LOGGER.info("Roads in {}: {} link(s), {} station(s), solved in {} ms",
+                WFCore.LOGGER.info("Roads in {}: {} link(s), {} station(s), indexed in {} ms; terrain probed lazily",
                         level.dimension().location(), index.linkCount(), index.stationCount(),
                         (System.nanoTime() - started) / 1_000_000L);
             }
             return index;
         } catch (Exception e) {
-            // A thrown index would be re-thrown into every chunk that touches a road; an empty one just means no
-            // roads, which is recoverable by fixing the pack and reloading.
             WFCore.LOGGER.error("Failed to build the road index for {}", level.dimension().location(), e);
             return RoadIndex.EMPTY;
         }

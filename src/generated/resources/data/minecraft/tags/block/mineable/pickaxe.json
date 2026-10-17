@@ -6,6 +6,8 @@
     "wfcore:foundry_mold_caster",
     "wfcore:ballistic_glass",
     "wfcore:standard_concrete",
-    "wfcore:reinforced_concrete"
+    "wfcore:reinforced_concrete",
+    "wfcore:deeprock",
+    "wfcore:cobbled_deeprock"
   ]
 }

@@ -420,7 +420,7 @@ public class RadarMachine extends MultiblockControllerMachine
         return animAdvancing;
     }
 
-    //////////////////// animated model (mcgltf) ////////////////////
+    //////////////////// animated model (drawn by GemRenderMachineVisual) ////////////////////
 
     @Override
     public String getAnimState() {
@@ -820,8 +820,8 @@ public class RadarMachine extends MultiblockControllerMachine
 
     @Override
     public void onUnload() {
-        // Drop the render mask when the controller is broken or its chunk unloads (the BER, which would
-        // otherwise unregister it, stops being called once this block entity is gone).
+        // Drop the render mask when the controller is broken or its chunk unloads. The visual releases it
+        // too; this is the path for a client with Flywheel disabled, where no visual was ever built.
         if (level != null && level.isClientSide) {
             RenderMaskManager.removeDisableModel(getBlockPos());
         }

@@ -49,6 +49,8 @@ import static com.norwood.wfcore.WFCore.WF_MACHINES;
  * <li><b>Interceptor</b> ({@link #INTERCEPTOR}, {@link #INTERCEPTOR_MK2}, {@link #INTERCEPTOR_ACE},
  *     {@link #INTERCEPTOR_CLUSTER}) — scale to match; the Ace is competitive with all but the top evasive round,
  *     the Cluster airbursts into small interceptors to blunt a barrage.</li>
+ * <li><b>Pylon rounds</b> ({@link #ATGM}, {@link #ATGM_FRAG}, {@link #GUIDED_ROCKET}): pylon-sized airframes,
+ *     {@code air_launch} ascent, tagged {@code wflib:missile/small}.</li>
  * <li><b>Drones</b> ({@link #STRIKE_DRONE}, {@link #GAS_DRONE}, {@link #LOITER_DRONE}) — a separate,
  *     deliberately cheap class (constant-note moped loop, wide anti-personnel blast, tiny structural footprint).
  *     The Loiter Drone is the odd one out: inert, long-legged, and it just orbits its objective until it runs
@@ -92,6 +94,10 @@ public class WFMissiles {
         return FlightStageRegistry.rl(ControlledDiveStage.WEAK_ID);
     }
 
+    private static ResourceLocation airLaunch() {
+        return FlightStageRegistry.rl("air_launch");
+    }
+
     // --- Demolition ---
     public static ItemEntry<MissileItem> HE;
     public static ItemEntry<MissileItem> DUMMY;
@@ -126,6 +132,10 @@ public class WFMissiles {
     public static ItemEntry<MissileItem> INTERCEPTOR_MK2;
     public static ItemEntry<MissileItem> INTERCEPTOR_ACE;
     public static ItemEntry<MissileItem> INTERCEPTOR_CLUSTER;
+    // --- Pylon rounds ---
+    public static ItemEntry<MissileItem> ATGM;
+    public static ItemEntry<MissileItem> ATGM_FRAG;
+    public static ItemEntry<MissileItem> GUIDED_ROCKET;
     // --- Drones (cheap, separate class) ---
     public static ItemEntry<MissileItem> STRIKE_DRONE;
     public static ItemEntry<MissileItem> GAS_DRONE;
@@ -370,6 +380,30 @@ public class WFMissiles {
                 b -> b.highAltitude(300.0).cruiseSpeed(9.0).turnRate(0.6).health(25.0f)
                         .interceptor(0.6f).accel(1.3, 1.3)
                         .fuel(MissileEntity.FuelType.SOLID, 900));
+
+        // =========================== PYLON ROUNDS ==========================================================
+        // Off a vehicle rail: drop, light, pursue the dive line. Small warheads; kill vehicles, not buildings.
+
+        ATGM = missile("atgm", "Air-Launched ATGM",
+                MissileModels.rl("atgm"), WFWarheads.ATGM,
+                b -> b.ascentStage(airLaunch()).attackStage(mediumDive())
+                        .cruiseSpeed(4.0).turnRate(0.25).health(8.0f)
+                        .diveAngleRange(20.0, 40.0)
+                        .accel(0.8, 0.5).fuel(MissileEntity.FuelType.SOLID, 200));
+
+        ATGM_FRAG = missile("atgm_frag", "Blast-Fragmentation ATGM",
+                MissileModels.rl("atgm"), WarheadRegistry.rl("fragmentation"),
+                b -> b.ascentStage(airLaunch()).attackStage(mediumDive())
+                        .cruiseSpeed(4.0).turnRate(0.25).health(8.0f).fragmentCount(12)
+                        .explosionOffset(3.0f).diveAngleRange(35.0, 55.0)
+                        .accel(0.8, 0.5).fuel(MissileEntity.FuelType.SOLID, 200));
+
+        GUIDED_ROCKET = missile("guided_rocket", "Laser-Guided Rocket",
+                MissileModels.rl("guided_rocket"), WFWarheads.GUIDED_ROCKET,
+                b -> b.ascentStage(airLaunch()).attackStage(weakDive())
+                        .cruiseSpeed(3.5).turnRate(0.2).health(5.0f)
+                        .diveAngleRange(10.0, 30.0)
+                        .accel(1.0, 0.5).fuel(MissileEntity.FuelType.SOLID, 160));
 
         // =========================== DRONES (cheap, separate class) ========================================
         // Wide anti-personnel blast, tiny structural damage.

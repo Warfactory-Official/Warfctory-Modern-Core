@@ -3,9 +3,7 @@
   "required": false,
   "package": "com.norwood.wfcore.mixin",
   "compatibilityLevel": "JAVA_21",
-  "mixins": [
-    "EntityKineticBulletAccessor"
-  ],
+  "mixins": [],
   "injectors": {
     "defaultRequire": 0
   }

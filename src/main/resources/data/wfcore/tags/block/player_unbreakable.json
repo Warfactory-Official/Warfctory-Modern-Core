@@ -1,0 +1,7 @@
+{
+  "replace": false,
+  "values": [
+    "wfcore:deeprock",
+    { "id": "#c:ores_in_ground/deeprock", "required": false }
+  ]
+}

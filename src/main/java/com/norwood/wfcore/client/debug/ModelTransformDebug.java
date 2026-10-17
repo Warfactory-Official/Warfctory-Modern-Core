@@ -160,7 +160,7 @@ public final class ModelTransformDebug {
     }
 
     /**
-     * Read by {@link com.norwood.wfcore.client.render.gltf.GltfMachineRenderer} in place of
+     * Read by {@link com.norwood.wfcore.client.render.gltf.GemRenderMachineVisual} in place of
      * {@link IAnimatedMachine#getModelTransform()} when a live override exists.
      */
     public static Vec3 resolve(IAnimatedMachine animated, Direction facing) {
@@ -175,7 +175,7 @@ public final class ModelTransformDebug {
     }
 
     /**
-     * Read by {@link com.norwood.wfcore.client.render.gltf.GltfMachineRenderer} in place of
+     * Read by {@link com.norwood.wfcore.client.render.gltf.GemRenderMachineVisual} in place of
      * {@link IAnimatedMachine#getModelScale()} when a live override exists.
      */
     public static Vec3 resolveScale(IAnimatedMachine animated, Direction facing) {

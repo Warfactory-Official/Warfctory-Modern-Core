@@ -98,7 +98,7 @@ sourceSets.main.java {
     // `runData` now completes (317 files: 67 blockstates, 89 item models, 71 block lang entries, no
     // warnings), and `runClient` reaches the title screen with wfcore's mixins confirmed APPLIED in the
     // transformer list (e.g. `pl:mixin:APP:wfcore.mixins.json:GuiDebugRemover`) — which is the runtime
-    // proof the phase 5 descriptor audit could not give. Four real defects were found and fixed getting
+    // proof the phase 5 descriptor audit could not give. Real defects found and fixed getting
     // there, none of them visible to javac:
     //   1. wflib hard-requires flywheel and warforge needs LDLib2 (it neither declares nor JiJs
     //      it) — both are now localRuntime. LDLib2's presence does NOT walk back plan §2: no wfcore
@@ -107,68 +107,6 @@ sourceSets.main.java {
     //      methods, where Forge silently accepted it. WFCore itself had none (its listeners are all
     //      lambdas on the mod bus), so `register(this)` was a hard startup crash. The other 15 game-bus
     //      listeners were audited and all carry instance @SubscribeEvent methods.
-    //   3. WFItems.init() called GTItems.attach(...) during MOD CONSTRUCTION. The helper is a one-line
-    //      lambda factory, but touching it forces GTItems.<clinit>, whose field initialisers build
-    //      ItemMaterialInfos from GTMaterials constants — all still null that early, so it died on
-    //      MaterialStack.material(). NEVER touch a GT content holder from a mod constructor.
-    //
-    // PHASE 5c — GREGTECH BLOCKERS CLEARED. Both blockers below were fixed in GregTech-Modern (branch
-    // 1.21), along with five more defects of the same family that only became visible once each earlier
-    // one was cleared. THE DEDICATED SERVER NOW STARTS: "Done (3.787s)!", world generated, and every
-    // wfcore subsystem reports in (deposits 3 types, compute registries, block resistances, radar config).
-    // runClient also boots with JEI back on the runtime classpath.
-    //
-    // First, GregTech-Modern's tree did not compile: 22 files carried the SAME comma-eating regex damage
-    // recorded in the regex-sweep-oracle memory (javadoc ", {@code" -> " {@code", 2D array rows joined so
-    // the separating comma vanished, and one deleted "implements"). None of it was intentional work, so
-    // `git checkout -- .` restored it — the untouched source is the oracle.
-    //
-    // The seven GT fixes, all in dynamic recipe generation, all previously fatal to world loading because
-    // they throw inside ReloadableServerResources#loadResources rather than skipping one recipe:
-    //   1. MaterialRecipeHandler#generateSurfaceRockRecipe — the only material generator missing the
-    //      material.shouldGenerateRecipesFor(prefix) guard, which is DEFINED as the empty-item check.
-    //   2. CategoryIcon — resolved its JEI drawable in the constructor, from GTRecipeCategories' static
-    //      init during RegisterEvent, when GTJEIPlugin.getRuntime() is still null. Now lazy.
-    //   3. ChemicalHelper#getItems — called .get() on getItemFromTable(), which is null whenever
-    //      doGenerateItem was satisfied by its first clause rather than by the item table.
-    //   4. WireRecipeHandler — derived the cable prefix by string surgery through a registry lookup that
-    //      can miss; the five cable prefixes are constants and are now passed explicitly.
-    //   5/6. VanillaRecipeHelper + SimpleCookingRecipeBuilder — empty ItemStack ingredients and results
-    //      now log and skip (isUnusableIngredient / isUnusableResult) instead of tripping the codecs.
-    //   7. GTRecipeBuilder — chancedInput/chancedOutput(ItemStack,int) now mirror the empty check their
-    //      String-fraction sibling already had, and outputItems null-guards its prefix.
-    // Point fixes also replaced concrete ChemicalHelper.get(...) ingredients with MaterialEntry (tag)
-    // ones in PipeRecipeHandler and WireRecipeHandler, so those recipes are RESTORED, not merely skipped.
-    //
-    // PHASE 5d — BOTH FOLLOW-UPS BELOW ARE NOW FIXED, and the second had one root cause behind it all.
-    //
-    // (A) THE BIG ONE: GTRegistries#actuallyRegister was discarding buffered registry entries.
-    // GTRegistries.register() buffers into TO_REGISTER while isFrozen, and actuallyRegister replays it on
-    // RegisterEvent. But RegisterEvent fires once PER REGISTRY and event.register(key, ...) only runs its
-    // consumer when the key matches — while the old code cleared the ENTIRE buffer after the first event.
-    // Every row whose own registry event had not fired yet was silently dropped. TagPrefix registers its
-    // whole static initialiser's worth of prefixes that way, so TAG_PREFIXES ended up EMPTY (probe:
-    // TAG_PREFIXES=0, MATERIALS=658). GTMaterialItems#generateMaterialItems iterates TAG_PREFIXES, so NOT
-    // ONE material item — no dust, ingot, plate, wire, foil — was ever registered. That single bug caused
-    // all of: 668 recipes skipped with "Tried to set output item stack that doesn't exist" (5 of them
-    // wfcore's), an empty "GTCEu Material Items" creative tab, and TagPrefix.get(name) returning null for
-    // prefixes that plainly exist (which is what broke WireRecipeHandler's cable lookup). Fixed by draining
-    // only the row matching event.getRegistryKey() and clearing only what was drained:
-    // TAG_PREFIXES 0 -> 95, skipped recipes 668 -> 0.
-    //
-    // (B) wfcore's creative tab crashed on world entry with "Itemstack 1 wfcore:aluminium_sheet_casing
-    // already exists in the tab's list". Two independent mechanisms were filling one tab: GT's
-    // RegistrateDisplayItemsGenerator (via .displayItems, keyed on GTRegistrate's TAB_LOOKUP) AND
-    // Registrate's own listener — because defaultCreativeTab(...) also points defaultCreativeModeTab at the
-    // new tab, and AbstractRegistrate#item then transforms every later builder with .tab(thatTab). Fixed in
-    // WFCreativeTabs by switching Registrate's automatic assignment off (null) right after the tab is
-    // built; see the comment there for why handing back CreativeModeTabs.SEARCH does NOT work.
-    //
-    // VERIFIED: runServer "Done (4.414s)!" with zero skipped-output errors, and a runClient booted straight
-    // into a world (--quickPlaySingleplayer) joins with no crash, no wfcore tab warnings from JEI, and the
-    // "GTCEu Material Items has no display items" warning gone. NOTE the remaining JEI warnings about
-    // duplicates in 'GTCEu Decoration Blocks' / 'GTCEu Items' / 'Limitless Vehicle' — those tabs have the
-    // same double-add as (B) but survive it as warnings rather than crashing, so GregTech has this bug too.
     //
     // Phase 7a: KubeJS integration ported and on the dev runtime. The bolt gun was never broken — it ships
     // no built-in conversions ("the pack owns the whole map"), so it stays inert until a startup script
@@ -185,7 +123,7 @@ sourceSets.main.java {
     //
     // Phase 7b: the 7 vehicle factories now spawn Limitless vehicles. Vehicles there are data-driven
     // BaseVehicleData entries, NOT entity types, so the EntityType axis through isDeployBlocked/isSpawnClear/
-    // deploy was replaced with LimitlessVehicles (resolve, size, YwzjVehicleAPI.summon). WFVehicleBindings is
+    // deploy was replaced with CombinedAssaultVehicles (resolve, size, CombinedAssaultAPI.summon). WFVehicleBindings is
     // back with its SuperbOverrides half deleted; run/kubejs/server_scripts/wfcore_vehicle_factory.js is the
     // dev smoke test. Limitless ships 18 vehicles and none of them float, so the Naval Vehicle Deployer has
     // nothing to build until a pack adds a boat.
@@ -235,6 +173,11 @@ repositories {
     maven { name = 'Modrinth'; url = 'https://api.modrinth.com/maven/'; content { includeGroup 'maven.modrinth' } }
     maven { name = 'CurseMaven'; url = 'https://cursemaven.com'; content { includeGroup 'curse.maven' } }
     maven { name = 'JitPack'; url = 'https://jitpack.io'; content { includeGroupAndSubgroups 'com.github' } }
+    maven {
+        name = 'Warfactory Snapshots'
+        url = 'https://repo.warfactory.co/snapshots'
+        content { includeGroup 'com.wf.wflib'; includeGroup 'com.norwood'; includeGroup 'com.wf.gemrender'; includeGroup 'com.wf.combinedassault' }
+    }
     flatDir { dirs 'libs' }
     mavenCentral()
 }
@@ -313,37 +256,43 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:1.18.34'
 
     // --- GregTech CE Modern 8.0.0 -----------------------------------------------------------
-    // Built locally out of ~/projects/wf2-21/GregTech-Modern (branch 1.21). The jar carries
-    // Registrate / Configuration / ModularUI 3 as jar-in-jars, so it supplies them at runtime.
-    compileOnly files('libs/gtceu-1.21.1-8.0.0.jar')
-    localRuntime files('libs/gtceu-1.21.1-8.0.0.jar')
+    // Pinned build = GitHub pre-release `latest-1.21`. JiJs Registrate / Configuration / ModularUI.
+    compileOnly("com.gregtechceu.gtceu:gtceu-1.21.1:${gtceu_build}") { transitive = false }
+    localRuntime("com.gregtechceu.gtceu:gtceu-1.21.1:${gtceu_build}") { transitive = false }
 
     // GregTech's public API leaks these types, so they must be on the compile classpath too.
     compileOnly "com.tterrag.registrate:Registrate:${registrate_version}"
     compileOnly "dev.toma.configuration:configuration-1.21.1:${configuration_version}"
     // ModularUI 3 — the single UI stack for this port. LDLib is gone entirely (plan §2).
-    compileOnly "brachy.modularui:modularui-mc1.21.1:${mui_version}"
+    compileOnly("brachy.modularui:modularui-mc1.21.1:${mui_build}") { transitive = false }
 
-    // --- Ported sibling mods (local jars) ----------------------------------------------------
-    compileOnly files('libs/wflib-1.2.0.jar')
-    localRuntime files('libs/wflib-1.2.0.jar')
+    // --- Ported sibling mods ----------------------------------------------------
+    compileOnly "com.wf.wflib:wflib:${wflib_version}-SNAPSHOT"
+    localRuntime "com.wf.wflib:wflib:${wflib_version}-SNAPSHOT"
+    // AHF: WFLib's required hit-geometry dep; compileOnly for WFLib supertypes (RoundDamageSource).
+    compileOnly "com.norwood:ahf-1.21.1-neoforge:${ahf_version}-SNAPSHOT"
+    localRuntime "com.norwood:ahf-1.21.1-neoforge:${ahf_version}-SNAPSHOT"
     compileOnly files('libs/warforge-remaintained-2.4.3.jar')
     localRuntime files('libs/warforge-remaintained-2.4.3.jar')
-    compileOnly files('libs/mcgltf-1.21.1.jar')
-    localRuntime files('libs/mcgltf-1.21.1.jar')
-    // Limitless Vehicle (ywzj_vehicle) — the vehicle-factory spawn target (plan §4).
-    compileOnly files('libs/ywzj_vehicle-1.21.1-0.5.8.jar')
-    localRuntime files('libs/ywzj_vehicle-1.21.1-0.5.8.jar')
-    // Simple Bedrock Model — the packaged-vehicle item renderer draws Limitless' slot card with it.
-    // compileOnly only: Limitless jar-in-jars it, so it is already there at runtime.
-    compileOnly("com.github.mcmodderanchor:simplebedrockmodel:${simplebedrockmodel_version}") { transitive = false }
+    // GemRender — the animated-model renderer, built out of ~/projects/wf2-21/GemRender. Replaced
+    // MCglTF: same glTF assets and the same `extras.resourceLocation` hook, but the models are drawn
+    // as Flywheel instances off a shared bone palette instead of one immediate-mode draw per machine.
+    compileOnly "com.wf.gemrender:gemrender-1.21.1:${gemrender_version}-SNAPSHOT"
+    localRuntime "com.wf.gemrender:gemrender-1.21.1:${gemrender_version}-SNAPSHOT"
+    // CombinedAssault — the vehicle-factory spawn target (plan §4).
+    compileOnly "com.wf.combinedassault:combinedassault:${combinedassault_version}-SNAPSHOT"
+    localRuntime "com.wf.combinedassault:combinedassault:${combinedassault_version}-SNAPSHOT"
+
+    // Flywheel. No longer dev-run-only: wfcore's animated machines are Flywheel visuals now, and
+    // GemRender's own API hands back Flywheel types (Model, VisualizationContext, the instancer).
+    // The FULL jar rather than flywheel-neoforge-api, matching what GemRender compiles against.
+    compileOnly "dev.engine-room.flywheel:flywheel-neoforge-1.21.1:${flywheel_version}"
+    localRuntime "dev.engine-room.flywheel:flywheel-neoforge-1.21.1:${flywheel_version}"
 
     // --- Dev-run-only deps of the sibling mods ----------------------------------------------
-    // Neither of these is used by wfcore's own code; both are needed for a dev launch to get past
-    // mod construction, because the sibling jars reach for them and supply them themselves.
+    // Not used by wfcore's own code; needed for a dev launch to get past mod construction, because
+    // the sibling jars reach for them and supply them themselves.
     //
-    // wflib declares flywheel as a REQUIRED dependency in its mods.toml.
-    localRuntime "dev.engine-room.flywheel:flywheel-neoforge-1.21.1:${flywheel_version}"
     // warforge builds its GUIs on LDLib2 but neither declares it in mods.toml nor jar-in-jars it,
     // so it dies in mod construction with NoClassDefFoundError on LDLib2's BlockUIMenuType$BlockUI.
     // The ':all' classifier matches what WarForge-Remaintained compiles against — it shadows Yoga,
@@ -355,7 +304,7 @@ dependencies {
     // KubeJS on the dev runtime (phase 7a) — wfcore's data-driven registries are populated only by its
     // bindings. 'rhino' is a separate required mod dep of KubeJS; transitive=false is safe as its other
     // two runtime deps are jar-in-jar'd. Plan §3.5's rhino clash was checked here and does not occur:
-    // ywzj_vehicle's fork is shaded to org.mozillaa.* and is not a mod.
+    // CombinedAssault's fork is shaded to org.mozillaa.* and is not a mod.
     localRuntime("dev.latvian.mods:kubejs-neoforge:${kubejs_version}") { transitive = false }
     localRuntime("dev.latvian.mods:rhino:${rhino_version}") { transitive = false }
 
@@ -425,6 +374,7 @@ var generateModMetadata = tasks.register('generateModMetadata', ProcessResources
             loader_version_range   : loader_version_range,
             gtceu_version_range    : gtceu_version_range,
             wflib_version   : wflib_version,
+            flywheel_version       : flywheel_version,
             mod_id                 : mod_id,
             mod_name               : mod_name,
             mod_license            : mod_license,

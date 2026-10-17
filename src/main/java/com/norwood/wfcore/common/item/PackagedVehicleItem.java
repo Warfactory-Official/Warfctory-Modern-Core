@@ -9,7 +9,7 @@ import net.minecraft.world.item.TooltipFlag;
 
 import com.norwood.wfcore.common.data.WFDataComponents;
 import com.norwood.wfcore.common.data.WFItems;
-import com.norwood.wfcore.integration.limitless.LimitlessVehicles;
+import com.norwood.wfcore.integration.combinedassault.CombinedAssaultVehicles;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -43,7 +43,7 @@ public class PackagedVehicleItem extends Item {
 
     @Override
     public Component getName(ItemStack stack) {
-        Component name = LimitlessVehicles.name(getVehicleId(stack));
+        Component name = CombinedAssaultVehicles.name(getVehicleId(stack));
         return name != null ? name : super.getName(stack);
     }
 

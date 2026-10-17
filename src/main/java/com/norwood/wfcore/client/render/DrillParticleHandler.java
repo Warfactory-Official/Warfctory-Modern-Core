@@ -78,7 +78,7 @@ public final class DrillParticleHandler {
     /** Start one looping miner sound at the head; it auto-releases when {@link #shouldStopSound} goes true. */
     private static void startSound(BlockPos controllerPos, BlockPos head) {
         if (SOUNDING.add(controllerPos.asLong())) {
-            GTSoundEntries.MINER.playAutoReleasedSound(() -> shouldStopSound(controllerPos), head, true, 0,
+            GTSoundEntries.MINER.value().playAutoReleasedSound(() -> shouldStopSound(controllerPos), head, true, 0,
                     1.0F, 1.0F);
         }
     }

@@ -5,7 +5,7 @@ import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
-import com.gregtechceu.gtceu.api.recipe.GTRecipeType;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.GTRecipeTypeEntry;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 import com.gregtechceu.gtceu.common.data.GTRecipeTypes;
 import com.gregtechceu.gtceu.common.mui.GTGuiTextures;
@@ -23,6 +23,8 @@ import com.norwood.wfcore.common.recipe.condition.DepositRecipeCondition;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 
+import static com.norwood.wfcore.WFCore.WF_MACHINES;
+
 
 /**
  * WFCore recipe types. {@code LARGE_BLAST_FURNACE} mirrors the 1.12.2 large (warfactory) blast furnace
@@ -31,81 +33,73 @@ import net.neoforged.neoforge.fluids.FluidStack;
  */
 public class WFRecipeTypes {
 
-    public static GTRecipeType LARGE_BLAST_FURNACE;
-    public static GTRecipeType DRILLING;
-    public static GTRecipeType MISSILE_FACTORY;
-    public static GTRecipeType PRIMITIVE_ALLOYER;
-    public static GTRecipeType STRANDCASTER;
-    public static GTRecipeType GAS_EXTRACTOR;
-    public static GTRecipeType GREENHOUSE;
-    public static GTRecipeType MOB_FARMER;
+    public static GTRecipeTypeEntry LARGE_BLAST_FURNACE;
+    public static GTRecipeTypeEntry DRILLING;
+    public static GTRecipeTypeEntry MISSILE_FACTORY;
+    public static GTRecipeTypeEntry PRIMITIVE_ALLOYER;
+    public static GTRecipeTypeEntry STRANDCASTER;
+    public static GTRecipeTypeEntry GAS_EXTRACTOR;
+    public static GTRecipeTypeEntry GREENHOUSE;
+    public static GTRecipeTypeEntry MOB_FARMER;
 
     public static void init() {
-        var id = WFCore.id("large_blast_furnace");
-        LARGE_BLAST_FURNACE = GTRecipeTypes.register(id, "multiblock");
-        LARGE_BLAST_FURNACE.setMaxIOSize(2, 1, 0, 1)
+        LARGE_BLAST_FURNACE = WF_MACHINES.recipeType("large_blast_furnace", GTRecipeTypes.MULTIBLOCK)
+                .setMaxIOSize(2, 1, 0, 1)
                 .UI(builder -> builder.setProgressBar(GTGuiTextures.PROGRESS_ARROW))
-                .setMaxTooltips(1)
-                .setSound(GTSoundEntries.FURNACE);
+                .setSound(GTSoundEntries.FURNACE)
+                .register();
 
-        var drillId = WFCore.id("drilling");
-        DRILLING = GTRecipeTypes.register(drillId, "multiblock");
-        DRILLING.setMaxIOSize(0, 4, 2, 0)
+        DRILLING = WF_MACHINES.recipeType("drilling", GTRecipeTypes.MULTIBLOCK)
+                .setMaxIOSize(0, 4, 2, 0)
                 .UI(builder -> builder.setProgressBar(GTGuiTextures.PROGRESS_ARROW))
-                .setMaxTooltips(1)
-                .setSound(GTSoundEntries.MINER);
-        DRILLING.addCustomRecipeLogic(new DrillingCustomRecipeLogic());
+                .setSound(GTSoundEntries.MINER)
+                .addCustomRecipeLogic(new DrillingCustomRecipeLogic())
+                .register();
 
         // Missile factory: assembles WFLib missile items (wflib:missile_<preset>) from
         // materials + fuel. Recipes are fully programmable from KubeJS/GroovyScript like the others.
-        var missileId = WFCore.id("missile_factory");
-        MISSILE_FACTORY = GTRecipeTypes.register(missileId, "multiblock");
-        MISSILE_FACTORY.setMaxIOSize(9, 1, 2, 0)
+        MISSILE_FACTORY = WF_MACHINES.recipeType("missile_factory", GTRecipeTypes.MULTIBLOCK)
+                .setMaxIOSize(9, 1, 2, 0)
                 .UI(builder -> builder.setProgressBar(GTGuiTextures.PROGRESS_ARROW))
-                .setMaxTooltips(1)
-                .setSound(GTSoundEntries.ASSEMBLER);
+                .setSound(GTSoundEntries.ASSEMBLER)
+                .register();
 
-        var alloyerId = WFCore.id("primitive_alloyer");
-        PRIMITIVE_ALLOYER = GTRecipeTypes.register(alloyerId, "multiblock");
-        PRIMITIVE_ALLOYER.setMaxIOSize(2, 0, 0, 1)
+        PRIMITIVE_ALLOYER = WF_MACHINES.recipeType("primitive_alloyer", GTRecipeTypes.MULTIBLOCK)
+                .setMaxIOSize(2, 0, 0, 1)
                 .UI(builder -> builder.setProgressBar(GTGuiTextures.PROGRESS_ARROW))
-                .setMaxTooltips(1)
-                .setSound(GTSoundEntries.FURNACE);
+                .setSound(GTSoundEntries.FURNACE)
+                .register();
 
-        var casterId = WFCore.id("strandcaster");
-        STRANDCASTER = GTRecipeTypes.register(casterId, "multiblock");
         // Two fluid inputs are allowed so the runtime-added water coolant (see StrandcasterMachine) fits.
-        STRANDCASTER.setMaxIOSize(0, 1, 2, 0)
+        STRANDCASTER = WF_MACHINES.recipeType("strandcaster", GTRecipeTypes.MULTIBLOCK)
+                .setMaxIOSize(0, 1, 2, 0)
                 .UI(builder -> builder.setProgressBar(GTGuiTextures.PROGRESS_ARROW))
-                .setMaxTooltips(1)
-                .setSound(GTSoundEntries.COOLING);
+                .setSound(GTSoundEntries.COOLING)
+                .register();
 
         // Gas Extractor: an air/gas collector. Which gas to collect is selected with a Programmed Circuit in
         // the Item Input Bus (recipes gate on it via `.circuit(n)`), which is a not-consumed item input — so
         // item inputs are sized for the circuit plus a couple of real inputs. It can also process items+fluids
         // and outputs both. Recipes are authored entirely in KubeJS on `wfcore:gas_extractor`.
-        var gasId = WFCore.id("gas_extractor");
-        GAS_EXTRACTOR = GTRecipeTypes.register(gasId, "multiblock");
-        GAS_EXTRACTOR.setMaxIOSize(3, 3, 3, 3)
+        GAS_EXTRACTOR = WF_MACHINES.recipeType("gas_extractor", GTRecipeTypes.MULTIBLOCK)
+                .setMaxIOSize(3, 3, 3, 3)
                 .UI(builder -> builder.setProgressBar(GTGuiTextures.PROGRESS_ARROW))
-                .setMaxTooltips(1)
-                .setSound(GTSoundEntries.COMPRESSOR);
+                .setSound(GTSoundEntries.COMPRESSOR)
+                .register();
 
 
-        var greenhouseId = WFCore.id("greenhouse");
-        GREENHOUSE = GTRecipeTypes.register(greenhouseId, "multiblock");
-        GREENHOUSE.setMaxIOSize(3, 3, 1, 0)
+        GREENHOUSE = WF_MACHINES.recipeType("greenhouse", GTRecipeTypes.MULTIBLOCK)
+                .setMaxIOSize(3, 3, 1, 0)
                 .UI(builder -> builder.setProgressBar(GTGuiTextures.PROGRESS_ARROW))
-                .setMaxTooltips(1)
-                .setSound(GTSoundEntries.BATH);
+                .setSound(GTSoundEntries.BATH)
+                .register();
 
 
-        var mobFarmerId = WFCore.id("mob_farmer");
-        MOB_FARMER = GTRecipeTypes.register(mobFarmerId, "multiblock");
-        MOB_FARMER.setMaxIOSize(2, 6, 1, 0)
+        MOB_FARMER = WF_MACHINES.recipeType("mob_farmer", GTRecipeTypes.MULTIBLOCK)
+                .setMaxIOSize(2, 6, 1, 0)
                 .UI(builder -> builder.setProgressBar(GTGuiTextures.PROGRESS_ARROW))
-                .setMaxTooltips(1)
-                .setSound(GTSoundEntries.MACERATOR);
+                .setSound(GTSoundEntries.MACERATOR)
+                .register();
     }
 
     /**

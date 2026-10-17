@@ -11,7 +11,9 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.SoundType;
+import net.minecraft.world.level.material.MapColor;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
@@ -31,6 +33,7 @@ import com.norwood.wfcore.common.pipenet.ac.ACPipeBlockEntity;
 import com.norwood.wfcore.common.pipenet.ac.ACPipeBlockItem;
 import com.norwood.wfcore.common.pipenet.ac.ACPipeType;
 import com.norwood.wfcore.common.pipenet.optical.CopperNetworkCableBlock;
+import com.tterrag.registrate.providers.ProviderType;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
@@ -82,6 +85,14 @@ public class WFBlocks {
     public static BlockEntry<Block> REINFORCED_CONCRETE;
     public static BlockEntry<Block> HARDENED_STEEL;
     public static BlockEntry<Block> TUNGSTEN_PLATING;
+
+    /** Below deepslate (wfworld deeprock_top). Hand-authored assets/loot/lang; unobtainable: drops cobbled only. */
+    public static BlockEntry<RotatedPillarBlock> DEEPROCK;
+    public static BlockEntry<Block> COBBLED_DEEPROCK;
+
+    /** Deeprock and its GT ores: shared so machines see one hardness. Resistance 9 => TNT-class blasts break it. */
+    public static final float DEEPROCK_HARDNESS = 6.0F;
+    public static final float DEEPROCK_RESISTANCE = 9.0F;
 
     public static void init() {
         ALUMINIUM_SHEET_CASING = createCasingBlock("aluminium_sheet_casing",
@@ -222,6 +233,29 @@ public class WFBlocks {
         TUNGSTEN_PLATING = createArmorBlock("tungsten_plating", Blocks.IRON_BLOCK, SoundType.METAL, 20.0F, 130.0F,
                 GTCEu.id("block/casings/solid/machine_casing_robust_tungstensteel"),
                 CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WRENCH);
+
+        DEEPROCK = WF_MACHINES.block("deeprock", RotatedPillarBlock::new)
+                .initialProperties(() -> Blocks.DEEPSLATE)
+                .properties(p -> p.mapColor(MapColor.COLOR_BLUE).strength(DEEPROCK_HARDNESS, DEEPROCK_RESISTANCE))
+                .blockstate(NonNullBiConsumer.noop())
+                .setData(ProviderType.LANG, NonNullBiConsumer.noop())
+                .loot(NonNullBiConsumer.noop())
+                .tag(BlockTags.MINEABLE_WITH_PICKAXE)
+                .item(BlockItem::new)
+                .model(NonNullBiConsumer.noop())
+                .build()
+                .register();
+        COBBLED_DEEPROCK = WF_MACHINES.block("cobbled_deeprock", Block::new)
+                .initialProperties(() -> Blocks.COBBLED_DEEPSLATE)
+                .properties(p -> p.mapColor(MapColor.COLOR_BLUE).strength(4.5F, 6.0F))
+                .blockstate(NonNullBiConsumer.noop())
+                .setData(ProviderType.LANG, NonNullBiConsumer.noop())
+                .loot(NonNullBiConsumer.noop())
+                .tag(BlockTags.MINEABLE_WITH_PICKAXE)
+                .item(BlockItem::new)
+                .model(NonNullBiConsumer.noop())
+                .build()
+                .register();
 
         // Bolted and unbolted are separate blocks (post-flattening) so each has its own item and shows in the
         // creative menu. The bolt gun swaps one for the other via the data-driven BoltGunConversions map.

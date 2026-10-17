@@ -7,7 +7,7 @@ import java.util.Collection;
 import java.util.List;
 
 /**
- * Implemented by machines that drive an animated GLTF model through {@link GltfMachineRenderer}.
+ * Implemented by machines that drive an animated GLTF model through {@link GemRenderMachineVisual}.
  * <p>
  * Mirrors the capabilities of the 1.12.2 {@code IAnimatedMTE}: an animation state, a per-frame run
  * flag (so the model can freeze in place on power loss and resume seamlessly), a transition policy
@@ -16,7 +16,7 @@ import java.util.List;
  */
 public interface IAnimatedMachine {
 
-    /** Current animation state name, used to pick the {@link AnimationLoop}. */
+    /** Current animation state name, used to pick the {@link MachineClip}. */
     default String getAnimState() {
         return "default";
     }

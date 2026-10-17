@@ -4,12 +4,21 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+
+import com.norwood.wfcore.WFCore;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.function.Supplier;
 
 /**
  * Client-side render mask: the set of structure block positions a machine's GLTF model visually
@@ -22,9 +31,41 @@ import java.util.Set;
  * mapping is only ever touched on the render/main thread.
  */
 @OnlyIn(Dist.CLIENT)
+@EventBusSubscriber(modid = WFCore.MOD_ID, value = Dist.CLIENT)
 public final class RenderMaskManager {
 
     private RenderMaskManager() {}
+
+    /**
+     * Mask changes asked for off the main thread. Flywheel runs a visual's frame plan on its task
+     * executor, so {@link com.norwood.wfcore.client.render.gltf.GemRenderMachineVisual} cannot touch the
+     * map or the level renderer itself; it posts here instead and the request is applied on the next
+     * client tick. The hidden set arrives as a
+     * supplier so the structure walk that produces it also runs on the main thread.
+     */
+    private record Request(BlockPos controllerPos, @Nullable Supplier<Collection<BlockPos>> hidden) {}
+
+    private static final Queue<Request> PENDING = new ConcurrentLinkedQueue<>();
+
+    public static void requestMask(BlockPos controllerPos, Supplier<Collection<BlockPos>> hidden) {
+        PENDING.add(new Request(controllerPos.immutable(), hidden));
+    }
+
+    public static void requestUnmask(BlockPos controllerPos) {
+        PENDING.add(new Request(controllerPos.immutable(), null));
+    }
+
+    @SubscribeEvent
+    public static void onClientTick(ClientTickEvent.Post event) {
+        Request request;
+        while ((request = PENDING.poll()) != null) {
+            if (request.hidden() == null) {
+                removeDisableModel(request.controllerPos());
+            } else {
+                addDisableModel(request.controllerPos(), request.hidden().get());
+            }
+        }
+    }
 
     /** Immutable snapshot of all masked positions; replaced wholesale on every change. */
     private static volatile Set<BlockPos> modelDisabled = Set.of();
@@ -67,6 +108,7 @@ public final class RenderMaskManager {
     }
 
     public static void clear() {
+        PENDING.clear();
         multiDisabled.clear();
         modelDisabled = Set.of();
     }

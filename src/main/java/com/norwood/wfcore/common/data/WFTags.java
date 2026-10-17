@@ -37,5 +37,8 @@ public final class WFTags {
     // WF explosives
     public static final TagKey<Block> WF_EXPLOSIVE = BlockTags.create(WFCore.id("explosive"));
 
+    /** Real survival players cannot break these; explosions, charges and FakePlayer machines can. */
+    public static final TagKey<Block> PLAYER_UNBREAKABLE = BlockTags.create(WFCore.id("player_unbreakable"));
+
     private WFTags() {}
 }

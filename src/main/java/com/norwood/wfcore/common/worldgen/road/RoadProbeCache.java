@@ -2,6 +2,10 @@ package com.norwood.wfcore.common.worldgen.road;
 
 import com.norwood.wfcore.WFCore;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongSet;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.DataInputStream;
@@ -9,39 +13,43 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
+import java.nio.file.StandardCopyOption;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.zip.GZIPInputStream;
 import java.util.zip.GZIPOutputStream;
 
 /**
- * Stores the terrain heights probed along every road, so a world only pays for them once.
- *
- * <p>Probing is the whole cost of building the road index: each sample is a full evaluation of the dimension's
- * density-function graph, and on a terrain mod that is tens of milliseconds a column. Everything downstream —
- * solving profiles, classifying bridges and tunnels, rasterising — is arithmetic by comparison.
- *
- * <p>Only the probe results are cached, deliberately, not the finished index. Retuning a road type's width,
- * gradient budget or block palette is the thing anyone does repeatedly, and none of it changes what the terrain
- * is; keeping the cache one layer below that means those edits take effect on the next load for free. The key
- * covers the world seed and every probed coordinate, so any change that <em>would</em> move a sample — a
- * re-routed network, a different {@code sample_spacing} — misses the cache instead of reading a stale answer.
+ * Probed terrain heights per link, keyed by seed + the columns sampled. Only probes are cached, not solved
+ * profiles: retuning a road type must not invalidate them.
  */
 final class RoadProbeCache {
 
     private static final int MAGIC = 0x57465250;
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
 
-    private RoadProbeCache() {}
+    private static final ExecutorService SAVER = Executors.newSingleThreadExecutor(runnable -> {
+        Thread thread = new Thread(runnable, "wfcore-road-cache");
+        thread.setDaemon(true);
+        return thread;
+    });
 
-    /** Identifies exactly the inputs the probe results depend on: the world seed and the columns sampled. */
-    static long key(long seed, List<RoadIndex.LinkGeometry> links) {
+    private final Path file;
+    private final Long2ObjectOpenHashMap<short[][]> entries;
+    private boolean dirty;
+
+    private RoadProbeCache(Path file, Long2ObjectOpenHashMap<short[][]> entries) {
+        this.file = file;
+        this.entries = entries;
+    }
+
+    static long key(long seed, RoadIndex.LinkGeometry link) {
         long hash = mix(seed ^ 0x9E3779B97F4A7C15L);
-        for (RoadIndex.LinkGeometry link : links) {
-            hash = mix(hash ^ link.stationCount());
-            hash = mix(hash ^ link.type().grade().sampleSpacing());
-            for (int station = 0; station < link.stationCount(); station += link.type().grade().sampleSpacing()) {
-                hash = mix(hash ^ ((long) Math.floor(link.x(station)) * 31 + (long) Math.floor(link.z(station))));
-            }
+        int spacing = link.type().grade().sampleSpacing();
+        hash = mix(hash ^ link.stationCount());
+        hash = mix(hash ^ spacing);
+        for (int station = 0; station < link.stationCount(); station += spacing) {
+            hash = mix(hash ^ ((long) Math.floor(link.x(station)) * 31 + (long) Math.floor(link.z(station))));
         }
         return hash;
     }
@@ -54,40 +62,52 @@ final class RoadProbeCache {
         return value ^ (value >>> 33);
     }
 
-    /** Fills every link's terrain arrays from disk. False on any miss, mismatch or damage — never on a guess. */
-    static boolean load(Path file, long key, List<RoadIndex.LinkGeometry> links) {
-        if (!Files.isRegularFile(file)) {
-            return false;
-        }
-        try (DataInputStream in = new DataInputStream(
-                new GZIPInputStream(new BufferedInputStream(Files.newInputStream(file))))) {
-            if (in.readInt() != MAGIC || in.readInt() != VERSION || in.readLong() != key
-                    || in.readInt() != links.size()) {
-                return false;
-            }
-            short[][] ground = new short[links.size()][];
-            short[][] water = new short[links.size()][];
-            for (int i = 0; i < links.size(); i++) {
-                int n = in.readInt();
-                if (n != links.get(i).stationCount()) {
-                    return false;
+    /** Entries absent from {@code validKeys} are dropped, so the file does not accumulate retired routes. */
+    static RoadProbeCache open(Path file, LongSet validKeys) {
+        Long2ObjectOpenHashMap<short[][]> entries = new Long2ObjectOpenHashMap<>();
+        boolean pruned = false;
+        if (Files.isRegularFile(file)) {
+            try (DataInputStream in = new DataInputStream(
+                    new GZIPInputStream(new BufferedInputStream(Files.newInputStream(file))))) {
+                if (in.readInt() == MAGIC && in.readInt() == VERSION) {
+                    int count = in.readInt();
+                    for (int i = 0; i < count; i++) {
+                        long key = in.readLong();
+                        int n = in.readInt();
+                        short[][] heights = {readShorts(in, n), readShorts(in, n)};
+                        if (validKeys.contains(key)) {
+                            entries.put(key, heights);
+                        } else {
+                            pruned = true;
+                        }
+                    }
                 }
-                ground[i] = readShorts(in, n);
-                water[i] = readShorts(in, n);
+            } catch (IOException e) {
+                WFCore.LOGGER.warn("Could not read the road terrain cache at {}; re-probing", file, e);
+                entries.clear();
             }
-            // Only published once the whole file has read back cleanly, so a truncated cache cannot leave half
-            // the network holding terrain from a previous world.
-            for (int i = 0; i < links.size(); i++) {
-                links.get(i).setTerrain(ground[i], water[i]);
-            }
-            return true;
-        } catch (IOException e) {
-            WFCore.LOGGER.warn("Could not read the road terrain cache at {}; re-probing", file, e);
-            return false;
         }
+        RoadProbeCache cache = new RoadProbeCache(file, entries);
+        cache.dirty = pruned;
+        return cache;
     }
 
-    static void save(Path file, long key, List<RoadIndex.LinkGeometry> links) {
+    synchronized short[][] get(long key) {
+        return entries.get(key);
+    }
+
+    void put(long key, short[] ground, short[] water) {
+        synchronized (this) {
+            entries.put(key, new short[][] {ground, water});
+            dirty = true;
+        }
+        SAVER.execute(this::flush);
+    }
+
+    synchronized void flush() {
+        if (!dirty) {
+            return;
+        }
         try {
             Files.createDirectories(file.getParent());
             Path temporary = file.resolveSibling(file.getFileName() + ".tmp");
@@ -95,22 +115,22 @@ final class RoadProbeCache {
                     new GZIPOutputStream(new BufferedOutputStream(Files.newOutputStream(temporary))))) {
                 out.writeInt(MAGIC);
                 out.writeInt(VERSION);
-                out.writeLong(key);
-                out.writeInt(links.size());
-                for (RoadIndex.LinkGeometry link : links) {
-                    int n = link.stationCount();
-                    out.writeInt(n);
-                    for (int i = 0; i < n; i++) {
-                        out.writeShort(link.ground(i));
+                out.writeInt(entries.size());
+                for (Long2ObjectMap.Entry<short[][]> entry : entries.long2ObjectEntrySet()) {
+                    short[][] heights = entry.getValue();
+                    out.writeLong(entry.getLongKey());
+                    out.writeInt(heights[0].length);
+                    for (short value : heights[0]) {
+                        out.writeShort(value);
                     }
-                    for (int i = 0; i < n; i++) {
-                        out.writeShort(link.water(i));
+                    for (short value : heights[1]) {
+                        out.writeShort(value);
                     }
                 }
             }
-            Files.move(temporary, file, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            Files.move(temporary, file, StandardCopyOption.REPLACE_EXISTING);
+            dirty = false;
         } catch (IOException e) {
-            // A cache that cannot be written costs a slow load next time and nothing else.
             WFCore.LOGGER.warn("Could not write the road terrain cache to {}", file, e);
         }
     }

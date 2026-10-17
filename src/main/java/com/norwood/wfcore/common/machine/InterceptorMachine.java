@@ -55,6 +55,7 @@ import com.wf.wflib.compat.WarforgeCompat;
 import com.wf.wflib.flight.FlightStageRegistry;
 import com.wf.wflib.item.MissileItem;
 import com.wf.wflib.item.MissilePreset;
+import com.wf.wflib.missile.MissileInterceptor;
 import com.wf.wflib.sim.MissileSimConfig;
 import com.wf.wflib.warhead.WarheadRegistry;
 import org.jetbrains.annotations.Nullable;
@@ -319,7 +320,7 @@ public class InterceptorMachine extends MultiblockControllerMachine
         AABB box = new AABB(getBlockPos()).inflate(DETECT_RANGE);
         List<MissileEntity> missiles = level.getEntitiesOfClass(MissileEntity.class, box, m -> !m.isRemoved());
         // Missiles already locked by another interceptor, so batteries don't dogpile one target.
-        Set<UUID> claimed = MissileEntity.claimedTargets(missiles, Integer.MAX_VALUE);
+        Set<UUID> claimed = MissileInterceptor.claimedTargets(missiles, Integer.MAX_VALUE);
         MissileEntity best = null;
         double bestDistSqr = DETECT_RANGE * DETECT_RANGE;
         for (MissileEntity missile : missiles) {
@@ -327,7 +328,7 @@ public class InterceptorMachine extends MultiblockControllerMachine
                 continue;
             }
             double distSqr = center.distanceToSqr(missile.getBoundingBox().getCenter());
-            if (distSqr <= bestDistSqr && missile.detectableAt(distSqr, level.random)) {
+            if (distSqr <= bestDistSqr && missile.signature().detectableAt(distSqr, DETECT_RANGE)) {
                 best = missile;
                 bestDistSqr = distSqr;
             }
@@ -337,7 +338,7 @@ public class InterceptorMachine extends MultiblockControllerMachine
 
     /** A hostile, wfcore-built strike round (not another interceptor, and worth a shot) is a valid target. */
     private boolean isEngageable(MissileEntity missile) {
-        return !missile.isInterceptor() && isWfcoreThreat(missile) && isHostile(missile);
+        return !missile.interceptor().isActive() && isWfcoreThreat(missile) && isHostile(missile);
     }
 
     /**
@@ -348,12 +349,12 @@ public class InterceptorMachine extends MultiblockControllerMachine
      * loitering munition, so the battery is deliberately baited into engaging it (a decoy that wastes ammo).
      */
     private boolean isWfcoreThreat(MissileEntity missile) {
-        ResourceLocation response = missile.getDamageResponseId();
+        ResourceLocation response = missile.damage().getResponseId();
         if (response == null || !WFCore.MOD_ID.equals(response.getNamespace())) {
             return false; // not one of ours — a WF-B test missile, or something else entirely
         }
-        boolean inert = INERT_WARHEAD_ID.equals(missile.getDetonationId());
-        boolean loiterer = LOITER_STAGE_ID.equals(missile.getCruiseStageId());
+        boolean inert = INERT_WARHEAD_ID.equals(missile.fuze().getDetonationId());
+        boolean loiterer = LOITER_STAGE_ID.equals(missile.flight().getCruiseStageId());
         return !inert || loiterer; // inert and not loitering == the dummy -> ignore
     }
 
@@ -379,7 +380,7 @@ public class InterceptorMachine extends MultiblockControllerMachine
         MissileEntity interceptor = missileItem.preset().build(level, muzzle);
         interceptor.setControlId(controlId());
         interceptor.setTeamId(cachedTeamId);
-        interceptor.setInterceptLock(target.getUUID());
+        interceptor.interceptor().setLock(target.getUUID());
         interceptor.moveTo(muzzle.x, muzzle.y, muzzle.z, 0.0f, 0.0f);
         level.addFreshEntity(interceptor);
 
@@ -593,7 +594,7 @@ public class InterceptorMachine extends MultiblockControllerMachine
 
     private static double estimateKillProbability(MissilePreset interceptor, MissileEntity target) {
         double interceptorSpeed = Math.max(1.0E-3, interceptor.cruiseSpeed());
-        double targetSpeed = Math.max(0.0, target.getCruiseSpeed());
+        double targetSpeed = Math.max(0.0, target.flight().getCruiseSpeed());
 
         double base = interceptor.interceptChance();
         if (interceptorSpeed <= targetSpeed) {
@@ -601,7 +602,7 @@ public class InterceptorMachine extends MultiblockControllerMachine
         }
 
         double escape = 0.0;
-        float evasion = target.effectiveEvasion(); // dive-amplified when the target is already in its terminal dive
+        float evasion = target.signature().effectiveEvasion(); // dive-amplified when the target is already in its terminal dive
         if (evasion > 0.0f) {
             double boostedSpeed = targetSpeed * TARGET_BOOST_SPEED_MULT;
             double speedFactor = Math.min(1.0, boostedSpeed / interceptorSpeed);
@@ -745,7 +746,7 @@ public class InterceptorMachine extends MultiblockControllerMachine
         return InteractionResult.SUCCESS;
     }
 
-    //////////////////// animated model (mcgltf iron dome, rendered by GltfMachineRenderer) ////////////////////
+    //////////////////// animated model (iron dome, drawn by GemRenderMachineVisual) ////////////////////
 
     /** The iron dome's single baked deploy/retract animation. */
     @Override
@@ -880,15 +881,16 @@ public class InterceptorMachine extends MultiblockControllerMachine
 
     @Override
     public AABB getRenderBounds() {
-        // The iron dome rides above the controller and spans the whole battery footprint; inflate generously
-        // so the glTF model (drawn by GltfMachineRenderer) is never frustum-culled when only its top shows.
+        // The iron dome rides above the controller and spans the whole battery footprint. Unused by the
+        // glTF model since it moved to a Flywheel instance, which is culled against its own posed bounds.
         return new AABB(getBlockPos()).inflate(24);
     }
 
     @Override
     public void onUnload() {
         // Drop the render mask so the hidden upper-layer blocks reappear when the controller is broken or its
-        // chunk unloads (the BER, which would otherwise unregister it, stops being called once this BE is gone).
+        // chunk unloads. The visual releases it too; this is the path for a client with Flywheel disabled,
+        // where no visual was ever built.
         if (level != null && level.isClientSide) {
             RenderMaskManager.removeDisableModel(getBlockPos());
         }

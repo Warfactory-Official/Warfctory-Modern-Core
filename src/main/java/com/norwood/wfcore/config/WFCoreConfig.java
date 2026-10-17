@@ -32,8 +32,6 @@ public final class WFCoreConfig {
     private static final boolean DEFAULT_VEHICLE_GUN_DATA_CACHE = true;
     private static final boolean DEFAULT_SBW_DRONE_HOT_PATH_CACHE = true;
     private static final boolean DEFAULT_GT_MACHINE_CAPABILITY_CACHE = true;
-    private static final boolean DEFAULT_BALLISTICS_ENABLED = true;
-    private static final boolean DEFAULT_BALLISTICS_DEBUG_LOGGING = false;
     private static final boolean DEFAULT_PLAYER_RANKS_ENABLED = true;
     private static final String DEFAULT_RANK_MANIFEST_URL = "https://warfactory.co/ranks.json";
     private static final int DEFAULT_RANK_REFRESH_INTERVAL_MINUTES = 4;
@@ -84,8 +82,6 @@ public final class WFCoreConfig {
     private static volatile boolean vehicleGunDataCache = DEFAULT_VEHICLE_GUN_DATA_CACHE;
     private static volatile boolean sbwDroneHotPathCache = DEFAULT_SBW_DRONE_HOT_PATH_CACHE;
     private static volatile boolean gtMachineCapabilityCache = DEFAULT_GT_MACHINE_CAPABILITY_CACHE;
-    private static volatile boolean ballisticsEnabled = DEFAULT_BALLISTICS_ENABLED;
-    private static volatile boolean ballisticsDebugLogging = DEFAULT_BALLISTICS_DEBUG_LOGGING;
     private static volatile boolean playerRanksEnabled = DEFAULT_PLAYER_RANKS_ENABLED;
     /** Reserved: baked from config but currently ignored (see {@link #getRankManifestUrl()}, which is hardcoded). */
     private static volatile String rankManifestUrl = DEFAULT_RANK_MANIFEST_URL;
@@ -129,8 +125,6 @@ public final class WFCoreConfig {
     private static final ModConfigSpec.BooleanValue VEHICLE_GUN_DATA_CACHE;
     private static final ModConfigSpec.BooleanValue SBW_DRONE_HOT_PATH_CACHE;
     private static final ModConfigSpec.BooleanValue GT_MACHINE_CAPABILITY_CACHE;
-    private static final ModConfigSpec.BooleanValue BALLISTICS_ENABLED;
-    private static final ModConfigSpec.BooleanValue BALLISTICS_DEBUG_LOGGING;
     private static final ModConfigSpec.BooleanValue PLAYER_RANKS_ENABLED;
     private static final ModConfigSpec.ConfigValue<String> RANK_MANIFEST_URL;
     private static final ModConfigSpec.IntValue RANK_REFRESH_INTERVAL_MINUTES;
@@ -248,21 +242,6 @@ public final class WFCoreConfig {
                 .define("logPlacements", DEFAULT_DEPOSIT_LOG_PLACEMENTS);
 
         builder.pop(2);
-
-        builder.comment("Off-thread long-range ballistics for TACZ bullets and Superb Warfare projectiles.")
-                .push("ballistics");
-
-        BALLISTICS_ENABLED = builder
-                .comment(
-                        "Master switch. When off, projectiles are never handed to the off-thread ballistics engine and behave exactly as their own mod ships them.")
-                .define("enabled", DEFAULT_BALLISTICS_ENABLED);
-
-        BALLISTICS_DEBUG_LOGGING = builder
-                .comment(
-                        "Log each virtual shell's lifecycle to the server log: leaving loaded chunks, impact position (and whether that chunk was loaded), deferred detonations, and expiries.")
-                .define("debugLogging", DEFAULT_BALLISTICS_DEBUG_LOGGING);
-
-        builder.pop();
 
         builder.comment(
                 "Client-side player ranks / vanity tags, downloaded from a remote JSON manifest (uuid -> rank).",
@@ -579,16 +558,6 @@ public final class WFCoreConfig {
         return gtMachineCapabilityCache;
     }
 
-    /** Master switch for the off-thread long-range ballistics engine (TACZ bullets + SBW projectiles). */
-    public static boolean isBallisticsEnabled() {
-        return ballisticsEnabled;
-    }
-
-    /** When true, the ballistics engine logs each virtual shell's lifecycle (demote / impact / defer / expiry). */
-    public static boolean isBallisticsDebugLogging() {
-        return ballisticsDebugLogging;
-    }
-
     /** Master switch for the client-side player-rank / vanity-tag system. */
     public static boolean isPlayerRanksEnabled() {
         return playerRanksEnabled;
@@ -762,8 +731,6 @@ public final class WFCoreConfig {
         vehicleGunDataCache = VEHICLE_GUN_DATA_CACHE.get();
         sbwDroneHotPathCache = SBW_DRONE_HOT_PATH_CACHE.get();
         gtMachineCapabilityCache = GT_MACHINE_CAPABILITY_CACHE.get();
-        ballisticsEnabled = BALLISTICS_ENABLED.get();
-        ballisticsDebugLogging = BALLISTICS_DEBUG_LOGGING.get();
         playerRanksEnabled = PLAYER_RANKS_ENABLED.get();
         rankManifestUrl = RANK_MANIFEST_URL.get();
         rankRefreshIntervalMinutes = RANK_REFRESH_INTERVAL_MINUTES.get();

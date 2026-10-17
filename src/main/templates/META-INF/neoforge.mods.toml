@@ -48,16 +48,24 @@ license = "${mod_license}"
 
 # Client-side glTF renderer for the animated machine models (radar dish, drill rig, iron dome).
 [[dependencies.${mod_id}]]
-    modId = "mcgltf"
+    modId = "gemrender"
     type = "required"
     versionRange = "*"
     ordering = "AFTER"
     side = "CLIENT"
 
-# Limitless Vehicle — spawn target for the 7 vehicle-factory multiblocks.
+# GemRender draws through Flywheel, so a client without it draws no animated machine at all.
+[[dependencies.${mod_id}]]
+    modId = "flywheel"
+    type = "required"
+    versionRange = "[${flywheel_version},)"
+    ordering = "AFTER"
+    side = "CLIENT"
+
+# CombinedAssault — spawn target for the 7 vehicle-factory multiblocks.
 # TODO(port, phase 7): promote to "required" once the vehicle-factory retarget lands.
 [[dependencies.${mod_id}]]
-    modId = "ywzj_vehicle"
+    modId = "combinedassault"
     type = "optional"
     versionRange = "*"
     ordering = "AFTER"

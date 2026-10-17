@@ -5,7 +5,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
 
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
-import com.gregtechceu.gtceu.common.data.GTMaterials;
+import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.norwood.wfcore.config.WFCoreConfig;
 
 import java.util.LinkedHashSet;
@@ -94,8 +94,8 @@ public final class DepositType {
             return overlayColor & 0xFFFFFF;
         }
         if (prospectorMaterial != null) {
-            Material material = GTMaterials.get(prospectorMaterial);
-            if (material != null && !material.isNull()) {
+            Material material = GTRegistries.MATERIALS.get(ResourceLocation.parse(prospectorMaterial));
+            if (material != null) {
                 return material.getMaterialRGB() & 0xFFFFFF;
             }
         }

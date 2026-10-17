@@ -57,12 +57,6 @@ public class WFItems {
                     .item("cooling_fan_cover_" + vn, ComponentItem::new)
                     .lang(GTValues.VN[t] + " Cooling Fan Cover")
                     .model(NonNullBiConsumer.noop())
-                    // Inlined rather than GTItems.attach(...): that helper is a one-line lambda factory,
-                    // but calling it forces GTItems.<clinit>, and GTItems' field initialisers build
-                    // ItemMaterialInfos out of GTMaterials constants. This runs during mod construction,
-                    // where GregTech has not registered its materials yet, so every GTMaterials field is
-                    // still null and the class initialiser dies on MaterialStack.material(). Touching any
-                    // GT content holder from a constructor is the trap; this does the same work without it.
                     .onRegister(item -> item.attachComponents(new CoverPlaceBehavior(WFCovers.COOLING_FANS[t])))
                     .register();
         }

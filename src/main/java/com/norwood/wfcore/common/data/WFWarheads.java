@@ -13,7 +13,7 @@ import com.wf.wflib.aef.ExplosionAEF;
 import com.wf.wflib.aef.nuke.MiniNuke;
 import com.wf.wflib.aef.nuke.MiniNuke.MukeParams;
 import com.wf.wflib.aef.standard.*;
-import com.wf.wflib.client.fx.ClientSoundScheduler;
+import com.wf.wflib.audio.Acoustics;
 import com.wf.wflib.entity.BombletEntity;
 import com.wf.wflib.entity.mist.GasCloud;
 import com.wf.wflib.flight.FlightStageRegistry;
@@ -21,6 +21,7 @@ import com.wf.wflib.fluid.WFFluids;
 import com.wf.wflib.fx.EMPCreator;
 import com.wf.wflib.fx.ExplosionCreator;
 import com.wf.wflib.fx.ExplosionSmallCreator;
+import com.wf.wflib.missile.MissileBuilder;
 import com.wf.wflib.swarm.SwarmManager;
 import com.wf.wflib.util.FragmentationUtil;
 import com.wf.wflib.warhead.BombletWarhead;
@@ -107,6 +108,8 @@ public final class WFWarheads {
     public static final ResourceLocation EMP_RAY = WFCore.id("emp_ray");
     public static final ResourceLocation SKYFALL = WFCore.id("skyfall");
     public static final ResourceLocation INTERCEPT_CLUSTER = WFCore.id("intercept_cluster");
+    public static final ResourceLocation ATGM = WFCore.id("atgm");
+    public static final ResourceLocation GUIDED_ROCKET = WFCore.id("guided_rocket");
 
     // Block-destruction blast sizes (vanilla-style ray-march power; larger = wider crater + harder blocks).
     private static final float HE_SIZE = 20.0f;
@@ -130,6 +133,10 @@ public final class WFWarheads {
     private static final int FRAG_STORM_CHILD_FRAGS =8;
     private static final double FRAG_STORM_SPREAD = 40.0;   // radius the child missiles scatter over
     private static final float FRAG_LOW_SIZE = 3.0f;        // one bomblet's blast: clears wood/leaves, weak vs cover
+    // Pylon rounds: vehicle-sized, not building-sized.
+    private static final float ATGM_SIZE = 4.0f;
+    private static final float ATGM_JET_POWER = 2.0f;
+    private static final float GUIDED_ROCKET_SIZE = 4.0f;
 
     // One low-yield fragmentation pop: a tiny drop-free blast that breaks wood/leaves and chips entities, but a
     // size-3 ray-march barely scratches stone/concrete — the "weak explosive" the storm saturates an area with.
@@ -322,6 +329,24 @@ public final class WFWarheads {
         });
         WarheadRegistry.register(FRAG_STORM, WFWarheads::fragStorm);
 
+        // --- Pylon rounds ---------------------------------------------------------------------------------
+        WarheadRegistry.register(ATGM, (source, pos) ->
+                icbmStrike(source.level(), pos, source.angle(), ATGM_SIZE, ATGM_JET_POWER),
+                WarheadRegistry.STANDARD_INTERCEPT);
+        WarheadRegistry.register(GUIDED_ROCKET, (source, pos) -> {
+            Level level = source.level();
+            if (level.isClientSide) {
+                return;
+            }
+            ExplosionAEF pop = new ExplosionAEF(level, pos.x, pos.y, pos.z, GUIDED_ROCKET_SIZE);
+            pop.setBlockAllocator(new BlockAllocatorStandard(12));
+            pop.setBlockProcessor(new BlockProcessorStandard().setNoDrop());
+            pop.setEntityProcessor(new EntityProcessorCross());
+            pop.setPlayerProcessor(new PlayerProcessorStandard());
+            pop.explode();
+            ExplosionSmallCreator.composeEffect(level, pos.x, pos.y, pos.z, 6, 1, 1);
+        }, WarheadRegistry.STANDARD_INTERCEPT);
+
         // --- EMP ------------------------------------------------------------------------------------------
         WarheadRegistry.register(EMP_SMALL, (source, pos) -> empBlast(source.level(), pos, 16, EMP_STANDARD),
                 WarheadRegistry.STANDARD_INTERCEPT);
@@ -410,7 +435,7 @@ public final class WFWarheads {
             if (dist > 256f) {
                 continue;
             }
-            WFDelayedSounds.schedule((ServerLevel) level, (int)(dist/ClientSoundScheduler.SPEED_OF_SOUND), player, pos.x, pos.y, pos.z,
+            WFDelayedSounds.schedule((ServerLevel) level, (int)(dist/Acoustics.C_PER_TICK), player, pos.x, pos.y, pos.z,
                     WFSounds.MISSILE_EMP.get(), SoundSource.BLOCKS, 1.0f, rand.nextFloat()+0.4f, 0L);
         }
    }
@@ -600,7 +625,7 @@ public final class WFWarheads {
                 int gy = server.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, Mth.floor(tx), Mth.floor(tz));
                 target = new Vec3(tx, gy, tz);
             }
-            MissileEntity.Builder b = MissileEntity.builder(ModEntities.STEALTH_MISSILE.get(), server)
+            MissileBuilder b = MissileEntity.builder(ModEntities.STEALTH_MISSILE.get(), server)
                     .model(MissileModels.rl("cluster_part"))
                     .target(target)
                     .detonation(WarheadRegistry.rl("bomblet"))
@@ -648,7 +673,7 @@ public final class WFWarheads {
             double tz = pos.z + Math.sin(ang) * r;
             int gy = server.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, Mth.floor(tx), Mth.floor(tz));
             Vec3 target = new Vec3(tx, gy, tz);
-            MissileEntity.Builder b = MissileEntity.builder(ModEntities.STEALTH_MISSILE.get(), server)
+            MissileBuilder b = MissileEntity.builder(ModEntities.STEALTH_MISSILE.get(), server)
                     .model(MissileModels.rl("cluster_part"))
                     .target(target)
                     .detonation(FRAG_STORM_CHILD)
@@ -683,7 +708,7 @@ public final class WFWarheads {
         long swarm = SwarmManager.newId(level);
         UUID control = source instanceof MissileEntity m ? m.getControlId() : null;
         for (int i = 0; i < 9; i++) {
-            MissileEntity.Builder b = MissileEntity.builder(ModEntities.STEALTH_MISSILE.get(), level)
+            MissileBuilder b = MissileEntity.builder(ModEntities.STEALTH_MISSILE.get(), level)
                     .model(MissileModels.rl("abm"))
                     .target(pos)
                     .interceptor(true)

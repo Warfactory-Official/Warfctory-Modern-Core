@@ -1,0 +1,8 @@
+{
+  "replace": false,
+  "values": [
+    { "id": "wfcore:missile_atgm", "required": false },
+    { "id": "wfcore:missile_atgm_frag", "required": false },
+    { "id": "wfcore:missile_guided_rocket", "required": false }
+  ]
+}

@@ -192,7 +192,7 @@ public class DrillRigMachine extends WorkableMultiblockMachine implements IAnima
             return null;
         }
         // 1.21 wraps every recipe in a RecipeHolder carrying its id; unwrap with value().
-        for (RecipeHolder<GTRecipe> holder : level.getRecipeManager().getAllRecipesFor(WFRecipeTypes.DRILLING)) {
+        for (RecipeHolder<GTRecipe> holder : level.getRecipeManager().getAllRecipesFor(WFRecipeTypes.DRILLING.get())) {
             GTRecipe recipe = holder.value();
             boolean hasInputs = !recipe.inputs.getOrDefault(ItemRecipeCapability.CAP, List.of()).isEmpty() ||
                     !recipe.inputs.getOrDefault(FluidRecipeCapability.CAP, List.of()).isEmpty();

@@ -92,7 +92,7 @@ public final class PipeNetWalkerBehavior {
         for (int i = 0; i < uses; i++) {
             if (!spray.useItemDurability(player, hand, stack, GTItems.SPRAY_EMPTY.asStack())) break;
         }
-        GTSoundEntries.SPRAY_CAN_TOOL.play(level, null, player.position(), 1.0f, 1.0f);
+        GTSoundEntries.SPRAY_CAN_TOOL.value().play(level, null, player.position(), 1.0f, 1.0f);
         player.swing(hand);
     }
 
@@ -158,7 +158,7 @@ public final class PipeNetWalkerBehavior {
     private static void onActionDone(ItemStack stack, Player player, Level level, InteractionHand hand, int walked) {
         ToolHelper.damageItem(stack, player, walked);
         if (stack.getItem() instanceof IGTTool tool && tool.getSound() != null) {
-            tool.getSound().playOnServer(level, player.blockPosition());
+            tool.getSound().value().playOnServer(level, player.blockPosition());
         }
         player.swing(hand);
     }

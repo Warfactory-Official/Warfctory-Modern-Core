@@ -106,7 +106,7 @@ public class PipeOperationWalker<T extends IPipeNode<?, ?>> {
 
                 this.root.option.operate(into, currentPipe, next, reverse);
 
-                this.currentPos.set(next.getBlockPos());
+                this.currentPos.set(next.self().getBlockPos());
                 this.currentPipe = next;
                 this.from = into.getOpposite();
                 this.walkedBlocks++;
@@ -154,7 +154,7 @@ public class PipeOperationWalker<T extends IPipeNode<?, ?>> {
         }
         T pipeTile = currentPipe;
 
-        this.root.walked.add(pipeTile.getBlockPos());
+        this.root.walked.add(pipeTile.self().getBlockPos());
 
         List<Direction> facings = root.option.findNext(from != null ? from : direction, pipeTile);
 
@@ -176,7 +176,7 @@ public class PipeOperationWalker<T extends IPipeNode<?, ?>> {
     }
 
     private boolean isWalked(T pipe) {
-        return root.walked.contains(pipe.getBlockPos());
+        return root.walked.contains(pipe.self().getBlockPos());
     }
 
     private PipeOperationWalker<T> createSubWalker(Level level, Direction facingToNextPos, BlockPos nextPos,

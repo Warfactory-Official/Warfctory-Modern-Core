@@ -10,14 +10,12 @@ import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
-import net.neoforged.neoforge.registries.RegisterEvent;
 
 import com.gregtechceu.gtceu.api.data.chemical.material.event.PostMaterialEvent;
 import com.gregtechceu.gtceu.api.registry.registrate.GTRegistrate;
-import com.gregtechceu.gtceu.api.sync_system.data_transformers.CodecTransformer;
+import net.minecraft.network.codec.ByteBufCodecs;
 import com.gregtechceu.gtceu.api.sync_system.data_transformers.ValueTransformers;
 
-import com.norwood.wfcore.common.ballistics.BallisticsEvents;
 import com.norwood.wfcore.common.block.WFBlockResistanceTooltip;
 import com.norwood.wfcore.common.block.WFBlockResistances;
 import com.norwood.wfcore.common.chat.ChatModeration;
@@ -30,7 +28,9 @@ import com.norwood.wfcore.common.data.WFContent;
 import com.norwood.wfcore.common.data.WFDataComponents;
 import com.norwood.wfcore.common.machine.ResearchUnitMachine;
 import com.norwood.wfcore.common.data.WFMachines;
+import com.norwood.wfcore.common.data.WFCovers;
 import com.norwood.wfcore.common.data.WFMaterials;
+import com.norwood.wfcore.common.worldgen.transplant.VeinTransplant;
 import com.norwood.wfcore.common.data.WFRecipeTypes;
 import com.norwood.wfcore.common.data.VehicleFactoryRecipes;
 import com.norwood.wfcore.common.deposit.WFDeposits;
@@ -45,12 +45,18 @@ import com.norwood.wfcore.common.sound.WFSounds;
 import com.norwood.wfcore.common.tool.BoltGunConversions;
 import com.norwood.wfcore.common.worldgen.DepositRetrofitHandler;
 import com.norwood.wfcore.common.worldgen.WFFeatures;
+import com.norwood.wfcore.common.worldgen.density.WFDensityFunctions;
+import com.norwood.wfcore.common.worldgen.resource.AllocationIndexManager;
+import com.norwood.wfcore.common.worldgen.resource.ResourceAllocation;
+import com.norwood.wfcore.common.worldgen.resource.ResourceCommands;
 import com.norwood.wfcore.common.worldgen.road.RoadCommands;
 import com.norwood.wfcore.common.worldgen.road.RoadIndexManager;
 import com.norwood.wfcore.common.worldgen.road.RoadRegistries;
 import com.norwood.wfcore.common.worldgen.road.WorldgenPackProvider;
 import com.norwood.wfcore.common.worldgen.transplant.VeinBackfillCommand;
 import com.norwood.wfcore.common.worldgen.transplant.VeinBackfillRunner;
+import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
+import com.norwood.wfcore.integration.warforge.WarforgeVeinAllocation;
 import com.norwood.wfcore.config.WFCoreConfig;
 import com.norwood.wfcore.radar.RadarConfig;
 import com.norwood.wfcore.radar.WFRadarScripts;
@@ -72,9 +78,6 @@ public class WFCore {
      */
     public static GTRegistrate WF_MACHINES = GTRegistrate.create(WFCore.MOD_ID);
 
-    /** RegisterEvent fires once per registry; our GT content all registers on the first one. */
-    private boolean registeredGTContent;
-
     public WFCore(IEventBus modEventBus, ModContainer container) {
         // NeoForge-native TOML config. Registration + baking replace the old snakeyaml wfcore.yaml/radar.yaml.
         // ModLoadingContext is gone; the container is injected into the constructor instead.
@@ -82,8 +85,8 @@ public class WFCore {
         container.registerConfig(ModConfig.Type.COMMON, RadarConfig.SPEC, "wfcore-radar.toml");
         modEventBus.addListener(this::onModConfig);
 
-        modEventBus.addListener(this::onRegister);
         modEventBus.addListener(RoadRegistries::register);
+        modEventBus.addListener(ResourceAllocation::register);
         modEventBus.addListener(WorldgenPackProvider::addPackFinders);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::loadComplete);
@@ -92,10 +95,11 @@ public class WFCore {
 
         // GregTech 8.0.0's sync system resolves a field's transformer the first time it sees the type, so
         // wfcore's own @SaveField element types have to be registered before any machine is constructed.
-        ValueTransformers.registerTransformer(ResearchUnitMachine.Job.class,
-                new CodecTransformer<>(ResearchUnitMachine.Job.CODEC));
+        ValueTransformers.registerCodecTransformer(ResearchUnitMachine.Job.class, ResearchUnitMachine.Job.CODEC,
+                ByteBufCodecs.fromCodecWithRegistries(ResearchUnitMachine.Job.CODEC));
 
         WFFeatures.init(modEventBus);
+        WFDensityFunctions.init(modEventBus);
         WFParticles.PARTICLE_TYPES.register(modEventBus);
         WFDataComponents.DATA_COMPONENTS.register(modEventBus);
         WFSounds.SOUNDS.register(modEventBus);
@@ -113,15 +117,30 @@ public class WFCore {
         NeoForge.EVENT_BUS.register(DepositRetrofitHandler.INSTANCE);
         NeoForge.EVENT_BUS.register(RoadIndexManager.INSTANCE);
         NeoForge.EVENT_BUS.register(RoadCommands.INSTANCE);
+        NeoForge.EVENT_BUS.register(AllocationIndexManager.INSTANCE);
+        NeoForge.EVENT_BUS.register(ResourceCommands.INSTANCE);
+        NeoForge.EVENT_BUS.register(com.norwood.wfcore.common.worldgen.DensityDumpCommands.INSTANCE);
+        if (WarforgeIntegration.isLoaded()) {
+            WarforgeVeinAllocation.install();
+        }
         NeoForge.EVENT_BUS.register(new WFComputeTooltips());
         NeoForge.EVENT_BUS.register(new WFBlockResistanceTooltip());
         NeoForge.EVENT_BUS.register(new WFLootEvents());
-        NeoForge.EVENT_BUS.register(new BallisticsEvents());
+        NeoForge.EVENT_BUS.register(com.norwood.wfcore.common.block.PlayerUnbreakableHandler.INSTANCE);
         NeoForge.EVENT_BUS.register(DarknessServerHandler.INSTANCE);
         NeoForge.EVENT_BUS.register(ShaderServerHandler.INSTANCE);
         NeoForge.EVENT_BUS.register(ChatModeration.INSTANCE);
         NeoForge.EVENT_BUS.register(MaintenanceService.INSTANCE);
 
+        // GT content declared at construction (ordering AFTER gtceu), like GT's own CommonProxy#init.
+        WFMaterials.init();
+        com.norwood.wfcore.common.data.WFOres.init();
+        WFRecipeConditions.init();
+        VehicleFactoryRecipes.init();
+        WFRecipeTypes.init();
+        WFCovers.init();
+        VeinTransplant.registerLayer();
+        WFMachines.init();
         WFContent.init();
     }
 
@@ -145,33 +164,6 @@ public class WFCore {
         }
     }
 
-    /**
-     * GT 8.0.0 turned materials, recipe types and machines into real NeoForge registries, so the old
-     * per-content {@code modEventBus.addGenericListener(GTRecipeType.class, ...)} hooks and
-     * {@code MaterialRegistryEvent} / {@code MaterialEvent} are gone. Everything now registers from one
-     * {@link RegisterEvent} listener, exactly as GregTech's own {@code CommonProxy#onRegister} does —
-     * {@code GTRegistries.register} buffers entries until the matching registry is unfrozen.
-     *
-     * <p>Materials no longer live in a per-addon registry either; they go into the single
-     * {@code GTRegistries.MATERIALS} under this mod's namespace, which {@link WFCore#id} already supplies.
-     *
-     * <p>Ordering: {@code neoforge.mods.toml} declares {@code ordering = "AFTER"} on gtceu, so GregTech's
-     * own listener has already run by the time this one does and every GT material/block it references exists.
-     */
-    private void onRegister(RegisterEvent event) {
-        if (registeredGTContent) {
-            return;
-        }
-        registeredGTContent = true;
-
-        WFMaterials.init();
-        // GregTech registers its own recipe conditions from RegisterEvent too (CommonProxy#onRegister);
-        // registering later would leave them buffered in GTRegistries and never flushed.
-        WFRecipeConditions.init();
-        VehicleFactoryRecipes.init();
-        WFRecipeTypes.init();
-        WFMachines.init();
-    }
 
 
     private void commonSetup(final FMLCommonSetupEvent event) {
@@ -198,7 +190,6 @@ public class WFCore {
             BoltGunConversions.apply();
             LOGGER.info("Bolt gun conversions: {} entry(ies)", BoltGunConversions.size());
             WFRecipeTypeTweaks.init();
-            com.norwood.wfcore.integration.tacz.TaczBallisticsIntegration.register();
             com.norwood.wfcore.integration.wfweight.TaczWeightIntegration.register();
         });
     }

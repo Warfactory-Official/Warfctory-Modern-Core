@@ -39,7 +39,7 @@ public final class WFDamageResponses {
      * WF-B's separate {@code damageMissile} path and are unaffected by this.
      */
     public static final MissileDamageResponse HARDENED = (missile, source, amount) -> {
-        if (missile.isDowned()) {
+        if (missile.damage().isDowned()) {
             return 0.0f;
         }
         if (source.is(DamageTypeTags.IS_FIRE) || source.is(TACZ_BULLETS)) {
@@ -54,7 +54,7 @@ public final class WFDamageResponses {
      * airframe shrugs off attacks that would rattle a normal missile. Still immune once downed.
      */
     public static final MissileDamageResponse HARDENED_ICBM = (missile, source, amount) -> {
-        if (missile.isDowned()) {
+        if (missile.damage().isDowned()) {
             return 0.0f;
         }
         if (source.is(DamageTypeTags.IS_FIRE) || source.is(TACZ_BULLETS)) {

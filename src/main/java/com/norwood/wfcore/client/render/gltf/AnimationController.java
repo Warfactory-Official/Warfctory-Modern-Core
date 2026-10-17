@@ -1,6 +1,6 @@
 package com.norwood.wfcore.client.render.gltf;
 
-import com.google.common.collect.ImmutableMap;
+import java.util.Map;
 
 /**
  * Per-machine playback state. Ported from the 1.12.2 coremod
@@ -9,8 +9,14 @@ import com.google.common.collect.ImmutableMap;
  * Drives a real clock advanced by frame deltas instead of deriving time straight from world time. This
  * is what lets a machine freeze mid-animation on power loss and resume seamlessly, and lets it finish
  * its current loop before switching states so the model never snaps between poses. One instance lives
- * per rendered block entity; it mutates the shared model's nodes only through the loop it selects,
- * immediately before that block entity is drawn.
+ * per visual, and all it produces is a clip and a time; nothing shared is written.
+ * <p>
+ * That clock is per machine and continuous, which is the one thing GemRender's pose cache cannot
+ * collapse: two radars that stalled at different moments are at different instants and each costs its
+ * own palette evaluation. That is the right trade here — these are multiblock controllers, a handful
+ * per world, and freezing on power loss is the behaviour the machines are built around. A crowd of
+ * hundreds would want {@code AnimationPhase} instead, whose offset is a pure function of the block
+ * position and therefore shared.
  */
 public final class AnimationController {
 
@@ -32,10 +38,10 @@ public final class AnimationController {
      * Reconciles the desired state with what is playing and advances the clock for this frame.
      *
      * @param machine    source of the desired state, run flag and transition policy
-     * @param animations the renderer's loop map (key -> loop)
+     * @param animations the model's clips by state name, from {@link MachineModel#animations()}
      * @param nowTicks   world time plus partial ticks, used to derive the frame delta
      */
-    public void advance(IAnimatedMachine machine, ImmutableMap<String, AnimationLoop> animations, float nowTicks) {
+    public void advance(IAnimatedMachine machine, Map<String, MachineClip> animations, float nowTicks) {
         if (animations == null || animations.isEmpty()) {
             return;
         }
@@ -69,11 +75,11 @@ public final class AnimationController {
             time += dt;
         }
 
-        AnimationLoop loop = animations.get(current);
+        MachineClip loop = animations.get(current);
         if (loop == null) {
             return;
         }
-        float dur = loop.getDuration();
+        float dur = loop.duration();
 
         if (dur <= 0f) {
             if (queued != null && animations.containsKey(queued)) {
@@ -89,9 +95,9 @@ public final class AnimationController {
                 float carry = time - dur;
                 current = queued;
                 queued = null;
-                float nextDur = animations.get(current).getDuration();
+                float nextDur = animations.get(current).duration();
                 time = nextDur > 0f ? carry % nextDur : 0f;
-            } else if (loop.isLoop()) {
+            } else if (loop.loop()) {
                 time %= dur;
             } else {
                 time = dur;

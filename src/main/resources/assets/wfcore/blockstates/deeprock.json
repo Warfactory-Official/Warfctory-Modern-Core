@@ -1,0 +1,62 @@
+{
+  "variants": {
+    "axis=x": [
+      {
+        "model": "wfcore:block/deeprock",
+        "x": 90,
+        "y": 90
+      },
+      {
+        "model": "wfcore:block/deeprock_mirrored",
+        "x": 90,
+        "y": 90
+      },
+      {
+        "model": "wfcore:block/deeprock",
+        "x": 90,
+        "y": 90
+      },
+      {
+        "model": "wfcore:block/deeprock_mirrored",
+        "x": 90,
+        "y": 90
+      }
+    ],
+    "axis=y": [
+      {
+        "model": "wfcore:block/deeprock"
+      },
+      {
+        "model": "wfcore:block/deeprock_mirrored"
+      },
+      {
+        "model": "wfcore:block/deeprock",
+        "y": 180
+      },
+      {
+        "model": "wfcore:block/deeprock_mirrored",
+        "y": 180
+      }
+    ],
+    "axis=z": [
+      {
+        "model": "wfcore:block/deeprock",
+        "x": 90
+      },
+      {
+        "model": "wfcore:block/deeprock_mirrored",
+        "x": 90
+      },
+      {
+        "model": "wfcore:block/deeprock",
+        "x": 90,
+        "y": 180
+      },
+      {
+        "model": "wfcore:block/deeprock_mirrored",
+        "x": 90,
+        "y": 180
+      }
+    ]
+  }
+}

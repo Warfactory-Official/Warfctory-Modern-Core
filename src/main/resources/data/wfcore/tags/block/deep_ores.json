@@ -2,6 +2,7 @@
   "replace": false,
   "values": [
     { "id": "#c:ores_in_ground/deepslate", "required": false },
+    { "id": "#c:ores_in_ground/deeprock", "required": false },
     "minecraft:deepslate_coal_ore",
     "minecraft:deepslate_iron_ore",
     "minecraft:deepslate_copper_ore",

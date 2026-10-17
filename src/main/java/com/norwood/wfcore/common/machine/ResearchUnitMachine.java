@@ -937,7 +937,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         return InteractionResult.SUCCESS;
     }
 
-    //////////////////// animated model (mcgltf) ////////////////////
+    //////////////////// animated model (drawn by GemRenderMachineVisual) ////////////////////
 
     /**
      * The model has a single clip ({@code lasering_loop}, key {@code "lasering"}) rather than separate

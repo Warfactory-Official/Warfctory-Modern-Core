@@ -2,11 +2,10 @@ package com.norwood.wfcore.integration.warforge;
 
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
-import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
-import com.gregtechceu.gtceu.api.item.MetaMachineItem;
 import com.gregtechceu.gtceu.api.machine.MultiblockMachineDefinition;
 import com.gregtechceu.gtceu.api.machine.multiblock.PartAbility;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.MachineEntry;
 import com.gregtechceu.gtceu.api.multiblock.pattern.MultiblockPatternBuilder;
 import com.gregtechceu.gtceu.api.multiblock.util.RelativeDirection;
 import com.gregtechceu.gtceu.common.data.GTBlocks;
@@ -34,18 +33,18 @@ import static com.norwood.wfcore.WFCore.WF_MACHINES;
 
 public final class WarforgeMachines {
 
-    public static MultiblockMachineDefinition CHUNK_REINFORCER_LV;
-    public static MultiblockMachineDefinition CHUNK_REINFORCER_MV;
-    public static MultiblockMachineDefinition CHUNK_REINFORCER_HV;
-    public static MultiblockMachineDefinition CHUNK_REINFORCER_EV;
-    public static MultiblockMachineDefinition CHUNK_REINFORCER_IV;
+    public static MachineEntry<MultiblockMachineDefinition> CHUNK_REINFORCER_LV;
+    public static MachineEntry<MultiblockMachineDefinition> CHUNK_REINFORCER_MV;
+    public static MachineEntry<MultiblockMachineDefinition> CHUNK_REINFORCER_HV;
+    public static MachineEntry<MultiblockMachineDefinition> CHUNK_REINFORCER_EV;
+    public static MachineEntry<MultiblockMachineDefinition> CHUNK_REINFORCER_IV;
 
     private WarforgeMachines() {}
 
     /** Every chunk reinforcer definition, for the capability providers registered in {@code WFCapabilities}. */
     public static List<MultiblockMachineDefinition> chunkReinforcers() {
         return Stream.of(CHUNK_REINFORCER_LV, CHUNK_REINFORCER_MV, CHUNK_REINFORCER_HV,
-                CHUNK_REINFORCER_EV, CHUNK_REINFORCER_IV).filter(Objects::nonNull).toList();
+                CHUNK_REINFORCER_EV, CHUNK_REINFORCER_IV).filter(Objects::nonNull).map(MachineEntry::get).toList();
     }
 
     public static void init() {
@@ -72,14 +71,13 @@ public final class WarforgeMachines {
      * @param frame       'F' - structural frame ringing the nose and tail
      * @param casingTex   GT texture the controller hull renders with (matches {@code shellCasing})
      */
-    private static MultiblockMachineDefinition register(String name, int tier, int radius, int bonus,
-                                                        String langValue,
-                                                        Supplier<? extends Block> tierCasing,
-                                                        Supplier<? extends Block> shellCasing,
-                                                        Material frame,
-                                                        ResourceLocation casingTex) {
-        return WF_MACHINES.multiblock(name, MetaMachineBlock::new, MetaMachineItem::new,
-                holder -> new ChunkReinforcerMachine(holder, tier, radius, bonus))
+    private static MachineEntry<MultiblockMachineDefinition> register(String name, int tier, int radius, int bonus,
+                                                                      String langValue,
+                                                                      Supplier<? extends Block> tierCasing,
+                                                                      Supplier<? extends Block> shellCasing,
+                                                                      Material frame,
+                                                                      ResourceLocation casingTex) {
+        return WF_MACHINES.multiblock(name, holder -> new ChunkReinforcerMachine(holder, tier, radius, bonus))
                 .langValue(langValue)
                 .appearanceBlock(shellCasing)
                 .pattern(definition -> MultiblockPatternBuilder.start(

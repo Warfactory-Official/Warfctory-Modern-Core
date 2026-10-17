@@ -13,7 +13,12 @@ import com.norwood.wfcore.common.deposit.DepositRegion;
 import com.norwood.wfcore.common.deposit.DepositType;
 import com.norwood.wfcore.common.deposit.WFDeposits;
 import com.norwood.wfcore.common.machine.DepositBlockEntity;
+import com.norwood.wfcore.common.worldgen.resource.AllocationIndex;
+import com.norwood.wfcore.common.worldgen.resource.AllocationIndexManager;
 import com.norwood.wfcore.config.WFCoreConfig;
+
+import java.util.ArrayList;
+import java.util.List;
 
 
 public final class DepositPlacer {
@@ -35,7 +40,8 @@ public final class DepositPlacer {
                                        int chunkX, int chunkZ, long seed, boolean retrofit) {
         int hosted = 0;
         int placed = 0;
-        for (DepositNode node : WFDeposits.nodesIn(dimension)) {
+        AllocationIndex allocation = AllocationIndexManager.get(level.getLevel());
+        for (DepositNode node : concat(WFDeposits.nodesIn(dimension), allocation.depositNodes())) {
             if (!node.inChunk(chunkX, chunkZ)) {
                 continue;
             }
@@ -45,9 +51,9 @@ public final class DepositPlacer {
             }
             hosted++;
             placed += placeCluster(level, random, type, node.x(), node.z(),
-                    rollSize(type, node.size(), node.size(), random), node.yield(), retrofit);
+                    rollSize(type, node.size(), node.size(), random), node.yield(), 1.0, retrofit);
         }
-        for (DepositRegion region : WFDeposits.regionsIn(dimension)) {
+        for (DepositRegion region : concat(WFDeposits.regionsIn(dimension), allocation.depositRegions())) {
             BlockPos spot = region.chosenOrigin(chunkX, chunkZ, seed);
             if (spot == null) {
                 continue;
@@ -58,9 +64,18 @@ public final class DepositPlacer {
             }
             hosted++;
             placed += placeCluster(level, random, type, spot.getX(), spot.getZ(),
-                    rollSize(type, region.minSize(), region.maxSize(), random), region.yield(), retrofit);
+                    rollSize(type, region.minSize(), region.maxSize(), random), region.yield(), 1.0, retrofit);
         }
         return hosted == 0 ? Result.EMPTY : new Result(hosted, placed);
+    }
+
+    private static <T> List<T> concat(List<T> a, List<T> b) {
+        if (b.isEmpty()) {
+            return a;
+        }
+        List<T> all = new ArrayList<>(a);
+        all.addAll(b);
+        return all;
     }
 
     public static int rollSize(DepositType type, int min, int max, RandomSource random) {
@@ -73,8 +88,10 @@ public final class DepositPlacer {
     }
 
 
+    /** richness scales each block's yield (fixed or rolled), at least 1. */
     public static int placeCluster(WorldGenLevel level, RandomSource random, DepositType type,
-                                   int originX, int originZ, int size, int fixedYield, boolean retrofit) {
+                                   int originX, int originZ, int size, int fixedYield, double richness,
+                                   boolean retrofit) {
         BlockPos.MutableBlockPos pos = new BlockPos.MutableBlockPos();
         int placed = 0;
         for (int dx = 0; dx < size; dx++) {
@@ -98,7 +115,8 @@ public final class DepositPlacer {
                 }
                 level.setBlock(pos, WFBlocks.DEPOSIT.get().defaultBlockState(), 2);
                 if (level.getBlockEntity(pos) instanceof DepositBlockEntity deposit) {
-                    deposit.init(type.id(), fixedYield > 0 ? fixedYield : type.rollYield(random));
+                    int yield = fixedYield > 0 ? fixedYield : type.rollYield(random);
+                    deposit.init(type.id(), richness == 1.0 ? yield : Math.max(1, (int) Math.round(yield * richness)));
                     placed++;
                 }
             }

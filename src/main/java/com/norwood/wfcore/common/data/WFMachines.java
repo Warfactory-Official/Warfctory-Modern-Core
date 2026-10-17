@@ -2,14 +2,13 @@ package com.norwood.wfcore.common.data;
 
 import com.gregtechceu.gtceu.GTCEu;
 import com.gregtechceu.gtceu.api.GTValues;
-import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
 import com.gregtechceu.gtceu.api.capability.recipe.ItemRecipeCapability;
 import com.gregtechceu.gtceu.api.data.RotationState;
 import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
-import com.gregtechceu.gtceu.api.item.MetaMachineItem;
 import com.gregtechceu.gtceu.api.machine.MachineDefinition;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.MachineEntry;
 import com.gregtechceu.gtceu.api.machine.MultiblockMachineDefinition;
 import com.gregtechceu.gtceu.api.machine.multiblock.PartAbility;
 import com.gregtechceu.gtceu.api.machine.multiblock.WorkableElectricMultiblockMachine;
@@ -20,7 +19,7 @@ import com.gregtechceu.gtceu.api.multiblock.MultiPredicate;
 import com.gregtechceu.gtceu.api.multiblock.error.BlockMatchingError;
 import com.gregtechceu.gtceu.api.multiblock.util.BlockInfo;
 import com.gregtechceu.gtceu.api.multiblock.util.RelativeDirection;
-import com.gregtechceu.gtceu.api.registry.registrate.MachineBuilder;
+import com.gregtechceu.gtceu.api.registry.registrate.builder.MachineBuilder;
 import com.gregtechceu.gtceu.client.renderer.machine.DynamicRenderHelper;
 import com.gregtechceu.gtceu.common.data.*;
 import com.gregtechceu.gtceu.common.data.machines.GTMachineUtils;
@@ -56,44 +55,44 @@ import static com.norwood.wfcore.WFCore.WF_MACHINES;
 
 public class WFMachines {
 
-    public static MachineDefinition PRINTER;
-    public static MachineDefinition AC_INPUT_HATCH;
-    public static MachineDefinition AC_OUTPUT_HATCH;
-    public static MachineDefinition CPU_SLOT;
-    public static MachineDefinition RAM_SLOT;
-    public static MachineDefinition COPPER_HEATSINK;
-    public static MachineDefinition COOLING_LIQUID;
-    public static MachineDefinition CREATIVE_COMPUTATION_SINK;
-    public static MachineDefinition MV_COMPUTATION_TRANSMISSION_HATCH;
-    public static MachineDefinition MV_COMPUTATION_RECEPTION_HATCH;
-    public static MachineDefinition MV_DATA_TRANSMISSION_HATCH;
-    public static MachineDefinition MV_DATA_RECEPTION_HATCH;
-    public static MultiblockMachineDefinition MV_NETWORK_SWITCH;
-    public static MultiblockMachineDefinition LARGE_TRANSFORMER;
-    public static MultiblockMachineDefinition LARGE_BLAST_FURNACE;
-    public static MultiblockMachineDefinition SOLARIS_FURNACE;
-    public static MultiblockMachineDefinition PRIMITIVE_ALLOYER;
-    public static MultiblockMachineDefinition STRANDCASTER;
-    public static MultiblockMachineDefinition GAS_EXTRACTOR;
-    public static MultiblockMachineDefinition MAINFRAME;
-    public static MultiblockMachineDefinition RESEARCH_UNIT;
-    public static MultiblockMachineDefinition RADAR;
-    public static MultiblockMachineDefinition SATELLITE_CALIBRATOR;
-    public static MultiblockMachineDefinition LIGHT_GROUND_VEHICLE_FACTORY;
-    public static MultiblockMachineDefinition TANK_ASSEMBLY;
-    public static MultiblockMachineDefinition LIGHT_PLANE_ASSEMBLER;
-    public static MultiblockMachineDefinition HEAVY_PLANE_ASSEMBLER;
-    public static MultiblockMachineDefinition HEAVY_VEHICLE_DEPOT;
-    public static MultiblockMachineDefinition HELICOPTER_ASSEMBLER;
-    public static MultiblockMachineDefinition NAVAL_VEHICLE_DEPLOYER;
-    public static MultiblockMachineDefinition DRILL_RIG;
-    public static MultiblockMachineDefinition STEAM_WIREMILL;
-    public static MultiblockMachineDefinition MISSILE_FACTORY;
-    public static MultiblockMachineDefinition MISSILE_LAUNCHER;
-    public static MultiblockMachineDefinition INTERCEPTOR;
-    public static MultiblockMachineDefinition GREENHOUSE;
-    public static MultiblockMachineDefinition MOB_FARMER;
-    public static MultiblockMachineDefinition CRAFTING_STATION;
+    public static MachineEntry<MachineDefinition> PRINTER;
+    public static MachineEntry<MachineDefinition> AC_INPUT_HATCH;
+    public static MachineEntry<MachineDefinition> AC_OUTPUT_HATCH;
+    public static MachineEntry<MachineDefinition> CPU_SLOT;
+    public static MachineEntry<MachineDefinition> RAM_SLOT;
+    public static MachineEntry<MachineDefinition> COPPER_HEATSINK;
+    public static MachineEntry<MachineDefinition> COOLING_LIQUID;
+    public static MachineEntry<MachineDefinition> CREATIVE_COMPUTATION_SINK;
+    public static MachineEntry<MachineDefinition> MV_COMPUTATION_TRANSMISSION_HATCH;
+    public static MachineEntry<MachineDefinition> MV_COMPUTATION_RECEPTION_HATCH;
+    public static MachineEntry<MachineDefinition> MV_DATA_TRANSMISSION_HATCH;
+    public static MachineEntry<MachineDefinition> MV_DATA_RECEPTION_HATCH;
+    public static MachineEntry<MultiblockMachineDefinition> MV_NETWORK_SWITCH;
+    public static MachineEntry<MultiblockMachineDefinition> LARGE_TRANSFORMER;
+    public static MachineEntry<MultiblockMachineDefinition> LARGE_BLAST_FURNACE;
+    public static MachineEntry<MultiblockMachineDefinition> SOLARIS_FURNACE;
+    public static MachineEntry<MultiblockMachineDefinition> PRIMITIVE_ALLOYER;
+    public static MachineEntry<MultiblockMachineDefinition> STRANDCASTER;
+    public static MachineEntry<MultiblockMachineDefinition> GAS_EXTRACTOR;
+    public static MachineEntry<MultiblockMachineDefinition> MAINFRAME;
+    public static MachineEntry<MultiblockMachineDefinition> RESEARCH_UNIT;
+    public static MachineEntry<MultiblockMachineDefinition> RADAR;
+    public static MachineEntry<MultiblockMachineDefinition> SATELLITE_CALIBRATOR;
+    public static MachineEntry<MultiblockMachineDefinition> LIGHT_GROUND_VEHICLE_FACTORY;
+    public static MachineEntry<MultiblockMachineDefinition> TANK_ASSEMBLY;
+    public static MachineEntry<MultiblockMachineDefinition> LIGHT_PLANE_ASSEMBLER;
+    public static MachineEntry<MultiblockMachineDefinition> HEAVY_PLANE_ASSEMBLER;
+    public static MachineEntry<MultiblockMachineDefinition> HEAVY_VEHICLE_DEPOT;
+    public static MachineEntry<MultiblockMachineDefinition> HELICOPTER_ASSEMBLER;
+    public static MachineEntry<MultiblockMachineDefinition> NAVAL_VEHICLE_DEPLOYER;
+    public static MachineEntry<MultiblockMachineDefinition> DRILL_RIG;
+    public static MachineEntry<MultiblockMachineDefinition> STEAM_WIREMILL;
+    public static MachineEntry<MultiblockMachineDefinition> MISSILE_FACTORY;
+    public static MachineEntry<MultiblockMachineDefinition> MISSILE_LAUNCHER;
+    public static MachineEntry<MultiblockMachineDefinition> INTERCEPTOR;
+    public static MachineEntry<MultiblockMachineDefinition> GREENHOUSE;
+    public static MachineEntry<MultiblockMachineDefinition> MOB_FARMER;
+    public static MachineEntry<MultiblockMachineDefinition> CRAFTING_STATION;
 
     // JEI preview stages for the Large Blast Furnace, laid out to match its pattern's axes
     // (start(RIGHT, UP, FRONT)): each aisle is a slice along RIGHT (the 9-wide axis that carries the
@@ -165,7 +164,7 @@ public class WFMachines {
                 .register();
 
         // vehicle_charger is deferred: it was 100% Superb-coupled at the entity layer
-        // (vehicle.getEnergy() / getEnergyStorage()). Retargetable onto Limitless's
+        // (vehicle.getEnergy() / getEnergyStorage()). Retargetable onto CombinedAssault's
         // vehicle/pojo/EnergyInfo in a later pass. See WFCORE-PORT-PLAN.md §3.1.
 
         CPU_SLOT = WF_MACHINES.machine("cpu_slot", CPUSlotPartMachine::new)
@@ -373,10 +372,9 @@ public class WFMachines {
                         WFCore.id("block/treated_wood_planks"))
                 .register();
 
-        RESEARCH_UNIT = WF_MACHINES.multiblock("research_unit",
-                        MetaMachineBlock::new, MetaMachineItem::new, ResearchUnitMachine::new)
+        RESEARCH_UNIT = WF_MACHINES.multiblock("research_unit", ResearchUnitMachine::new)
                 .langValue("Research Unit")
-                // The unit's animated GLTF core is drawn by our own GltfMachineRenderer (registered in
+                // The unit's animated GLTF core is drawn by our own GemRenderMachineVisual (registered in
                 // WFClientEvents). GTM's default BER would clobber it (see RadarMachine), so disable it;
                 // the casing/front overlay still render from the chunk-mesh baked model.
                 .hasBER(false)
@@ -637,8 +635,7 @@ public class WFMachines {
                         GTCEu.id("block/machines/air_scrubber"))
                 .register();
 
-        RADAR = WF_MACHINES.multiblock("radar",
-                        MetaMachineBlock::new, MetaMachineItem::new, RadarMachine::new)
+        RADAR = WF_MACHINES.multiblock("radar", RadarMachine::new)
                 .langValue("Radar")
                 .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
                 .hasBER(false)
@@ -713,8 +710,7 @@ public class WFMachines {
                 .register();
 
         LIGHT_GROUND_VEHICLE_FACTORY = WF_MACHINES
-                .multiblock("light_ground_vehicle_factory",
-                        MetaMachineBlock::new, MetaMachineItem::new, LightGroundVehicleFactoryMachine::new)
+                .multiblock("light_ground_vehicle_factory", LightGroundVehicleFactoryMachine::new)
                 .langValue("MV Light Ground Vehicle Factory")
                 .recipeType(VehicleFactoryRecipes.LIGHT_GROUND_VEHICLE_FACTORY)
                 .appearanceBlock(GTBlocks.STEEL_HULL)
@@ -790,8 +786,7 @@ public class WFMachines {
                 .register();
 
         TANK_ASSEMBLY = WF_MACHINES
-                .multiblock("tank_assembly",
-                        MetaMachineBlock::new, MetaMachineItem::new, LightGroundVehicleFactoryMachine::new)
+                .multiblock("tank_assembly", LightGroundVehicleFactoryMachine::new)
                 .langValue("Tank Assembly Line")
                 .recipeType(VehicleFactoryRecipes.TANK_ASSEMBLY)
                 .appearanceBlock(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM)
@@ -842,8 +837,7 @@ public class WFMachines {
                 .register();
 
         LIGHT_PLANE_ASSEMBLER = WF_MACHINES
-                .multiblock("light_plane_assembler",
-                        MetaMachineBlock::new, MetaMachineItem::new, LightGroundVehicleFactoryMachine::new)
+                .multiblock("light_plane_assembler", LightGroundVehicleFactoryMachine::new)
                 .langValue("Light Plane Assembler")
                 .recipeType(VehicleFactoryRecipes.LIGHT_PLANE_ASSEMBLER)
                 .appearanceBlock(GTBlocks.STEEL_HULL)
@@ -891,8 +885,7 @@ public class WFMachines {
                 .register();
 
         HEAVY_PLANE_ASSEMBLER = WF_MACHINES
-                .multiblock("heavy_plane_assembler",
-                        MetaMachineBlock::new, MetaMachineItem::new, LightGroundVehicleFactoryMachine::new)
+                .multiblock("heavy_plane_assembler", LightGroundVehicleFactoryMachine::new)
                 .langValue("Heavy Plane Assembler")
                 .recipeType(VehicleFactoryRecipes.HEAVY_PLANE_ASSEMBLER)
                 .appearanceBlock(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM)
@@ -964,8 +957,7 @@ public class WFMachines {
                 .register();
 
         HEAVY_VEHICLE_DEPOT = WF_MACHINES
-                .multiblock("heavy_vehicle_depot",
-                        MetaMachineBlock::new, MetaMachineItem::new, LightGroundVehicleFactoryMachine::new)
+                .multiblock("heavy_vehicle_depot", LightGroundVehicleFactoryMachine::new)
                 .langValue("Heavy Vehicle Depot")
                 .recipeType(VehicleFactoryRecipes.HEAVY_VEHICLE_DEPOT)
                 .appearanceBlock(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM)
@@ -1023,8 +1015,7 @@ public class WFMachines {
                 .register();
 
         HELICOPTER_ASSEMBLER = WF_MACHINES
-                .multiblock("helicopter_assembler",
-                        MetaMachineBlock::new, MetaMachineItem::new, LightGroundVehicleFactoryMachine::new)
+                .multiblock("helicopter_assembler", LightGroundVehicleFactoryMachine::new)
                 .langValue("Helicopter Assembler")
                 .recipeType(VehicleFactoryRecipes.HELICOPTER_ASSEMBLER)
                 .appearanceBlock(WFBlocks.MACHINE_CASING_TURBINE_TITANIUM)
@@ -1073,8 +1064,7 @@ public class WFMachines {
 
 
         NAVAL_VEHICLE_DEPLOYER = WF_MACHINES
-                .multiblock("naval_vehicle_deployer",
-                        MetaMachineBlock::new, MetaMachineItem::new, NavalVehicleDeployerMachine::new)
+                .multiblock("naval_vehicle_deployer", NavalVehicleDeployerMachine::new)
                 .langValue("Naval Vehicle Deployer")
                 .recipeType(VehicleFactoryRecipes.NAVAL_VEHICLE_DEPLOYER)
                 .appearanceBlock(GTBlocks.CASING_STEEL_SOLID)
@@ -1103,10 +1093,9 @@ public class WFMachines {
                         GTCEu.id("block/machines/assembler"))
                 .register();
 
-        DRILL_RIG = WF_MACHINES.multiblock("drill_rig",
-                        MetaMachineBlock::new, MetaMachineItem::new, DrillRigMachine::new)
+        DRILL_RIG = WF_MACHINES.multiblock("drill_rig", DrillRigMachine::new)
                 .langValue("Drilling Rig")
-                // The animated GLTF rig is drawn by our own GltfMachineRenderer (registered in WFClientEvents).
+                // The animated GLTF rig is drawn by our own GemRenderMachineVisual (registered in WFClientEvents).
                 // GTM's default BER would clobber it (see RadarMachine), so disable it; the casing/overlay still
                 // render from the chunk-mesh baked model.
                 .hasBER(false)
@@ -1184,8 +1173,7 @@ public class WFMachines {
                         GTCEu.id("block/machines/assembler"))
                 .register();
 
-        MISSILE_LAUNCHER = WF_MACHINES.multiblock("missile_launcher",
-                        MetaMachineBlock::new, MetaMachineItem::new, MissileLauncherMachine::new)
+        MISSILE_LAUNCHER = WF_MACHINES.multiblock("missile_launcher", MissileLauncherMachine::new)
                 .langValue("Missile Launch Silo")
                 .hasBER(false)
                 .rotationState(RotationState.NON_Y_AXIS)
@@ -1218,8 +1206,7 @@ public class WFMachines {
                         GTCEu.id("block/machines/assembler"))
                 .register();
 
-        INTERCEPTOR = WF_MACHINES.multiblock("interceptor",
-                        MetaMachineBlock::new, MetaMachineItem::new, InterceptorMachine::new)
+        INTERCEPTOR = WF_MACHINES.multiblock("interceptor", InterceptorMachine::new)
                 .langValue("Interceptor Battery")
                 // Auto-added from the "...machine.interceptor.tooltip" lang key (see missile_factory).
                 .hasBER(false)

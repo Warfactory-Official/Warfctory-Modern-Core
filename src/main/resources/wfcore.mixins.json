@@ -6,10 +6,14 @@
   "mixins": [
     "BlockBehaviourAccessor",
     "ConsumableUseMixin",
+    "GTBedrockFluidAllocationMixin",
+    "GTBedrockOreAllocationMixin",
+    "GTOreGeneratorAllocationMixin",
+    "GTOreVeinWorldEntryAccessor",
     "LevelBlockEntityChangedMixin",
     "NoBrewingMixin",
+    "PlacedFeatureAllocationMixin",
     "PlayerListMaintenanceGateMixin",
-    "ProjectileBallisticsMixin",
     "SplashPotionMixin"
   ],
   "client": [
@@ -20,7 +24,6 @@
     "EditBoxCursorRecursionMixin",
     "ForceFirstPersonCameraMixin",
     "GuiDebugRemover",
-    "LightTextureAccessor",
     "NamePlateMixin",
     "PlayerTabRankMixin"
   ],
