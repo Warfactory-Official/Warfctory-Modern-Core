@@ -32,6 +32,7 @@ jobs:
           ./gradlew build --no-daemon --stacktrace
 
       - uses: actions/upload-artifact@v4
+        continue-on-error: true  # org artifact quota full => still publish
         with:
           name: wfcore-1.21.1-${{ github.sha }}
           path: build/libs/*.jar
