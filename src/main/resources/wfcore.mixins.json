@@ -24,6 +24,7 @@
     "EditBoxCursorRecursionMixin",
     "ForceFirstPersonCameraMixin",
     "GuiDebugRemover",
+    "JadeReplayHideMixin",
     "NamePlateMixin",
     "PlayerTabRankMixin"
   ],
