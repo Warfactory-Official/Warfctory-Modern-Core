@@ -9,6 +9,7 @@ import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
 
 import com.norwood.wfcore.WFCore;
+import com.norwood.wfcore.common.camera.ThirdPersonPolicyMessage;
 import com.norwood.wfcore.common.darkness.DarknessEnforceMessage;
 import com.norwood.wfcore.common.research.ResearchSyncMessage;
 import com.norwood.wfcore.common.shader.ShaderEnforceMessage;
@@ -30,7 +31,7 @@ import com.norwood.wfcore.common.shader.ShaderEnforceMessage;
 public final class WFNet {
 
     /** Bump when any payload's wire shape changes. */
-    private static final String PROTOCOL = "1";
+    private static final String PROTOCOL = "2";
 
     private WFNet() {}
 
@@ -44,6 +45,8 @@ public final class WFNet {
                 ShaderEnforceMessage::handle);
         registrar.playToClient(ResearchSyncMessage.TYPE, ResearchSyncMessage.STREAM_CODEC,
                 ResearchSyncMessage::handle);
+        registrar.playToClient(ThirdPersonPolicyMessage.TYPE, ThirdPersonPolicyMessage.STREAM_CODEC,
+                ThirdPersonPolicyMessage::handle);
     }
 
     public static void sendToPlayer(ServerPlayer player, CustomPacketPayload message) {

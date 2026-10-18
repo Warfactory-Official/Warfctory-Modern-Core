@@ -128,6 +128,7 @@ public class WFCore {
         NeoForge.EVENT_BUS.register(new WFLootEvents());
         NeoForge.EVENT_BUS.register(com.norwood.wfcore.common.block.PlayerUnbreakableHandler.INSTANCE);
         NeoForge.EVENT_BUS.register(DarknessServerHandler.INSTANCE);
+        NeoForge.EVENT_BUS.register(com.norwood.wfcore.common.camera.ThirdPersonServer.INSTANCE);
         NeoForge.EVENT_BUS.register(ShaderServerHandler.INSTANCE);
         NeoForge.EVENT_BUS.register(ChatModeration.INSTANCE);
         NeoForge.EVENT_BUS.register(MaintenanceService.INSTANCE);

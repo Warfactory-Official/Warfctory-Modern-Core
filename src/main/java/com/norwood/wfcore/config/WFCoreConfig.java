@@ -21,6 +21,7 @@ public final class WFCoreConfig {
     private static final boolean DEFAULT_DISABLE_NETHER = true;
     private static final boolean DEFAULT_DISABLE_ENDER_PEARLS = true;
     private static final boolean DEFAULT_DISABLE_BOAT_THIRD_PERSON = true;
+    private static final boolean DEFAULT_THIRD_PERSON_ALLOWED = false;
     private static final int DEFAULT_DEPOSIT_YIELD_MIN = 2000;
     private static final int DEFAULT_DEPOSIT_YIELD_MAX = 8000;
     private static final boolean DEFAULT_DEPOSIT_WORLDGEN_ENABLED = true;
@@ -71,6 +72,7 @@ public final class WFCoreConfig {
     private static volatile boolean disableNether = DEFAULT_DISABLE_NETHER;
     private static volatile boolean disableEnderPearls = DEFAULT_DISABLE_ENDER_PEARLS;
     private static volatile boolean disableBoatThirdPerson = DEFAULT_DISABLE_BOAT_THIRD_PERSON;
+    private static volatile boolean thirdPersonDefaultAllowed = DEFAULT_THIRD_PERSON_ALLOWED;
     private static volatile int depositYieldMin = DEFAULT_DEPOSIT_YIELD_MIN;
     private static volatile int depositYieldMax = DEFAULT_DEPOSIT_YIELD_MAX;
     private static volatile boolean depositWorldgenEnabled = DEFAULT_DEPOSIT_WORLDGEN_ENABLED;
@@ -121,6 +123,7 @@ public final class WFCoreConfig {
     private static final ModConfigSpec.BooleanValue DISABLE_NETHER;
     private static final ModConfigSpec.BooleanValue DISABLE_ENDER_PEARLS;
     private static final ModConfigSpec.BooleanValue DISABLE_BOAT_THIRD_PERSON;
+    private static final ModConfigSpec.BooleanValue THIRD_PERSON_DEFAULT_ALLOWED;
     private static final ModConfigSpec.BooleanValue MODEL_TRANSFORM_DEBUG_ENABLED;
     private static final ModConfigSpec.BooleanValue VEHICLE_GUN_DATA_CACHE;
     private static final ModConfigSpec.BooleanValue SBW_DRONE_HOT_PATH_CACHE;
@@ -198,6 +201,12 @@ public final class WFCoreConfig {
                 .comment(
                         "Lock the camera to first person while riding a vanilla boat (including chest boats)")
                 .define("disableBoatThirdPerson", DEFAULT_DISABLE_BOAT_THIRD_PERSON);
+
+        THIRD_PERSON_DEFAULT_ALLOWED = builder
+                .comment(
+                        "Whether F5 / third person is allowed on a world where no op has run /wfcore_thirdperson yet.",
+                        "Once an op sets it, the world's saved choice wins over this.")
+                .define("defaultThirdPersonAllowed", DEFAULT_THIRD_PERSON_ALLOWED);
 
         MODEL_TRANSFORM_DEBUG_ENABLED = builder
                 .comment(
@@ -502,6 +511,11 @@ public final class WFCoreConfig {
         return disableBoatThirdPerson;
     }
 
+    /** Third person on a world with no saved choice; see {@code ThirdPersonData}. */
+    public static boolean isThirdPersonDefaultAllowed() {
+        return thirdPersonDefaultAllowed;
+    }
+
     /** Default per-block deposit yield range, used when a deposit type does not set its own. */
     public static int getDefaultYieldMin() {
         return depositYieldMin;
@@ -727,6 +741,7 @@ public final class WFCoreConfig {
         disableNether = DISABLE_NETHER.get();
         disableEnderPearls = DISABLE_ENDER_PEARLS.get();
         disableBoatThirdPerson = DISABLE_BOAT_THIRD_PERSON.get();
+        thirdPersonDefaultAllowed = THIRD_PERSON_DEFAULT_ALLOWED.get();
         modelTransformDebugEnabled = MODEL_TRANSFORM_DEBUG_ENABLED.get();
         vehicleGunDataCache = VEHICLE_GUN_DATA_CACHE.get();
         sbwDroneHotPathCache = SBW_DRONE_HOT_PATH_CACHE.get();
