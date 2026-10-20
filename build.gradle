@@ -190,10 +190,6 @@ neoForge {
         minecraftVersion = project.parchment_minecraft_version
     }
 
-    // No access transformers: the only entry in the Forge build widened
-    // superbwarfare's VehicleEntity#setEnergy, and that whole layer is deleted (plan §4).
-    // MDG auto-detects src/main/resources/META-INF/accesstransformer.cfg if one is added later.
-
     runs {
         client {
             client()

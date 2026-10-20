@@ -20,6 +20,7 @@ import com.google.gson.JsonParser;
 import com.mojang.brigadier.context.CommandContext;
 
 import com.norwood.wfcore.common.worldgen.resource.AllocationIndex;
+import com.norwood.wfcore.common.worldgen.rock.RockLayers;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -29,7 +30,7 @@ import java.util.function.Function;
 
 /**
  * {@code /wfcore_density dump}: parity oracle for {@code worldgen-workspace}'s Go evaluator.
- * {@code <server dir>/density_request.json} {@code {functions, router, surface, points: [[x,y,z]]}} ->
+ * {@code <server dir>/density_request.json} {@code {functions, router, surface, rock_layers, points: [[x,y,z]]}} ->
  * {@code density_dump.json}, doubles as raw long bits.
  */
 public final class DensityDumpCommands {
@@ -91,6 +92,32 @@ public final class DensityDumpCommands {
                             Heightmap.Types.WORLD_SURFACE_WG, level, randomState));
                 }
                 values.add("surface", heights);
+            }
+            if (request.has("rock_layers") && request.get("rock_layers").getAsBoolean()) {
+                RockLayers layers = RockLayers.of(level).orElseThrow(() -> new IllegalStateException("no rock layers"));
+                DensityFunction surface = layers.surface(randomState);
+                JsonArray tops = new JsonArray();
+                for (var p : points) {
+                    var xyz = p.getAsJsonArray();
+                    double s = RockLayers.column(surface, xyz.get(0).getAsInt(), xyz.get(2).getAsInt());
+                    JsonArray row = new JsonArray();
+                    row.add(layers.deeprock().top(s));
+                    row.add(layers.deepslate().top(s));
+                    row.add(layers.gtY(xyz.get(1).getAsInt(), s));
+                    tops.add(row);
+                }
+                values.add("rock_layers", tops);
+                // ns per surface corner, after an equal warm-up pass
+                long started = 0;
+                double sink = 0;
+                for (int pass = 0; pass < 2; pass++) {
+                    started = System.nanoTime();
+                    for (int k = 0; k < 20_000; k++) {
+                        sink += RockLayers.corner(surface, k * 37 % 9000 * 4, k * 53 % 9000 * 4);
+                    }
+                }
+                values.addProperty("rock_corner_ns", (System.nanoTime() - started) / 20_000.0);
+                values.addProperty("rock_sink", sink);
             }
             JsonObject out = new JsonObject();
             out.addProperty("seed", level.getSeed());

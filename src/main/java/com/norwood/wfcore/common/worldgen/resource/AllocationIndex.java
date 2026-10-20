@@ -339,6 +339,9 @@ public final class AllocationIndex {
                 allRules.add(new Field[] { density, richness });
                 if (rule.assign()) {
                     for (String target : rule.targets()) {
+                        if (target.isEmpty() && rule.system().exclusive()) {
+                            continue;
+                        }
                         checkTarget(level, source, rule.system(), target);
                         if (rule.system() == ResourceSystem.PLACED_FEATURE) {
                             decidedFeatures.add(target);
