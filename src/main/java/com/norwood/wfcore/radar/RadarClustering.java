@@ -1,5 +1,6 @@
 package com.norwood.wfcore.radar;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -25,15 +26,12 @@ import java.util.concurrent.CompletableFuture;
  */
 public final class RadarClustering {
 
-    // DBSCAN eps/minPts live in RadarConfig (wfcore-radar.toml) and can be overridden per scan via the
-    // /wfcore_radar command; callers pass the values they want into scan()/calculateDBSCAN().
-
     /** Radars scanning within this many ticks of each other share a single DBSCAN result (~2s). */
     public static final int CACHE_TICKS = 40;
 
     // Per-level cache of the latest (possibly still in-flight) scan. Main-thread access only; weak keys so a
     // level that unloads (e.g. server stop) drops its entry instead of pinning a stale result.
-    private static final Map<ServerLevel, Cached> CACHE = new WeakHashMap<>();
+    private static final Map<ServerLevel, Map<RadarProfile, Cached>> CACHE = new WeakHashMap<>();
 
     private record Cached(long gameTime, CompletableFuture<List<ClusterData>> future) {}
 
@@ -56,44 +54,69 @@ public final class RadarClustering {
         return map;
     }
 
-    /** Players plus the whitelisted machines the real radar sees (from the persistent registry). */
-    public static Map<IntCoord2, DataPoint> collectTargets(ServerLevel level) {
-        Map<IntCoord2, DataPoint> map = collectPlayers(level);
-
-        Long2IntMap machineMap = RadarRegistryData.get(level).getMachineMap();
-        for (Long2IntMap.Entry entry : machineMap.long2IntEntrySet()) {
-            long packed = entry.getLongKey();
-            map.put(new IntCoord2((int) (packed >> 32), (int) packed),
-                    new DataPoint(TargetType.STRUCTURE, entry.getIntValue()));
+    /** Players plus the whitelisted machines {@code profile} sees from {@code origin}. Server-thread only. */
+    public static Map<IntCoord2, DataPoint> collectTargets(ServerLevel level, RadarProfile profile, BlockPos origin) {
+        Map<IntCoord2, DataPoint> map = new HashMap<>();
+        int seaLevel = level.getSeaLevel();
+        long rangeSq = (long) profile.range() * profile.range();
+        for (ServerPlayer player : level.players()) {
+            BlockPos pos = player.blockPosition();
+            if (inRange(profile, rangeSq, origin, pos.getX(), pos.getZ())
+                    && profile.weight(pos.getY(), seaLevel) > 0) {
+                map.put(new IntCoord2(pos), new DataPoint(TargetType.PLAYER, 0));
+            }
         }
-
+        for (Long2IntMap.Entry entry : RadarRegistryData.get(level).getMachineMap().long2IntEntrySet()) {
+            long packed = entry.getLongKey();
+            int x = BlockPos.getX(packed);
+            int z = BlockPos.getZ(packed);
+            if (!inRange(profile, rangeSq, origin, x, z)) {
+                continue;
+            }
+            double weight = profile.weight(BlockPos.getY(packed), seaLevel);
+            if (weight > 0) {
+                int value = Math.max(1, entry.getIntValue());
+                map.put(new IntCoord2(x, z),
+                        new DataPoint(TargetType.STRUCTURE, Math.max(1, (int) Math.round(value * weight))));
+            }
+        }
         return map;
     }
 
+    private static boolean inRange(RadarProfile profile, long rangeSq, BlockPos origin, int x, int z) {
+        if (profile.range() <= 0) {
+            return true;
+        }
+        long dx = x - origin.getX();
+        long dz = z - origin.getZ();
+        return dx * dx + dz * dz <= rangeSq;
+    }
+
     /**
-     * Runs a DBSCAN scan for {@code level}, or reuses a recent one: requests within {@link #CACHE_TICKS} ticks
-     * share the same (possibly still-running) result, so a burst of radars firing together computes once. A
-     * failed scan is evicted rather than reused. Must be called on the server thread — it snapshots
-     * {@link #collectTargets(ServerLevel)} synchronously.
+     * DBSCAN over {@link #collectTargets}. Whole-level profiles ({@code range == 0}) share one result per level
+     * within {@link #CACHE_TICKS}; ranged profiles always compute. Failed scan evicted. Server thread only.
      */
-    public static CompletableFuture<List<ClusterData>> scan(ServerLevel level, int eps, int minPts) {
+    public static CompletableFuture<List<ClusterData>> scan(ServerLevel level, RadarProfile profile, BlockPos origin) {
+        if (profile.range() > 0) {
+            return calculateDBSCAN(collectTargets(level, profile, origin), profile.eps(), profile.minPts());
+        }
         long now = level.getGameTime();
-        Cached cached = CACHE.get(level);
+        Map<RadarProfile, Cached> perProfile = CACHE.computeIfAbsent(level, l -> new HashMap<>());
+        Cached cached = perProfile.get(profile);
         if (cached != null) {
             long age = now - cached.gameTime();
             if (age >= 0 && age <= CACHE_TICKS) {
                 return cached.future();
             }
         }
-        CompletableFuture<List<ClusterData>> future = calculateDBSCAN(collectTargets(level), eps, minPts);
+        CompletableFuture<List<ClusterData>> future =
+                calculateDBSCAN(collectTargets(level, profile, origin), profile.eps(), profile.minPts());
         Cached entry = new Cached(now, future);
-        CACHE.put(level, entry);
-        // The future completes off-thread; on failure, drop this entry back on the server thread so co-firing
-        // radars recompute instead of sharing the failure. remove(key, value) only evicts if still this entry,
-        // so a newer scan that already replaced it is left alone.
+        perProfile.put(profile, entry);
+        // Completes off-thread; evict on the server thread, only if still this entry.
         future.whenComplete((result, error) -> {
             if (error != null) {
-                level.getServer().execute(() -> CACHE.remove(level, entry));
+                level.getServer().execute(() -> perProfile.remove(profile, entry));
             }
         });
         return future;

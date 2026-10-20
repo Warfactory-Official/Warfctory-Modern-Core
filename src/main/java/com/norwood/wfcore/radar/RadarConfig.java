@@ -18,55 +18,111 @@ import java.util.Set;
  */
 public final class RadarConfig {
 
-    /** DBSCAN defaults, used when {@code /wfcore_radar scan} is run without explicit arguments. */
-    public static final int DEFAULT_EPS = 200;
-    public static final int DEFAULT_MIN_PTS = 10;
-
-    public static final int DEFAULT_CALIB_MIN_DISTANCE = 2000;
-    public static final int DEFAULT_CALIB_MAX_DISTANCE = 5000;
-    public static final int DEFAULT_CALIB_TOLERANCE = 128;
-    public static final int DEFAULT_CALIB_BASE_COUNT = 3;
-    public static final int DEFAULT_CALIB_SEA_LEVEL = 63;
     public static final int DEFAULT_CALIB_BORDER_MARGIN = 16;
 
     private static final Object2IntOpenHashMap<ResourceLocation> WHITELIST = new Object2IntOpenHashMap<>();
 
     private static final ModConfigSpec.ConfigValue<List<? extends String>> MACHINES;
-    private static final ModConfigSpec.IntValue EPS;
-    private static final ModConfigSpec.IntValue MIN_PTS;
-    private static final ModConfigSpec.IntValue CALIB_MIN_DISTANCE;
-    private static final ModConfigSpec.IntValue CALIB_MAX_DISTANCE;
-    private static final ModConfigSpec.IntValue CALIB_TOLERANCE;
-    private static final ModConfigSpec.IntValue CALIB_BASE_COUNT;
-    private static final ModConfigSpec.IntValue CALIB_SEA_LEVEL;
     private static final ModConfigSpec.IntValue CALIB_BORDER_MARGIN;
+    private static final ProfileSpec RADAR_SPEC;
+    private static final ProfileSpec SEISMIC_SPEC;
     public static final ModConfigSpec SPEC;
 
-    // Baked DBSCAN tuning: the default eps/minPts a scan uses when no per-scan override is given. Pre-seeded
-    // with the config defaults so they are valid even before the first bake().
-    private static int eps = DEFAULT_EPS;
-    private static int minPts = DEFAULT_MIN_PTS;
-
-    private static int calibMinDistance = DEFAULT_CALIB_MIN_DISTANCE;
-    private static int calibMaxDistance = DEFAULT_CALIB_MAX_DISTANCE;
-    private static int calibTolerance = DEFAULT_CALIB_TOLERANCE;
-    private static int calibBaseCount = DEFAULT_CALIB_BASE_COUNT;
-    private static int calibSeaLevel = DEFAULT_CALIB_SEA_LEVEL;
     private static int calibBorderMargin = DEFAULT_CALIB_BORDER_MARGIN;
 
     // KubeJS overrides (via the WFRadar binding). Re-applied on top of the config whitelist at the end of every
-    // bake() so a pack's additions/removals/tunables survive a config reload instead of being clobbered by it.
+    // bake() so a pack's additions/removals survive a config reload instead of being clobbered by it.
     private static final Object2IntOpenHashMap<ResourceLocation> SCRIPT_ADDITIONS = new Object2IntOpenHashMap<>();
     private static final Set<ResourceLocation> SCRIPT_REMOVALS = new HashSet<>();
-    private static Integer scriptEps;
-    private static Integer scriptMinPts;
     private static volatile boolean baked = false;
+
+    /** Per-profile keys under the current builder path; detection keys only when {@code detection}. */
+    private record ProfileSpec(RadarProfile profile, ModConfigSpec.IntValue eps, ModConfigSpec.IntValue minPts,
+                               ModConfigSpec.IntValue calibMin, ModConfigSpec.IntValue calibMax,
+                               ModConfigSpec.IntValue calibTolerance, ModConfigSpec.IntValue calibBaseCount,
+                               ModConfigSpec.IntValue minTier, ModConfigSpec.IntValue baseCWUt,
+                               ModConfigSpec.IntValue scanTicks, ModConfigSpec.IntValue range,
+                               ModConfigSpec.IntValue depthThreshold, ModConfigSpec.DoubleValue deepMultiplier,
+                               ModConfigSpec.DoubleValue shallowMultiplier) {
+
+        static ProfileSpec define(ModConfigSpec.Builder builder, RadarProfile profile, boolean detection) {
+            RadarProfile.Defaults d = profile.defaults;
+            builder.comment("DBSCAN clustering tuning. These are the defaults a scan uses;",
+                    "\"/wfcore_radar scan <eps> <minPts>\" overrides them per command scan for dialing in.")
+                    .push("clustering");
+            var eps = builder.comment(
+                    "Neighbourhood radius in blocks: two targets within this distance count as neighbours.",
+                    "Larger values merge nearby bases into one cluster; smaller values split them apart.")
+                    .defineInRange("eps", d.eps(), 1, 30_000_000);
+            var minPts = builder.comment(
+                    "Minimum points: the fewest neighbouring targets needed to seed a cluster.",
+                    "Higher values report only dense bases; lower values pick up smaller groupings (more noise).")
+                    .defineInRange("minPts", d.minPts(), 1, 100_000);
+            builder.pop();
+
+            builder.comment("Satellite Distance Calibrator scan-session tuning.",
+                    "A scan session generates target points the player must build calibrators at before scanning.")
+                    .push("calibrator");
+            var calibMin = builder.comment("Closest a generated calibrator target may be to the machine (blocks).")
+                    .defineInRange("minDistance", d.calibMinDistance(), 1, 30_000_000);
+            var calibMax = builder.comment("Farthest a generated calibrator target may be from the machine (blocks).")
+                    .defineInRange("maxDistance", d.calibMaxDistance(), 1, 30_000_000);
+            var calibTolerance = builder.comment(
+                    "How close (blocks, horizontal) a built calibrator must be to a target point to satisfy it.")
+                    .defineInRange("tolerance", d.calibTolerance(), 1, 30_000_000);
+            var calibBaseCount = builder.comment(
+                    "Calibrators required at scan.minTier; +1 per voltage tier above that.")
+                    .defineInRange("baseCount", d.calibBaseCount(), 1, 32);
+            builder.pop();
+
+            builder.comment("Scan cost. Energy = VA[tier] EU/t while scanning.").push("scan");
+            var minTier = builder.comment("Lowest energy-hatch voltage tier that scans (0=ULV, 1=LV, 2=MV, 3=HV, ...).")
+                    .defineInRange("minTier", d.minTier(), 0, 14);
+            var baseCWUt = builder.comment("CWU/t at minTier and minTier+1; x4 per tier above.")
+                    .defineInRange("baseCWUt", d.baseCWUt(), 0, 1 << 20);
+            var scanTicks = builder.comment("Scan duration (ticks) at minTier; x0.8 per tier above.")
+                    .defineInRange("scanTicks", d.scanTicks(), 1, 10_000_000);
+            builder.pop();
+
+            ModConfigSpec.IntValue range = null;
+            ModConfigSpec.IntValue depthThreshold = null;
+            ModConfigSpec.DoubleValue deep = null;
+            ModConfigSpec.DoubleValue shallow = null;
+            if (detection) {
+                builder.comment("What the scan sees.").push("detection");
+                range = builder.comment("Horizontal radius (blocks) around the machine; targets beyond are ignored.",
+                        "0 = whole level.")
+                        .defineInRange("range", d.range(), 0, 30_000_000);
+                depthThreshold = builder.comment(
+                        "A target (registered machine or player) deeper than this many blocks below the level's",
+                        "sea level is 'deep'.")
+                        .defineInRange("depthThreshold", d.depthThreshold(), 0, 4096);
+                deep = builder.comment("Richness multiplier for deep targets.")
+                        .defineInRange("deepMultiplier", d.deepMultiplier(), 0.0, 1_000_000.0);
+                shallow = builder.comment("Richness multiplier for shallow targets; 0 = not detected at all.")
+                        .defineInRange("shallowMultiplier", d.shallowMultiplier(), 0.0, 1_000_000.0);
+                builder.pop();
+            }
+            return new ProfileSpec(profile, eps, minPts, calibMin, calibMax, calibTolerance, calibBaseCount,
+                    minTier, baseCWUt, scanTicks, range, depthThreshold, deep, shallow);
+        }
+
+        void bake() {
+            RadarProfile.Defaults d = profile.defaults;
+            profile.apply(new RadarProfile.Defaults(eps.get(), minPts.get(), calibMin.get(), calibMax.get(),
+                    calibTolerance.get(), calibBaseCount.get(), minTier.get(), baseCWUt.get(), scanTicks.get(),
+                    range == null ? d.range() : range.get(),
+                    depthThreshold == null ? d.depthThreshold() : depthThreshold.get(),
+                    deepMultiplier == null ? d.deepMultiplier() : deepMultiplier.get(),
+                    shallowMultiplier == null ? d.shallowMultiplier() : shallowMultiplier.get()));
+        }
+    }
 
     static {
         WHITELIST.defaultReturnValue(0);
         ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
         MACHINES = builder.comment(
-                "Radar target whitelist.",
+                "Radar target whitelist (shared by radar and seismic radar).",
                 "Every machine/block listed here is visible to the radar and contributes to a base's score.",
                 "Use registry names directly; GregTech Modern machines are keyed by their registry name.",
                 "Format per entry: \"registryId=value\" where value is the richness contributed to the combined base score (defaults to 1 if the =value is omitted).",
@@ -76,38 +132,15 @@ public final class RadarConfig {
                         "gtceu:large_chemical_reactor=25",
                         "minecraft:furnace=1"),
                         o -> o instanceof String);
-
-        builder.comment("DBSCAN clustering tuning. These are the defaults a radar (and /wfcore_radar scan) use;",
-                "the command accepts \"/wfcore_radar scan <eps> <minPts>\" to override them per scan for dialing in.")
-                .push("clustering");
-        EPS = builder.comment(
-                "Neighbourhood radius in blocks: two targets within this distance count as neighbours.",
-                "Larger values merge nearby bases into one cluster; smaller values split them apart.")
-                .defineInRange("eps", DEFAULT_EPS, 1, 30_000_000);
-        MIN_PTS = builder.comment(
-                "Minimum points: the fewest neighbouring targets needed to seed a cluster.",
-                "Higher values report only dense bases; lower values pick up smaller groupings (more noise).")
-                .defineInRange("minPts", DEFAULT_MIN_PTS, 1, 100_000);
-        builder.pop();
-
-        builder.comment("Satellite Distance Calibrator scan-session tuning.",
-                "A scan session generates target points the player must build calibrators at before scanning.")
-                .push("calibrator");
-        CALIB_MIN_DISTANCE = builder.comment("Closest a generated calibrator target may be to the radar (blocks).")
-                .defineInRange("minDistance", DEFAULT_CALIB_MIN_DISTANCE, 1, 30_000_000);
-        CALIB_MAX_DISTANCE = builder.comment("Farthest a generated calibrator target may be from the radar (blocks).")
-                .defineInRange("maxDistance", DEFAULT_CALIB_MAX_DISTANCE, 1, 30_000_000);
-        CALIB_TOLERANCE = builder.comment(
-                "How close (blocks, horizontal) a built calibrator must be to a target point to satisfy it.")
-                .defineInRange("tolerance", DEFAULT_CALIB_TOLERANCE, 1, 30_000_000);
-        CALIB_BASE_COUNT = builder.comment(
-                "Calibrators required at the radar's minimum tier (HV); +1 per voltage tier above that.")
-                .defineInRange("baseCount", DEFAULT_CALIB_BASE_COUNT, 1, 32);
-        CALIB_SEA_LEVEL = builder.comment("Minimum Y a calibrator's controller must sit at for the structure to form.")
-                .defineInRange("seaLevel", DEFAULT_CALIB_SEA_LEVEL, -64, 320);
         CALIB_BORDER_MARGIN = builder.comment(
-                "Keep generated targets at least this many blocks inside the world border.")
-                .defineInRange("borderMargin", DEFAULT_CALIB_BORDER_MARGIN, 0, 30_000_000);
+                "Keep generated calibrator targets at least this many blocks inside the world border.")
+                .defineInRange("calibratorBorderMargin", DEFAULT_CALIB_BORDER_MARGIN, 0, 30_000_000);
+
+        RADAR_SPEC = ProfileSpec.define(builder, RadarProfile.RADAR, false);
+
+        builder.comment("Seismic radar: cheap short-range scanner that sees deep (underground) targets.")
+                .push("seismic");
+        SEISMIC_SPEC = ProfileSpec.define(builder, RadarProfile.SEISMIC, true);
         builder.pop();
 
         SPEC = builder.build();
@@ -137,41 +170,6 @@ public final class RadarConfig {
         return out;
     }
 
-    /** Configured default DBSCAN neighbourhood radius (blocks); overridable per scan. */
-    public static int getEps() {
-        return eps;
-    }
-
-    /** Configured default DBSCAN minimum cluster size; overridable per scan. */
-    public static int getMinPts() {
-        return minPts;
-    }
-
-    /** Closest a generated calibrator target may be to the radar (blocks). */
-    public static int getCalibratorMinDistance() {
-        return calibMinDistance;
-    }
-
-    /** Farthest a generated calibrator target may be from the radar (blocks). */
-    public static int getCalibratorMaxDistance() {
-        return calibMaxDistance;
-    }
-
-    /** How close (blocks, horizontal) a built calibrator must be to a target point to satisfy it. */
-    public static int getCalibratorTolerance() {
-        return calibTolerance;
-    }
-
-    /** Calibrators required at the radar's minimum tier (HV); +1 per voltage tier above that. */
-    public static int getCalibratorBaseCount() {
-        return calibBaseCount;
-    }
-
-    /** Minimum Y a calibrator's controller must sit at for the structure to form. */
-    public static int getCalibratorSeaLevel() {
-        return calibSeaLevel;
-    }
-
     /** Keep generated targets at least this many blocks inside the world border. */
     public static int getCalibratorBorderMargin() {
         return calibBorderMargin;
@@ -195,32 +193,10 @@ public final class RadarConfig {
         }
     }
 
-    /** KubeJS: override the default DBSCAN neighbourhood radius. */
-    public static synchronized void scriptEps(int value) {
-        scriptEps = value;
-        if (baked) {
-            eps = value;
-        }
-    }
-
-    /** KubeJS: override the default DBSCAN minimum cluster size. */
-    public static synchronized void scriptMinPts(int value) {
-        scriptMinPts = value;
-        if (baked) {
-            minPts = value;
-        }
-    }
-
     public static synchronized void bake() {
-        eps = EPS.get();
-        minPts = MIN_PTS.get();
-
-        calibMinDistance = CALIB_MIN_DISTANCE.get();
-        calibMaxDistance = Math.max(CALIB_MAX_DISTANCE.get(), calibMinDistance);
-        calibTolerance = CALIB_TOLERANCE.get();
-        calibBaseCount = CALIB_BASE_COUNT.get();
-        calibSeaLevel = CALIB_SEA_LEVEL.get();
         calibBorderMargin = CALIB_BORDER_MARGIN.get();
+        RADAR_SPEC.bake();
+        SEISMIC_SPEC.bake();
 
         WHITELIST.clear();
         for (String raw : MACHINES.get()) {
@@ -253,15 +229,9 @@ public final class RadarConfig {
         for (ResourceLocation removed : SCRIPT_REMOVALS) {
             WHITELIST.removeInt(removed);
         }
-        if (scriptEps != null) {
-            eps = scriptEps;
-        }
-        if (scriptMinPts != null) {
-            minPts = scriptMinPts;
-        }
         baked = true;
 
-        WFCore.LOGGER.info("Loaded {} radar targets (DBSCAN eps={}, minPts={}); {} script override(s)",
-                WHITELIST.size(), eps, minPts, SCRIPT_ADDITIONS.size() + SCRIPT_REMOVALS.size());
+        WFCore.LOGGER.info("Loaded {} radar targets; {} script override(s)",
+                WHITELIST.size(), SCRIPT_ADDITIONS.size() + SCRIPT_REMOVALS.size());
     }
 }

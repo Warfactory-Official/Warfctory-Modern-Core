@@ -3,7 +3,11 @@ package com.norwood.wfcore.common.data;
 import com.gregtechceu.gtceu.api.GTValues;
 import com.gregtechceu.gtceu.api.data.chemical.ChemicalHelper;
 import com.gregtechceu.gtceu.api.data.chemical.material.Material;
+import com.gregtechceu.gtceu.api.data.chemical.material.stack.MaterialEntry;
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
+import com.gregtechceu.gtceu.common.data.GTItems;
+import com.gregtechceu.gtceu.common.data.GTMachines;
+import com.gregtechceu.gtceu.data.recipe.CustomTags;
 import com.gregtechceu.gtceu.data.recipe.VanillaRecipeHelper;
 import com.gregtechceu.gtceu.api.registry.registrate.entry.GTRecipeTypeEntry;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
@@ -146,6 +150,14 @@ public class WFRecipeTypes {
 
         addPrimitiveAlloyerRecipes(provider);
         addStrandcasterRecipes(provider);
+
+        // TODO: radar controller has no recipe.
+        VanillaRecipeHelper.addShapedRecipe(provider, WFCore.id("seismic_radar"),
+                WFMachines.SEISMIC_RADAR.asStack(), "SCS", "PHP", "GCG",
+                'S', GTItems.SENSOR_MV, 'C', CustomTags.MV_CIRCUITS,
+                'P', new MaterialEntry(TagPrefix.plate, GTMaterials.Aluminium),
+                'H', GTMachines.HULL[GTValues.MV].asStack(),
+                'G', new MaterialEntry(TagPrefix.gear, GTMaterials.Steel));
     }
 
     /**

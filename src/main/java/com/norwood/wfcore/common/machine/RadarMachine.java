@@ -52,7 +52,7 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.render.gltf.AnimTransition;
 import com.norwood.wfcore.client.render.gltf.IAnimatedMachine;
 import com.norwood.wfcore.radar.RadarClustering;
-import com.norwood.wfcore.radar.RadarConfig;
+import com.norwood.wfcore.radar.RadarProfile;
 import com.norwood.wfcore.radar.RadarDataStick;
 import com.norwood.wfcore.radar.RadarSession;
 import com.norwood.wfcore.radar.data.RadarScanData;
@@ -74,13 +74,9 @@ import com.norwood.wfcore.client.render.mask.RenderMaskManager;
 public class RadarMachine extends MultiblockControllerMachine
                           implements IMuiMachine, IOpticalComputationReceiver, IAnimatedMachine, IWideRenderBoundsMachine {
 
-    private static final int BASE_CWUT = 128;
-    /** Lowest energy-hatch tier the radar will run at. Below this it forms but refuses to scan. */
-    private static final int MIN_TIER = GTValues.HV;
-    private static final int BASE_SCAN_TICKS_EV = 12000;
-
     private static final double SCAN_TIER_FACTOR = 0.8;
 
+    protected final RadarProfile profile;
 
     @SaveField
     protected final NotifiableItemStackHandler dataStickInv;
@@ -132,7 +128,12 @@ public class RadarMachine extends MultiblockControllerMachine
     private transient String lastTickLog = "";
 
     public RadarMachine(BlockEntityCreationInfo info) {
+        this(info, RadarProfile.RADAR);
+    }
+
+    public RadarMachine(BlockEntityCreationInfo info, RadarProfile profile) {
         super(info);
+        this.profile = profile;
         this.dataStickInv = attachTrait(
                 new NotifiableItemStackHandler(1, IO.IN).setFilter(RadarMachine::isDataItem));
     }
@@ -220,7 +221,7 @@ public class RadarMachine extends MultiblockControllerMachine
         }
         if (!drainEnergy(true)) {
             animAdvancing = false; // power loss mid-scan: freeze the dish where it is
-            tickLog("STALLED: not enough energy (need " + GTValues.VA[Math.max(MIN_TIER, voltageTier)]
+            tickLog("STALLED: not enough energy (need " + GTValues.VA[Math.max(profile.minTier(), voltageTier)]
                     + ", stored " + (energyContainer == null ? "n/a" : energyContainer.getEnergyStored()) + ")");
             return;
         }
@@ -261,7 +262,7 @@ public class RadarMachine extends MultiblockControllerMachine
         if (energyContainer == null) {
             return false;
         }
-        long energyToDrain = GTValues.VA[Math.max(MIN_TIER, voltageTier)];
+        long energyToDrain = GTValues.VA[Math.max(profile.minTier(), voltageTier)];
         long result = energyContainer.getEnergyStored() - energyToDrain;
         if (result >= 0L && result <= energyContainer.getEnergyCapacity()) {
             if (!simulate) {
@@ -272,10 +273,8 @@ public class RadarMachine extends MultiblockControllerMachine
         return false;
     }
 
-    /** Required CWU/t quadruples per tier above EV (EV=16, IV=64, LuV=256, ZPM=1024, UV=4096). */
     public int getRequiredCWUt() {
-        int tier = Math.max(GTValues.EV, voltageTier);
-        return BASE_CWUT << (2 * (tier - GTValues.EV));
+        return profile.baseCWUt() << (2 * Math.max(0, voltageTier - profile.minTier() - 1));
     }
 
     private int requestCWU(boolean simulate) {
@@ -308,7 +307,7 @@ public class RadarMachine extends MultiblockControllerMachine
         WFCore.LOGGER.info("[Radar@{}] startScan OK: isActive=true, scanDuration={} ticks, kicking off DBSCAN",
                 getBlockPos(), getScanDurationTicks());
 
-        RadarClustering.scan(serverLevel, RadarConfig.getEps(), RadarConfig.getMinPts())
+        RadarClustering.scan(serverLevel, profile, getBlockPos())
                 .thenAccept(clusters -> serverLevel.getServer().execute(() -> {
                     UUID id = UUID.randomUUID();
                     RadarScanData.get(serverLevel).addScan(id, clusters);
@@ -349,13 +348,13 @@ public class RadarMachine extends MultiblockControllerMachine
     }
 
     public boolean canScan() {
-        return isFormed() && !isActive && voltageTier >= MIN_TIER && hasDataStick() && isCorrectY() &&
-                hasSkylightAccess() && !hasMaintenanceProblems() && allCalibratorsPlaced() &&
+        return isFormed() && !isActive && voltageTier >= profile.minTier() && hasDataStick() && isSited() &&
+                !hasMaintenanceProblems() && allCalibratorsPlaced() &&
                 drainEnergy(true) && hasComputation();
     }
 
     public int getCalibratorCount() {
-        return RadarConfig.getCalibratorBaseCount() + Math.max(0, voltageTier - MIN_TIER);
+        return profile.calibBaseCount() + Math.max(0, voltageTier - profile.minTier());
     }
 
     public boolean hasSession() {
@@ -371,10 +370,10 @@ public class RadarMachine extends MultiblockControllerMachine
     }
 
     public void initiateSession() {
-        if (isActive || voltageTier < MIN_TIER || !(getLevel() instanceof ServerLevel serverLevel)) {
+        if (isActive || voltageTier < profile.minTier() || !(getLevel() instanceof ServerLevel serverLevel)) {
             return;
         }
-        long[] targets = RadarSession.generate(serverLevel, getBlockPos(), getCalibratorCount());
+        long[] targets = RadarSession.generate(serverLevel, getBlockPos(), getCalibratorCount(), profile);
         if (targets == null) {
             sessionError = 1;
             clearSession();
@@ -403,8 +402,7 @@ public class RadarMachine extends MultiblockControllerMachine
 
     private void refreshPlacedMask() {
         if (hasSession() && getLevel() instanceof ServerLevel serverLevel) {
-            sessionPlacedMask = RadarSession.placedMask(serverLevel, sessionTargets,
-                    RadarConfig.getCalibratorTolerance());
+            sessionPlacedMask = RadarSession.placedMask(serverLevel, sessionTargets, profile.calibTolerance());
         }
     }
 
@@ -514,6 +512,10 @@ public class RadarMachine extends MultiblockControllerMachine
         return hidden;
     }
 
+    private boolean isSited() {
+        return !profile.needsSky || (isCorrectY() && hasSkylightAccess());
+    }
+
     private boolean isCorrectY() {
         return getBlockPos().getY() >= 100;
     }
@@ -528,13 +530,11 @@ public class RadarMachine extends MultiblockControllerMachine
     }
 
     public int getScanDurationTicks() {
-        if (voltageTier < MIN_TIER) {
-            return Integer.MAX_VALUE; // below HV the radar won't scan (see canScan)
+        if (voltageTier < profile.minTier()) {
+            return Integer.MAX_VALUE; // won't scan (see canScan)
         }
-        // 600 s (12000 t) at EV; ×0.8 per tier above EV (and ÷0.8 for HV, one tier below EV). Unlike GT's
-        // usual ×0.5-per-tier overclock, the 0.8 factor gives steep diminishing returns so high-voltage
-        // scans stay long.
-        double ticks = BASE_SCAN_TICKS_EV * Math.pow(SCAN_TIER_FACTOR, voltageTier - GTValues.EV);
+        // x0.8/tier, not GT's x0.5 overclock: high-voltage scans stay long.
+        double ticks = profile.scanTicks() * Math.pow(SCAN_TIER_FACTOR, voltageTier - profile.minTier());
         return (int) Math.round(ticks);
     }
 
@@ -545,7 +545,7 @@ public class RadarMachine extends MultiblockControllerMachine
 
 
     public long getEnergyDrawPerTick() {
-        return voltageTier < MIN_TIER ? 0 : GTValues.VA[Math.max(MIN_TIER, voltageTier)];
+        return voltageTier < profile.minTier() ? 0 : GTValues.VA[voltageTier];
     }
 
 
@@ -558,7 +558,7 @@ public class RadarMachine extends MultiblockControllerMachine
     }
 
     private boolean canPreviewCost() {
-        return isFormed() && voltageTier >= MIN_TIER && getScanDurationTicks() != Integer.MAX_VALUE;
+        return isFormed() && voltageTier >= profile.minTier() && getScanDurationTicks() != Integer.MAX_VALUE;
     }
     private static String compact(long v) {
         if (v < 1_000L) {
@@ -661,7 +661,7 @@ public class RadarMachine extends MultiblockControllerMachine
         StringSyncValue statusText = syncManager.getOrCreateSyncHandler("statusText", StringSyncValue.class,
                 () -> new StringSyncValue(this::getStatusText));
 
-        widgets.add(Text.lang("wfcore.machine.radar.name").asWidget());
+        widgets.add(Text.lang("wfcore.machine." + profile.name + ".name").asWidget());
         widgets.add(Text.dynamic(() -> Component.literal(statusText.getValue())).asWidget());
         widgets.add(WFMuiWidgets.conditionalLine(() -> isActive,
                 () -> Component.literal(getProgressText())));
@@ -751,7 +751,8 @@ public class RadarMachine extends MultiblockControllerMachine
     private void logScanGates() {
         WFCore.LOGGER.info("[Radar@{}] gates: formed={} !active={} tier={}(min {})->{} dataStick={} y>=100={}({}) "
                         + "skylight={} energyOK={} computationOK={}",
-                getBlockPos(), isFormed(), !isActive, voltageTier, MIN_TIER, voltageTier >= MIN_TIER, hasDataStick(),
+                getBlockPos(), isFormed(), !isActive, voltageTier, profile.minTier(), voltageTier >= profile.minTier(),
+                hasDataStick(),
                 isCorrectY(), getBlockPos().getY(), hasSkylightAccess(), drainEnergy(true), hasComputation());
         WFCore.LOGGER.info("[Radar@{}]   detail: energyContainer={} computationProvider={} requiredCWUt={} availCWUt={}",
                 getBlockPos(), energyContainer == null ? "null" : "present",
@@ -763,14 +764,14 @@ public class RadarMachine extends MultiblockControllerMachine
         if (!isFormed()) {
             return "§cIncomplete structure";
         }
-        if (!isCorrectY()) {
+        if (profile.needsSky && !isCorrectY()) {
             return "§cMust be built at Y >= 100";
         }
-        if (!hasSkylightAccess()) {
+        if (profile.needsSky && !hasSkylightAccess()) {
             return "§cNeeds sky access";
         }
-        if (voltageTier < MIN_TIER) {
-            return "§cRequires an HV+ energy hatch";
+        if (voltageTier < profile.minTier()) {
+            return "§cRequires an " + GTValues.VN[profile.minTier()] + "+ energy hatch";
         }
         if (hasMaintenanceProblems()) {
             return "§cNeeds maintenance";
@@ -797,6 +798,30 @@ public class RadarMachine extends MultiblockControllerMachine
             return String.format("§cNo computation (needs %d CWU/t)", getRequiredCWUt());
         }
         return "§aReady to scan";
+    }
+
+    /** One-line server-side state for {@code /wfcore_radar machine}. */
+    public String describe() {
+        StringBuilder targets = new StringBuilder();
+        for (int i = 0; i < sessionTargets.length; i++) {
+            targets.append(String.format(" %s(%d,%d)", (sessionPlacedMask & (1 << i)) != 0 ? "+" : "-",
+                    RadarSession.unpackX(sessionTargets[i]), RadarSession.unpackZ(sessionTargets[i])));
+        }
+        StringBuilder scan = new StringBuilder();
+        UUID stickScan = hasDataStick() ? RadarDataStick.readScan(dataStickInv.getStackInSlot(0)) : null;
+        if (stickScan != null && getLevel() instanceof ServerLevel serverLevel
+                && RadarScanData.get(serverLevel).hasScan(stickScan)) {
+            for (var c : RadarScanData.get(serverLevel).getScan(stickScan)) {
+                scan.append(String.format(" [(%d,%d) richness=%d players=%d]", c.centerPoint.getX(),
+                        c.centerPoint.getZ(), c.clusterValue, c.playerPopulation));
+            }
+        }
+        return String.format("%s formed=%b tier=%d active=%b progress=%d/%d finished=%b canScan=%b "
+                        + "energy=%b cwu=%d/%d stick=%b status='%s' session=%d/%d%s stickScan=%s%s",
+                profile.name, isFormed(), voltageTier, isActive, scanProgress, getScanDurationTicks(), finished,
+                canScan(), drainEnergy(true), requestCWU(true), getRequiredCWUt(), hasDataStick(), getStatusText(),
+                Integer.bitCount(sessionPlacedMask & fullMask(sessionTargetCount)), sessionTargetCount, targets,
+                stickScan, scan);
     }
 
     private String getProgressText() {

@@ -10,10 +10,12 @@ import net.minecraft.world.level.block.Block;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.radar.RadarConfig;
+import com.norwood.wfcore.radar.RadarProfile;
 import com.norwood.wfcore.radar.WFRadarScripts;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * KubeJS binding exposed as {@code WFRadar} in <b>startup scripts</b>. It lets a pack shape what the radar
@@ -37,6 +39,13 @@ import java.util.Map;
  *     // retune the default clustering
  *     .eps(160)
  *     .minPts(12)
+ * // seismic radar: own clustering, calibrators, cost and detection
+ * WFRadar.seismic()
+ *     .eps(64).minPts(4)
+ *     .calibrator(150, 400, 16, 2)   // minDistance, maxDistance, tolerance, baseCount
+ *     .scan(2, 16, 6000)             // minTier, baseCWUt, scanTicks
+ *     .range(1500)
+ *     .depth(40, 6.0, 0.0)           // depthThreshold, deepMultiplier, shallowMultiplier
  * }</pre>
  */
 public class WFRadarBindings {
@@ -89,16 +98,72 @@ public class WFRadarBindings {
         return this;
     }
 
-    /** Override the default DBSCAN neighbourhood radius (blocks). */
+    /** Override the radar's default DBSCAN neighbourhood radius (blocks). */
     public WFRadarBindings eps(int value) {
-        WFRadarScripts.enqueue(() -> RadarConfig.scriptEps(value));
+        RADAR.eps(value);
         return this;
     }
 
-    /** Override the default DBSCAN minimum cluster size. */
+    /** Override the radar's default DBSCAN minimum cluster size. */
     public WFRadarBindings minPts(int value) {
-        WFRadarScripts.enqueue(() -> RadarConfig.scriptMinPts(value));
+        RADAR.minPts(value);
         return this;
+    }
+
+    private static final Profile RADAR = new Profile(RadarProfile.RADAR);
+    private static final Profile SEISMIC = new Profile(RadarProfile.SEISMIC);
+
+    public Profile radar() {
+        return RADAR;
+    }
+
+    public Profile seismic() {
+        return SEISMIC;
+    }
+
+    /** Per-profile tunables; same semantics as the matching {@code wfcore-radar.toml} keys. */
+    public static final class Profile {
+
+        private final RadarProfile profile;
+
+        private Profile(RadarProfile profile) {
+            this.profile = profile;
+        }
+
+        private Profile op(Consumer<RadarProfile> op) {
+            WFRadarScripts.enqueue(() -> profile.script(op));
+            return this;
+        }
+
+        public Profile eps(int value) {
+            return op(p -> p.setEps(value));
+        }
+
+        public Profile minPts(int value) {
+            return op(p -> p.setMinPts(value));
+        }
+
+        public Profile calibrator(int minDistance, int maxDistance, int tolerance, int baseCount) {
+            return op(p -> p.setCalibrator(minDistance, maxDistance, tolerance, baseCount));
+        }
+
+        public Profile scan(int minTier, int baseCWUt, int scanTicks) {
+            return op(p -> p.setScan(minTier, baseCWUt, scanTicks));
+        }
+
+        public Profile scan(String minTier, int baseCWUt, int scanTicks) {
+            int tier = resolveTier(minTier);
+            return tier < 0 ? this : scan(tier, baseCWUt, scanTicks);
+        }
+
+        /** 0 = whole level. */
+        public Profile range(int blocks) {
+            return op(p -> p.setRange(blocks));
+        }
+
+        public Profile depth(int threshold, double deepMultiplier, double shallowMultiplier) {
+            return op(p -> p.setDepth(threshold, deepMultiplier, shallowMultiplier));
+        }
     }
 
     /** Whether {@code id} is currently on the whitelist (reads live state; run after startup to be meaningful). */

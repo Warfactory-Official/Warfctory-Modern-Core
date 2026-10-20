@@ -31,7 +31,7 @@ import com.gregtechceu.gtceu.common.machine.multiblock.steam.SteamParallelMultib
 import com.gregtechceu.gtceu.utils.FormattingUtil;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.machine.*;
-import com.norwood.wfcore.radar.RadarConfig;
+import com.norwood.wfcore.radar.RadarProfile;
 import com.norwood.wfcore.common.machine.compute.CPUSlotPartMachine;
 import com.norwood.wfcore.common.machine.crafting.CraftingStationMachine;
 import com.norwood.wfcore.common.machine.compute.CoolingPartMachine;
@@ -77,6 +77,7 @@ public class WFMachines {
     public static MachineEntry<MultiblockMachineDefinition> MAINFRAME;
     public static MachineEntry<MultiblockMachineDefinition> RESEARCH_UNIT;
     public static MachineEntry<MultiblockMachineDefinition> RADAR;
+    public static MachineEntry<MultiblockMachineDefinition> SEISMIC_RADAR;
     public static MachineEntry<MultiblockMachineDefinition> SATELLITE_CALIBRATOR;
     public static MachineEntry<MultiblockMachineDefinition> LIGHT_GROUND_VEHICLE_FACTORY;
     public static MachineEntry<MultiblockMachineDefinition> TANK_ASSEMBLY;
@@ -672,6 +673,36 @@ public class WFMachines {
                         WFCore.id("block/multiblock/radar"))
                 .register();
 
+        SEISMIC_RADAR = WF_MACHINES.multiblock("seismic_radar", info -> new RadarMachine(info, RadarProfile.SEISMIC))
+                .langValue("Seismic Radar")
+                .appearanceBlock(WFBlocks.ALUMINIUM_SHEET_CASING)
+                .allowExtendedFacing(false)
+                .tooltips(Component.translatable("wfcore.machine.seismic_radar.tooltip"))
+                .pattern(definition -> MultiblockPatternBuilder.start(
+                                RelativeDirection.BACK, RelativeDirection.UP, RelativeDirection.RIGHT)
+                        .slice("BBBBB", "CKAKC", "CDDDC", "     ")
+                        .slice("BBBBB", "KFFFK", "DEGED", "  I  ")
+                        .slice("BBBBB", "CKKKC", "CDDDC", "     ")
+                        .where('A', controller(blocks(definition.getBlock())))
+                        .where('B', blocks(WFBlocks.CONCRETE_BASE.get()))
+                        .where('C', frames(WFMaterials.GalvanizedSteel))
+                        .where('D', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get()))
+                        .where('K', blocks(WFBlocks.ALUMINIUM_SHEET_CASING.get())
+                                .or(abilities(PartAbility.INPUT_ENERGY).setMinGlobalLimited(1)
+                                        .setMaxGlobalLimited(2, 1))
+                                .or(abilities(PartAbility.COMPUTATION_DATA_RECEPTION).setMaxGlobalLimited(1, 1))
+                                .or(autoAbilities(true, false, false)))
+                        .where('E', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get()))
+                        .where('F', blocks(WFBlocks.CONDENSED_CABLES.get()))
+                        .where('G', blocks(matBlock(WFMaterials.GalvanizedSteel)))
+                        .where('I', frames(GTMaterials.Aluminium))
+                        .where(' ', any())
+                        .build())
+                // TODO: placeholder look (GT large miner overlay); no glTF model.
+                .workableCasingModel(WFCore.id("block/casings/aluminium_sheet_casing"),
+                        GTCEu.id("block/multiblock/large_miner"))
+                .register();
+
         SATELLITE_CALIBRATOR = WF_MACHINES.multiblock("satellite_distance_calibrator", CalibratorMachine::new)
                 .langValue("Satellite Distance Calibrator")
                 .rotationState(RotationState.NON_Y_AXIS)
@@ -683,11 +714,11 @@ public class WFMachines {
                     // a PatternState, so the altitude rule can no longer be bolted onto the controller
                     // predicate after the fact — it is built into a predicate of its own instead. Mirrors
                     // Predicates.blocks(Block) so the recipe-viewer preview still gets a candidate block.
-                    int seaLevel = RadarConfig.getCalibratorSeaLevel();
                     Block controllerBlock = definition.getBlock();
                     MultiPredicate controllerPredicate = builder("CalibratorController")
                             .predicate(ctx -> ctx.state().is(controllerBlock) &&
-                                    (!(ctx.level() instanceof ServerLevel) || ctx.pos().getY() >= seaLevel))
+                                    (!(ctx.level() instanceof ServerLevel level) ||
+                                            ctx.pos().getY() >= level.getSeaLevel()))
                             .errorFunction(ctx -> new BlockMatchingError(ctx.pos(), List.of(controllerBlock)))
                             .candidates(Stream.of(BlockInfo.fromBlock(controllerBlock)))
                             .toMultiPredicate()

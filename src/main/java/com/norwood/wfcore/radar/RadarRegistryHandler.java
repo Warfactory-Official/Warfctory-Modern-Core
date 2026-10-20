@@ -11,7 +11,7 @@ import com.norwood.wfcore.radar.data.RadarRegistryData;
 
 /**
  * Keeps the per-level {@link RadarRegistryData} machine map in sync with the world: whitelisted
- * blocks register their (x, z) + richness on placement and deregister on break.
+ * blocks register their position + richness on placement and deregister on break.
  *
  * <p>
  * The 1.12.2 version mixed into vanilla {@code World#addTileEntity}/{@code removeTileEntity};
@@ -34,8 +34,7 @@ public class RadarRegistryHandler {
         try {
             ResourceLocation id = BuiltInRegistries.BLOCK.getKey(event.getPlacedBlock().getBlock());
             if (id != null && RadarConfig.isWhitelisted(id)) {
-                RadarRegistryData.get(level).addMachine(event.getPos().getX(), event.getPos().getZ(),
-                        RadarConfig.getValue(id));
+                RadarRegistryData.get(level).addMachine(event.getPos(), RadarConfig.getValue(id));
             }
         } catch (Exception | LinkageError t) {
             logRadarFailure(t);
@@ -50,7 +49,7 @@ public class RadarRegistryHandler {
         try {
             ResourceLocation id = BuiltInRegistries.BLOCK.getKey(event.getState().getBlock());
             if (id != null && RadarConfig.isWhitelisted(id)) {
-                RadarRegistryData.get(level).removeMachine(event.getPos().getX(), event.getPos().getZ());
+                RadarRegistryData.get(level).removeMachine(event.getPos());
             }
         } catch (Exception | LinkageError t) {
             logRadarFailure(t);

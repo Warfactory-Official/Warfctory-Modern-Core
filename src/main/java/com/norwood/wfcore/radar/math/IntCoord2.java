@@ -22,11 +22,6 @@ public class IntCoord2 implements Clusterable {
         this.z = pos.getZ();
     }
 
-    public IntCoord2(long packed) {
-        this.x = (int) (packed >> 32);
-        this.z = (int) packed;
-    }
-
     public int getX() {
         return x;
     }

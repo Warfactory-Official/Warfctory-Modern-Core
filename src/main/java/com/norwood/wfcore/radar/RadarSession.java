@@ -5,7 +5,6 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.border.WorldBorder;
 
 import com.norwood.wfcore.radar.data.CalibratorData;
-import com.norwood.wfcore.radar.data.RadarRegistryData;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Random;
@@ -19,7 +18,7 @@ public final class RadarSession {
     private RadarSession() {}
 
     @Nullable
-    public static long[] generate(ServerLevel level, BlockPos radar, int n) {
+    public static long[] generate(ServerLevel level, BlockPos radar, int n, RadarProfile profile) {
         if (n <= 0) {
             return null;
         }
@@ -27,8 +26,8 @@ public final class RadarSession {
         Random rng = new Random();
         double base = rng.nextDouble() * Math.PI * 2;
         double sector = (Math.PI * 2) / n;
-        int min = RadarConfig.getCalibratorMinDistance();
-        int max = RadarConfig.getCalibratorMaxDistance();
+        int min = profile.calibMinDistance();
+        int max = profile.calibMaxDistance();
         double margin = RadarConfig.getCalibratorBorderMargin();
 
         long[] targets = new long[n];
@@ -40,7 +39,7 @@ public final class RadarSession {
                 double tx = radar.getX() + Math.cos(angle) * d;
                 double tz = radar.getZ() + Math.sin(angle) * d;
                 if (insideBorder(border, tx, tz, margin)) {
-                    targets[i] = RadarRegistryData.pack((int) Math.round(tx), (int) Math.round(tz));
+                    targets[i] = pack((int) Math.round(tx), (int) Math.round(tz));
                     placed = true;
                     break;
                 }
@@ -61,6 +60,10 @@ public final class RadarSession {
             }
         }
         return mask;
+    }
+
+    public static long pack(int x, int z) {
+        return ((long) x << 32) | (z & 0xFFFFFFFFL);
     }
 
     public static int unpackX(long packed) {

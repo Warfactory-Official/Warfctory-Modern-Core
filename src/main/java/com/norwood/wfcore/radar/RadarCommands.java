@@ -7,6 +7,7 @@ import com.gregtechceu.gtceu.api.machine.MultiblockMachineDefinition;
 
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.coordinates.BlockPosArgument;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
@@ -28,9 +29,11 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.norwood.wfcore.WFCore;
+import com.norwood.wfcore.common.machine.RadarMachine;
 import com.norwood.wfcore.radar.RadarClustering.DataPoint;
 import com.norwood.wfcore.radar.RadarClustering.TargetType;
 import com.norwood.wfcore.radar.data.RadarScanData;
+import com.norwood.wfcore.radar.math.ClusterData;
 import com.norwood.wfcore.radar.math.IntCoord2;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
@@ -56,14 +59,14 @@ public class RadarCommands {
         event.getDispatcher().register(Commands.literal("wfcore_radar")
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.literal("scan")
-                        .executes(ctx -> runScanExport(ctx, RadarConfig.getEps(), RadarConfig.getMinPts()))
+                        .executes(ctx -> runScanExport(ctx, RadarProfile.RADAR.eps(), RadarProfile.RADAR.minPts()))
                         .then(Commands.argument("eps", IntegerArgumentType.integer(1))
                                 .then(Commands.argument("minPts", IntegerArgumentType.integer(1))
                                         .executes(ctx -> runScanExport(ctx,
                                                 IntegerArgumentType.getInteger(ctx, "eps"),
                                                 IntegerArgumentType.getInteger(ctx, "minPts"))))))
                 .then(Commands.literal("datastick")
-                        .executes(ctx -> runDataStick(ctx, RadarConfig.getEps(), RadarConfig.getMinPts()))
+                        .executes(ctx -> runDataStick(ctx, RadarProfile.RADAR.eps(), RadarProfile.RADAR.minPts()))
                         .then(Commands.argument("eps", IntegerArgumentType.integer(1))
                                 .then(Commands.argument("minPts", IntegerArgumentType.integer(1))
                                         .executes(ctx -> runDataStick(ctx,
@@ -74,7 +77,15 @@ public class RadarCommands {
                 .then(Commands.literal("list")
                         .executes(this::runList))
                 .then(Commands.literal("id")
-                        .executes(this::runId)));
+                        .executes(this::runId))
+                .then(Commands.literal("machine")
+                        .then(Commands.argument("pos", BlockPosArgument.blockPos())
+                                .then(Commands.literal("status").executes(ctx -> runMachine(ctx, "status")))
+                                .then(Commands.literal("session").executes(ctx -> runMachine(ctx, "session")))
+                                .then(Commands.literal("scan").executes(ctx -> runMachine(ctx, "scan")))))
+                .then(Commands.literal("probe")
+                        .then(Commands.literal("radar").executes(ctx -> runProbe(ctx, RadarProfile.RADAR)))
+                        .then(Commands.literal("seismic").executes(ctx -> runProbe(ctx, RadarProfile.SEISMIC)))));
     }
 
     /** Reach (blocks) the {@code id} lookup ray-casts to find the block the caller is looking at. */
@@ -354,15 +365,62 @@ public class RadarCommands {
                     "§bRadar targets in %s:§r %d total — §a%d player(s)§r, §e%d GT machine(s)§r. "
                             + "(config defaults: eps=%d, minPts=%d)",
                     dimId, playerCount + machineCount, playerCount, machineCount,
-                    RadarConfig.getEps(), RadarConfig.getMinPts())), false));
+                    RadarProfile.RADAR.eps(), RadarProfile.RADAR.minPts())), false));
         });
         return 1;
     }
 
-    /** Merges scanned machine positions (packed x,z -> richness) into {@code targets} as STRUCTURE datapoints. */
+    /** Drives a radar controller without its UI: status line, new calibration session, or scan start. */
+    private int runMachine(CommandContext<CommandSourceStack> ctx, String action) throws CommandSyntaxException {
+        CommandSourceStack src = ctx.getSource();
+        BlockPos pos = BlockPosArgument.getLoadedBlockPos(ctx, "pos");
+        if (!(src.getLevel().getBlockEntity(pos) instanceof RadarMachine radar)) {
+            src.sendFailure(Component.literal("No radar controller at " + pos.toShortString()));
+            return 0;
+        }
+        switch (action) {
+            case "session" -> radar.initiateSession();
+            case "scan" -> {
+                if (radar.canScan()) {
+                    radar.startScan();
+                }
+            }
+            default -> {}
+        }
+        String msg = radar.describe();
+        WFCore.LOGGER.info("Radar machine {} {}: {}", pos.toShortString(), action, msg);
+        src.sendSuccess(() -> Component.literal(msg), false);
+        return 1;
+    }
+
+    /** What a {@code profile} machine at the source position would detect (live registry + players). */
+    private int runProbe(CommandContext<CommandSourceStack> ctx, RadarProfile profile) {
+        CommandSourceStack src = ctx.getSource();
+        ServerLevel level = src.getLevel();
+        BlockPos origin = BlockPos.containing(src.getPosition());
+        Map<IntCoord2, DataPoint> targets = RadarClustering.collectTargets(level, profile, origin);
+        int richness = 0;
+        for (DataPoint dp : targets.values()) {
+            richness += dp.value();
+        }
+        // Synchronous: harness reads the reply off the command result.
+        List<ClusterData> clusters = RadarClustering.calculateDBSCAN(targets, profile.eps(), profile.minPts()).join();
+        StringBuilder sb = new StringBuilder();
+        for (ClusterData c : clusters) {
+            sb.append(String.format(" [(%d, %d) richness=%d players=%d]", c.centerPoint.getX(), c.centerPoint.getZ(),
+                    c.clusterValue, c.playerPopulation));
+        }
+        String msg = String.format("%s probe @%s: targets=%d richness=%d clusters=%d%s", profile.name,
+                origin.toShortString(), targets.size(), richness, clusters.size(), sb);
+        WFCore.LOGGER.info(msg);
+        src.sendSuccess(() -> Component.literal(msg), false);
+        return targets.size();
+    }
+
+    /** Merges scanned machine positions ({@link BlockPos#asLong} -> richness) into {@code targets} as STRUCTURE datapoints. */
     private static void addMachines(Map<IntCoord2, DataPoint> targets, Long2IntMap machineMap) {
         for (Long2IntMap.Entry entry : machineMap.long2IntEntrySet()) {
-            targets.put(new IntCoord2(entry.getLongKey()), new DataPoint(TargetType.STRUCTURE, entry.getIntValue()));
+            targets.put(new IntCoord2(BlockPos.of(entry.getLongKey())), new DataPoint(TargetType.STRUCTURE, entry.getIntValue()));
         }
     }
 

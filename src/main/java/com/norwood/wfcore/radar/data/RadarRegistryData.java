@@ -1,5 +1,6 @@
 package com.norwood.wfcore.radar.data;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
@@ -10,7 +11,7 @@ import net.minecraft.world.level.saveddata.SavedData;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
 /**
- * Per-level registry of radar-visible machines: packed (x, z) -&gt; richness value.
+ * Per-level registry of radar-visible machines: {@link BlockPos#asLong} -&gt; richness value.
  *
  * <p>
  * Machines self-register here when their block entity is added to the level (see the
@@ -28,15 +29,12 @@ public class RadarRegistryData extends SavedData {
 
     public RadarRegistryData(CompoundTag tag, HolderLookup.Provider registries) {
         this();
-        ListTag list = tag.getList("machines", Tag.TAG_COMPOUND);
+        // "machines" (pre-Y packed x,z) ignored; /wfcore_retrofit rebuilds.
+        ListTag list = tag.getList("targets", Tag.TAG_COMPOUND);
         for (int i = 0; i < list.size(); i++) {
             CompoundTag entry = list.getCompound(i);
             machineMap.put(entry.getLong("p"), entry.getInt("v"));
         }
-    }
-
-    public static long pack(int x, int z) {
-        return ((long) x << 32) | (z & 0xFFFFFFFFL);
     }
 
     public Long2IntOpenHashMap getMachineMap() {
@@ -47,19 +45,16 @@ public class RadarRegistryData extends SavedData {
         return level.getDataStorage().computeIfAbsent(new SavedData.Factory<>(RadarRegistryData::new, RadarRegistryData::new), DATA_NAME);
     }
 
-    public void addMachine(int x, int z, int value) {
-        machineMap.put(pack(x, z), value);
+    public void addMachine(BlockPos pos, int value) {
+        machineMap.put(pos.asLong(), value);
         setDirty();
     }
 
-    public void removeMachine(int x, int z) {
-        if (machineMap.remove(pack(x, z)) != 0) {
+    public void removeMachine(BlockPos pos) {
+        if (machineMap.containsKey(pos.asLong())) {
+            machineMap.remove(pos.asLong());
             setDirty();
         }
-    }
-
-    public boolean hasMachine(int x, int z) {
-        return machineMap.containsKey(pack(x, z));
     }
 
     @Override
@@ -71,7 +66,7 @@ public class RadarRegistryData extends SavedData {
             e.putInt("v", entry.getIntValue());
             list.add(e);
         }
-        tag.put("machines", list);
+        tag.put("targets", list);
         return tag;
     }
 }

@@ -2,6 +2,7 @@ package com.norwood.wfcore.radar;
 
 import com.gregtechceu.gtceu.api.block.MetaMachineBlock;
 
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -18,7 +19,7 @@ import net.minecraft.world.level.dimension.DimensionType;
 import net.minecraft.world.level.storage.LevelResource;
 
 import com.norwood.wfcore.WFCore;
-import com.norwood.wfcore.radar.data.RadarRegistryData;
+
 import it.unimi.dsi.fastutil.longs.Long2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
@@ -189,11 +190,11 @@ public final class RadarChunkParser {
                 continue;
             }
 
+            int baseY = section.getByte("Y") * 16;
             if (palette.size() == 1) {
-                for (int x = 0; x < 16; x++) {
-                    for (int z = 0; z < 16; z++) {
-                        positions.put(RadarRegistryData.pack(chunkX * 16 + x, chunkZ * 16 + z), paletteValue[0]);
-                    }
+                for (int idx = 0; idx < SECTION_VOLUME; idx++) {
+                    positions.put(BlockPos.asLong(chunkX * 16 + (idx & 15), baseY + (idx >> 8),
+                            chunkZ * 16 + ((idx >> 4) & 15)), paletteValue[0]);
                 }
                 continue;
             }
@@ -214,9 +215,8 @@ public final class RadarChunkParser {
                 int offset = (idx % entriesPerLong) * bits;
                 int palIdx = (int) ((data[longIndex] >>> offset) & mask);
                 if (palIdx >= 0 && palIdx < paletteValue.length && paletteValue[palIdx] >= 0) {
-                    int x = idx & 15;
-                    int z = (idx >> 4) & 15;
-                    positions.put(RadarRegistryData.pack(chunkX * 16 + x, chunkZ * 16 + z), paletteValue[palIdx]);
+                    positions.put(BlockPos.asLong(chunkX * 16 + (idx & 15), baseY + (idx >> 8),
+                            chunkZ * 16 + ((idx >> 4) & 15)), paletteValue[palIdx]);
                 }
             }
         }

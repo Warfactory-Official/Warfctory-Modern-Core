@@ -2,6 +2,7 @@ package com.norwood.wfcore.radar;
 
 import net.minecraft.world.level.chunk.storage.RegionStorageInfo;
 import net.minecraft.commands.Commands;
+import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -58,7 +59,7 @@ public class Retrofitter {
             if (entry == null) {
                 break; // queue momentarily empty; this does NOT mean the scan is done
             }
-            data.addMachine((int) (entry.packed >> 32), (int) entry.packed, entry.value);
+            data.addMachine(BlockPos.of(entry.packed), entry.value);
         }
         // Finish only once every region file has been parsed AND the backlog is fully drained. A transiently
         // empty queue mid-scan (producers slower than the 16/tick drain) must not end the scan early.
