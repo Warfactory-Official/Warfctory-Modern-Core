@@ -15,9 +15,8 @@ import net.minecraft.world.phys.AABB;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
-import com.norwood.wfcore.integration.combinedassault.CombinedAssaultVehicles;
+import com.norwood.wfcore.integration.combinedassault.VehicleGate;
 import org.jetbrains.annotations.Nullable;
-import com.wf.combinedassault.custom.vehicle.BaseVehicleData;
 
 /**
  * MV light ground vehicle factory: spawns a CombinedAssault vehicle from the recipe's
@@ -133,15 +132,14 @@ public class LightGroundVehicleFactoryMachine extends AbstractVehicleFactoryMach
     @Override
     protected boolean deploy(ServerLevel level, BlockPos pos, ItemStack vehicleItem) {
         ResourceLocation id = PackagedVehicleItem.getVehicleId(vehicleItem);
-        BaseVehicleData<?> data = CombinedAssaultVehicles.data(id);
-        if (data == null) {
+        if (!VehicleGate.isKnown(id)) {
             // Consume rather than retry: an unknown vehicle would wedge the factory forever.
             WFCore.LOGGER.warn("{} produced unknown vehicle '{}'; discarding", getBlockPos(), id);
             return true;
         }
-        if (!isSpawnClear(level, spawnFootprint(data))) {
+        if (!isSpawnClear(level, spawnFootprint(id))) {
             return false;
         }
-        return CombinedAssaultVehicles.summon(level, pos, getSpawnYaw(), id) != null;
+        return VehicleGate.summon(level, pos, getSpawnYaw(), id);
     }
 }

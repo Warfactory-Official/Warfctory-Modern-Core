@@ -7,6 +7,7 @@ import com.tterrag.registrate.util.entry.ItemEntry;
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
 import com.wf.wflib.MissileEntity;
 import com.wf.wflib.MissileModels;
+import com.wf.wflib.content.WFLibContent;
 import com.wf.wflib.flight.FlightStageRegistry;
 import com.wf.wflib.item.MissileItem;
 import com.wf.wflib.item.MissilePreset;
@@ -144,6 +145,7 @@ public class WFMissiles {
     private WFMissiles() {}
 
     public static void init() {
+        WFLibContent.warheads(WFCore.MOD_ID, "inert", "fragmentation", "interceptor", "bomblet", "bomblet_fire");
         // Custom warheads, the controlled-dive attack stage, and the default damage response first: their ids
         // must be registered before any preset below references them (presets build lazily in the item factory).
         WFWarheads.register();

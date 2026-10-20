@@ -23,9 +23,8 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
-import com.norwood.wfcore.integration.combinedassault.CombinedAssaultVehicles;
+import com.norwood.wfcore.integration.combinedassault.VehicleGate;
 import org.jetbrains.annotations.Nullable;
-import com.wf.combinedassault.custom.vehicle.BaseVehicleData;
 
 /**
  * Abstract crafting multiblock that runs a standard GT recipe map and, on completion, spawns a
@@ -97,17 +96,16 @@ public abstract class AbstractVehicleFactoryMachine extends WorkableElectricMult
             if (id == null) {
                 continue;
             }
-            BaseVehicleData<?> data = CombinedAssaultVehicles.data(id);
-            if (data != null && !isSpawnClear(level, spawnFootprint(data))) {
+            if (VehicleGate.isKnown(id) && !isSpawnClear(level, spawnFootprint(id))) {
                 return true;
             }
         }
         return false;
     }
 
-    /** The volume that must be clear for {@code data} to deploy at {@link #getSpawnPos()}. */
-    protected AABB spawnFootprint(@Nullable BaseVehicleData<?> data) {
-        return CombinedAssaultVehicles.footprint(data, getSpawnPos(), getSpawnYaw(), getClearanceHeight());
+    /** The volume that must be clear for {@code vehicleId} to deploy at {@link #getSpawnPos()}. */
+    protected AABB spawnFootprint(@Nullable ResourceLocation vehicleId) {
+        return VehicleGate.footprint(vehicleId, getSpawnPos(), getSpawnYaw(), getClearanceHeight());
     }
 
     /**

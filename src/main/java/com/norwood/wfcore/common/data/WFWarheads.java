@@ -257,9 +257,6 @@ public final class WFWarheads {
         WarheadRegistry.register(SHITBOX_BUSTER, (source, pos) ->
                         shitboxBuster(source.level(), pos, source.angle(), 10, 1, 2),
                 WarheadRegistry.STANDARD_INTERCEPT);
-        WarheadRegistry.register(BUNKER_MK2, (source, pos) ->
-                        bunker(source.level(), pos, source.angle(), 12.0f, 14.0f, 16.0f, 100.0f),
-                WarheadRegistry.STANDARD_INTERCEPT);
 
         // Tunneller (final-tier bunker buster): instead of a surface shaped-charge, it BORES a shaft up to
         // TUNNEL_MAX_DEPTH blocks down the impact heading — stopped early when it meets heavy shielding

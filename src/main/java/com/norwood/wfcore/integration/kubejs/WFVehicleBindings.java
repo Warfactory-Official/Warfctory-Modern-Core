@@ -28,8 +28,7 @@ import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.data.VehicleFactoryRecipes;
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
 import com.norwood.wfcore.common.recipe.condition.ResearchRecipeCondition;
-import com.norwood.wfcore.integration.combinedassault.CombinedAssaultVehicles;
-import com.norwood.wfcore.integration.combinedassault.VehicleOverrides;
+import com.norwood.wfcore.integration.combinedassault.VehicleGate;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,7 +60,7 @@ import java.util.List;
  *
  * <p>
  * The second argument is a <b>CombinedAssault vehicle id</b>, not an entity type: CombinedAssault vehicles are
- * data-driven entries resolved through {@link CombinedAssaultVehicles}. The third is the factory's machine path —
+ * data-driven entries resolved through {@link VehicleGate}. The third is the factory's machine path —
  * one of {@code light_ground_vehicle_factory}, {@code tank_assembly}, {@code light_plane_assembler},
  * {@code heavy_plane_assembler}, {@code heavy_vehicle_depot}, {@code helicopter_assembler},
  * {@code naval_vehicle_deployer}.
@@ -70,12 +69,12 @@ public class WFVehicleBindings {
 
     /** Whether {@code vehicleId} is a CombinedAssault vehicle that is currently loaded. */
     public boolean known(String vehicleId) {
-        return CombinedAssaultVehicles.isKnown(ResourceLocation.tryParse(vehicleId));
+        return VehicleGate.isKnown(ResourceLocation.tryParse(vehicleId));
     }
 
     /** Every currently-loaded CombinedAssault vehicle id, sorted — the roster a pack can write recipes against. */
     public List<String> roster() {
-        return CombinedAssaultVehicles.roster();
+        return VehicleGate.roster();
     }
 
     /**
@@ -89,7 +88,7 @@ public class WFVehicleBindings {
      * }</pre>
      */
     public VehicleEnergy override(String vehicleId) {
-        if (!vehicleId.equals(VehicleOverrides.ALL) && ResourceLocation.tryParse(vehicleId) == null) {
+        if (!vehicleId.equals(VehicleGate.ALL) && ResourceLocation.tryParse(vehicleId) == null) {
             throw new IllegalArgumentException("Invalid vehicle id: '" + vehicleId + "'");
         }
         return new VehicleEnergy(vehicleId);
@@ -142,7 +141,7 @@ public class WFVehicleBindings {
         }
 
         public void register() {
-            VehicleOverrides.add(vehicle, info);
+            VehicleGate.override(vehicle, info);
         }
     }
 
@@ -170,9 +169,9 @@ public class WFVehicleBindings {
         }
         // An empty roster means CombinedAssault's reload listener has not run yet, not "no such vehicle" — it
         // usually loses the race with recipe scripts, so only warn once there is something to compare to.
-        if (!CombinedAssaultVehicles.roster().isEmpty() && !CombinedAssaultVehicles.isKnown(vid)) {
+        if (!VehicleGate.roster().isEmpty() && !VehicleGate.isKnown(vid)) {
             WFCore.LOGGER.warn("[WFVehicles] {}: no CombinedAssault vehicle '{}'; the factory will discard this "
-                    + "recipe's output. Loaded vehicles: {}", rid, vehicleId, CombinedAssaultVehicles.roster());
+                    + "recipe's output. Loaded vehicles: {}", rid, vehicleId, VehicleGate.roster());
         }
         // Resolve the factory now so a bad name fails fast with the valid-factories list.
         VehicleFactoryRecipes.byName(factory);

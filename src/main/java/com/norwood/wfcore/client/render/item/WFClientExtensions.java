@@ -10,6 +10,8 @@ import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsE
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.data.WFItems;
+import com.norwood.wfcore.integration.combinedassault.VehicleGate;
+import com.norwood.wfcore.integration.combinedassault.client.PackagedVehicleRenderer;
 
 /** Per-item client extensions. {@code Item#initializeClient} is deprecated on NeoForge in favour of this. */
 @EventBusSubscriber(modid = WFCore.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
@@ -19,6 +21,9 @@ public final class WFClientExtensions {
 
     @SubscribeEvent
     public static void registerClientExtensions(RegisterClientExtensionsEvent event) {
+        if (!VehicleGate.isLoaded()) {
+            return;
+        }
         event.registerItem(new IClientItemExtensions() {
 
             private PackagedVehicleRenderer renderer;

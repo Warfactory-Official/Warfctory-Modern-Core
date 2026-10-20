@@ -1,4 +1,4 @@
-package com.norwood.wfcore.client.render.item;
+package com.norwood.wfcore.integration.combinedassault.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
