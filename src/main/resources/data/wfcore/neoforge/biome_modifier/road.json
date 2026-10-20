@@ -1,5 +1,5 @@
 {
-  "_comment": "top_layer_modification is the last decoration step, so the road is stamped after lakes, springs and vegetation have had their turn - a tree cannot grow through a finished road, and a spring cannot flood one.",
+  "_comment": "Last step => own-chunk lakes / springs / vegetation precede the road. Neighbour-chunk writes: RoadSetback, RoadSweep.",
   "type": "neoforge:add_features",
   "biomes": "#minecraft:is_overworld",
   "features": "wfcore:road",

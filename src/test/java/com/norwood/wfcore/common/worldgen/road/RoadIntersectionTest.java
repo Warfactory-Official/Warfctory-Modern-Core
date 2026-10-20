@@ -1,6 +1,7 @@
 package com.norwood.wfcore.common.worldgen.road;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -371,6 +372,55 @@ class RoadIntersectionTest {
             assertTrue(world.air(0, y, 0), "floating stalk at y=" + y);
             assertEquals(RoadWorld.STALK, world.get(0, y, beside), "stalk off the road cut at y=" + y);
         }
+    }
+
+    @Test
+    void lateCanopyIsSwept() {
+        RoadWorld world = RoadWorld.flat(64);
+        RoadSpec spec = RoadWorld.road();
+        RoadIndex index = RoadWorld.index(world, paved(spec, -1, -1, -100, 0, 100, 0));
+        List<long[]> chunks = RoadWorld.chunks(index, 32);
+        world.rasterize(index, chunks);
+        // Neighbour decoration after the road: canopy over the deck, a vine tip at deck + 1.
+        int above = 64 + 1 + spec.clearance() + RoadRasterizer.CANOPY_REACH;
+        for (int z = -3; z <= 3; z++) {
+            world.leaves(0, 72, z);
+            world.leaves(0, above + 1, z);
+        }
+        world.leaves(5, 65, 0);
+        world.sweep(index, chunks);
+        for (int z = -3; z <= 3; z++) {
+            assertTrue(world.air(0, 72, z), "late canopy left at z=" + z);
+            assertEquals(RoadWorld.LEAVES, world.get(0, above + 1, z), "swept above reach at z=" + z);
+            assertTrue(RoadWorld.isDeck(world.part(0, 64, z)), "deck lost at z=" + z);
+        }
+        assertTrue(world.air(5, 65, 0));
+    }
+
+    @Test
+    void setbackReachesClearedBandPlusReach() {
+        RoadWorld world = RoadWorld.flat(64);
+        RoadSpec spec = RoadWorld.road();
+        RoadIndex index = RoadWorld.index(world, paved(spec, -1, -1, -100, 0, 100, 0));
+        double reach = 5.0;
+        int inside = (int) Math.floor(spec.clearedHalfWidth() + reach - 1.5);
+        int outside = (int) Math.ceil(spec.clearedHalfWidth() + reach + 0.5);
+        assertTrue(index.near(0, inside, reach, 65, 97));
+        assertTrue(index.near(0, -inside, reach, 65, 97));
+        assertFalse(index.near(0, outside, reach, 65, 97));
+        assertFalse(index.near(0, inside, reach, 64 + spec.clearance() + 1, 120), "above headroom");
+        assertFalse(index.near(0, inside, reach, 0, 64 - spec.baseDepth() - 2), "below foundation");
+    }
+
+    @Test
+    void setbackIgnoresTunnels() {
+        RoadWorld world = new RoadWorld((x, z) -> Math.abs(x) < 150 ? 130 : 64, RoadWorld.MIN_Y);
+        RoadIndex index = RoadWorld.index(world, paved(RoadWorld.road(), -1, -1, -400, 0, 400, 0));
+        RoadIndex.LinkGeometry bore = index.link(0);
+        int s = nearest(bore, 100, 0);
+        assertEquals(RoadProfile.TUNNEL, bore.mode(s));
+        assertFalse(index.near(100, 0, 5.0, bore.deck(s) - 8, 162));
+        assertTrue(index.near(200, 0, 5.0, 0, 200));
     }
 
     // ---------------------------------------------------------------------------------------------------------

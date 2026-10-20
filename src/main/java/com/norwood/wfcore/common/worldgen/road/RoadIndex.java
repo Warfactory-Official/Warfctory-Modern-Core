@@ -54,6 +54,7 @@ public final class RoadIndex {
     private final Long2ObjectMap<int[]> byChunk = new Long2ObjectOpenHashMap<>();
     private final Runs runs = new Runs();
     private final int chunkMargin;
+    private final double maxHalfWidth;
 
     private final RoadProfile.Terrain terrain;
     private final RoadProbeCache cache;
@@ -103,6 +104,7 @@ public final class RoadIndex {
         for (Long2ObjectMap.Entry<IntArrayList> entry : building.long2ObjectEntrySet()) {
             byChunk.put(entry.getLongKey(), entry.getValue().toIntArray());
         }
+        this.maxHalfWidth = maxHalfWidth;
         this.chunkMargin = Math.max(1, (int) Math.ceil(maxHalfWidth / 16.0));
         this.probed = Once.array(n);
         this.unpinned = Once.array(n);
@@ -240,6 +242,54 @@ public final class RoadIndex {
                 }
             }
         }
+    }
+
+    /**
+     * Some above-ground station lies within {@code clearedHalfWidth + reach} of (x, z) with its deck band
+     * {@code [deck - baseDepth - 1, deck + clearance]} meeting {@code [minY, maxY]}. Resolves only links passing
+     * that close.
+     */
+    public boolean near(int x, int z, double reach, int minY, int maxY) {
+        double cx = x + 0.5;
+        double cz = z + 0.5;
+        double r = maxHalfWidth + reach;
+        int minChunkX = (int) Math.floor(cx - r) >> 4;
+        int maxChunkX = (int) Math.floor(cx + r) >> 4;
+        int minChunkZ = (int) Math.floor(cz - r) >> 4;
+        int maxChunkZ = (int) Math.floor(cz + r) >> 4;
+        int box = (int) Math.ceil(reach);
+        for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+            for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+                int[] found = byChunk.get(ChunkPos.asLong(chunkX, chunkZ));
+                if (found == null) {
+                    continue;
+                }
+                for (int run : found) {
+                    if (!runReaches(run, x - box, z - box, x + box, z + box)) {
+                        continue;
+                    }
+                    int index = runs.link[run];
+                    LinkGeometry geometry = links.get(index);
+                    RoadSpec spec = geometry.spec;
+                    double limit = spec.clearedHalfWidth() + reach;
+                    limit *= limit;
+                    for (int s = runs.first[run], last = runs.last[run]; s <= last; s++) {
+                        double dx = geometry.x(s) - cx;
+                        double dz = geometry.z(s) - cz;
+                        if (dx * dx + dz * dz >= limit) {
+                            continue;
+                        }
+                        resolve(index);
+                        int deck = geometry.deck(s);
+                        if (geometry.mode(s) != RoadProfile.TUNNEL && deck + spec.clearance() >= minY
+                                && deck - spec.baseDepth() - 1 <= maxY) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     // ---------------------------------------------------------------------------------------------------------

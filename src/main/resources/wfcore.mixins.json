@@ -5,9 +5,12 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "BlockBehaviourAccessor",
+    "ChunkStatusTasksRoadSweepMixin",
+    "ConfiguredFeatureRoadSetbackMixin",
     "ConsumableUseMixin",
     "GTBedrockFluidAllocationMixin",
     "GTBedrockOreAllocationMixin",
+    "GTOreFrameMixin",
     "GTOreGeneratorAllocationMixin",
     "GTOreVeinWorldEntryAccessor",
     "LevelBlockEntityChangedMixin",

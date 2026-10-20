@@ -2,7 +2,6 @@ package com.norwood.wfcore.common.worldgen.road;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.level.WorldGenLevel;
 import net.minecraft.world.level.biome.Biome;
@@ -78,9 +77,10 @@ public class RoadFeature extends Feature<NoneFeatureConfiguration> {
             return level.getMaxBuildHeight();
         }
 
+        /** {@code *_WG} heightmaps freeze after SURFACE => trees and mushrooms invisible. */
         @Override
         public int top(int x, int z) {
-            return level.getHeight(Heightmap.Types.WORLD_SURFACE_WG, x, z) - 1;
+            return level.getHeight(Heightmap.Types.WORLD_SURFACE, x, z) - 1;
         }
 
         @Override
@@ -95,9 +95,7 @@ public class RoadFeature extends Feature<NoneFeatureConfiguration> {
 
         @Override
         public boolean vegetation(int x, int y, int z) {
-            BlockState state = level.getBlockState(pos.set(x, y, z));
-            return !state.isAir() && (state.is(BlockTags.LOGS) || state.is(BlockTags.LEAVES)
-                    || state.is(BlockTags.SAPLINGS) || state.is(BlockTags.REPLACEABLE));
+            return RoadSweep.clearable(level.getBlockState(pos.set(x, y, z)));
         }
 
         @Override

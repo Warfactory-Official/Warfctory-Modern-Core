@@ -1,0 +1,25 @@
+{
+  "replace": false,
+  "values": [
+    "#minecraft:logs",
+    "#minecraft:leaves",
+    "#minecraft:saplings",
+    "#minecraft:flowers",
+    "minecraft:mushroom_stem",
+    "minecraft:brown_mushroom_block",
+    "minecraft:red_mushroom_block",
+    "minecraft:short_grass",
+    "minecraft:tall_grass",
+    "minecraft:fern",
+    "minecraft:large_fern",
+    "minecraft:dead_bush",
+    "minecraft:vine",
+    "minecraft:glow_lichen",
+    "minecraft:hanging_roots",
+    "minecraft:bamboo",
+    "minecraft:sugar_cane",
+    "minecraft:cactus",
+    "minecraft:cocoa",
+    "minecraft:sweet_berry_bush"
+  ]
+}

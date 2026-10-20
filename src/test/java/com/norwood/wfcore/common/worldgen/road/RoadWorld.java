@@ -194,11 +194,19 @@ final class RoadWorld implements RoadProfile.Terrain, RoadRasterizer.Canvas {
         return out;
     }
 
-    /** Rasterises every chunk touching the index's stations (+ margin), in the given chunk order. */
+    /** Every chunk touching the index's stations (+ margin) in the given order, then the sweep (LIGHT). */
     void rasterize(RoadIndex index, List<long[]> chunkOrder) {
         IntArrayList scratch = new IntArrayList();
         for (long[] chunk : chunkOrder) {
             new RoadRasterizer(index, this).chunk((int) chunk[0] * 16, (int) chunk[1] * 16, scratch);
+        }
+        sweep(index, chunkOrder);
+    }
+
+    void sweep(RoadIndex index, List<long[]> chunkOrder) {
+        IntArrayList scratch = new IntArrayList();
+        for (long[] chunk : chunkOrder) {
+            new RoadRasterizer(index, this).sweep((int) chunk[0] * 16, (int) chunk[1] * 16, scratch);
         }
     }
 

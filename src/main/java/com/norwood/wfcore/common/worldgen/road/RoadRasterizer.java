@@ -37,12 +37,12 @@ public final class RoadRasterizer {
 
         int maxY();
 
-        /** Top non-air block of the column. */
+        /** Top non-air block of the column, decoration included. */
         int top(int x, int z);
 
         int cell(int x, int y, int z);
 
-        /** Non-air log, leaves, sapling or replaceable: cleared out of headroom. */
+        /** Decoration cleared out of headroom: logs, leaves, plants, surface rocks. */
         boolean vegetation(int x, int y, int z);
 
         void clear(int x, int y, int z);
@@ -55,7 +55,7 @@ public final class RoadRasterizer {
     static final int SAME_SURFACE = 4;
     private static final int PIER_THICKNESS = 2;
     private static final int MAX_VERTICAL = 96;
-    private static final int CANOPY_REACH = 6;
+    static final int CANOPY_REACH = 6;
     private static final int NO_FLOOR = Integer.MIN_VALUE;
 
     private final RoadIndex index;
@@ -71,12 +71,9 @@ public final class RoadRasterizer {
 
     /** Rasterises chunk columns {@code [minX, minX + 15] x [minZ, minZ + 15]}. */
     public boolean chunk(int minX, int minZ, IntArrayList scratch) {
-        index.collectRuns(minX >> 4, minZ >> 4, scratch);
-        scratch.removeIf(run -> !index.runReaches(run, minX, minZ, minX + 15, minZ + 15));
-        if (scratch.isEmpty()) {
+        if (!runs(minX, minZ, scratch)) {
             return false;
         }
-        runs = scratch;
         boolean placed = false;
         for (int dx = 0; dx < 16; dx++) {
             for (int dz = 0; dz < 16; dz++) {
@@ -84,6 +81,31 @@ public final class RoadRasterizer {
             }
         }
         return placed;
+    }
+
+    /**
+     * Vegetation sweep of the chunk; runs once all 8 neighbours have decorated (they write up to 16 blocks in,
+     * after this chunk's road). Touches only {@link Canvas#vegetation} and {@link Canvas#clear}.
+     */
+    public void sweep(int minX, int minZ, IntArrayList scratch) {
+        if (!runs(minX, minZ, scratch)) {
+            return;
+        }
+        for (int dx = 0; dx < 16; dx++) {
+            for (int dz = 0; dz < 16; dz++) {
+                hits.collect(minX + dx, minZ + dz);
+                for (int i = 0; i < hits.count; i++) {
+                    sweepVegetation(hits.link[i], hits.station[i], minX + dx, minZ + dz);
+                }
+            }
+        }
+    }
+
+    private boolean runs(int minX, int minZ, IntArrayList scratch) {
+        index.collectRuns(minX >> 4, minZ >> 4, scratch);
+        scratch.removeIf(run -> !index.runReaches(run, minX, minZ, minX + 15, minZ + 15));
+        runs = scratch;
+        return !scratch.isEmpty();
     }
 
     static boolean inBand(double offset, double half) {
@@ -324,9 +346,6 @@ public final class RoadRasterizer {
                     default -> onGround(link, station, offset, x, z, top, floor);
                 }
             }
-        }
-        for (int i = 0; i < hits.count; i++) {
-            sweepVegetation(hits.link[i], hits.station[i], x, z);
         }
         return true;
     }
