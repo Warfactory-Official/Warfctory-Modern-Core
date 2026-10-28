@@ -19,7 +19,9 @@ public enum ResourceSystem {
     /** Any placed feature: multiplier = expected placements per chunk; target = placed feature id. */
     PLACED_FEATURE("minecraft:placed_feature"),
     /** WarForge claim vein roll; target = vein translation key. */
-    WARFORGE_VEIN("warforge:vein");
+    WARFORGE_VEIN("warforge:vein"),
+    /** WFLib anomaly sites: multiplier on a tier's stock site rate; target = {@code wflib:anomaly_site_tier_<1-4>}. */
+    ANOMALY_SITE("wflib:anomaly_site");
 
     public static final Codec<ResourceSystem> CODEC = Codec.STRING.comapFlatMap(
             id -> byId(id).map(com.mojang.serialization.DataResult::success)

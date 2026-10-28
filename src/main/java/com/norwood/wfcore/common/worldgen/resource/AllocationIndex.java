@@ -731,6 +731,7 @@ public final class AllocationIndex {
                     .containsKey(id);
             // Optional mod: absent => rule inert.
             case WARFORGE_VEIN -> !WarforgeIntegration.isLoaded() || WarforgeVeinAllocation.knows(target);
+            case ANOMALY_SITE -> target.matches("wflib:anomaly_site_tier_[1-4]");
         };
         if (!known) {
             throw new IllegalStateException(source + ": unknown " + system.id + " target " + target);

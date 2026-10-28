@@ -178,6 +178,7 @@ public class WFCore {
                     WFCoreConfig.isDepositHealEnabled());
             WFBlockResistances.registerDefaults();
             CoolantRegistry.register();
+            com.norwood.wfcore.integration.wflib.AnomalySiteDensity.register();
             CPURegistry.register();
             RAMRegistry.register();
             // Apply KubeJS compute overrides last so packs can add/override/remove any built-in above,
