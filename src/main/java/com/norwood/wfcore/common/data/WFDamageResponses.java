@@ -4,20 +4,14 @@ import com.norwood.wfcore.WFCore;
 import com.wf.wflib.MissileEntity;
 import com.wf.wflib.damage.MissileDamageRegistry;
 import com.wf.wflib.damage.MissileDamageResponse;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.DamageTypeTags;
-import net.minecraft.tags.TagKey;
-import net.minecraft.world.damagesource.DamageType;
 
 /**
  * WFCore's default missile damage response, registered into WFLib' {@link MissileDamageRegistry} and
- * applied to every wfcore missile (see {@code WFMissiles.missile}). A missile shrugs off small-arms and flames —
- * TaCZ gun fire (the {@code tacz:bullets} damage-type tag) and anything fire-typed — while still taking explosion
- * damage. Interceptor/CIWS hits go through WF-B's separate {@code damageMissile} path and are unaffected.
- *
- * <p>The TaCZ tag is referenced by id only (no class dependency), so this is safe whether or not TaCZ is loaded —
- * with TaCZ absent the tag simply matches nothing and only the fire clause applies.
+ * applied to every wfcore missile (see {@code WFMissiles.missile}). A missile shrugs off fire-typed damage while
+ * still taking explosion damage. Interceptor/CIWS hits go through WF-B's separate {@code damageMissile} path and
+ * are unaffected.
  */
 public final class WFDamageResponses {
 
@@ -27,12 +21,8 @@ public final class WFDamageResponses {
     // Fraction of non-immune damage the reinforced ICBM airframe actually takes (the rest is shrugged off).
     private static final float ICBM_DAMAGE_MULT = 0.25f;
 
-    // All four TaCZ bullet damage types (tacz:bullet[_ignore_armor|_void|_void_ignore_armor]) collect here.
-    private static final TagKey<DamageType> TACZ_BULLETS =
-            TagKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("tacz", "bullets"));
-
     /**
-     * Immune to TaCZ gunfire and fire; takes everything else (notably explosions) as dealt — until it's been
+     * Immune to fire; takes everything else (notably explosions) as dealt — until it's been
      * shot down. Once {@link MissileEntity#isDowned() downed} it shrugs off all further damage, so sustained
      * area fire (e.g. an auto CIWS whose explosive rounds keep landing while it falls) can't cook off the warhead
      * after it's already been neutralised and is coasting to its crash/fizzle. Interceptor/CIWS kills go through
@@ -42,14 +32,14 @@ public final class WFDamageResponses {
         if (missile.damage().isDowned()) {
             return 0.0f;
         }
-        if (source.is(DamageTypeTags.IS_FIRE) || source.is(TACZ_BULLETS)) {
+        if (source.is(DamageTypeTags.IS_FIRE)) {
             return 0.0f;
         }
         return amount;
     };
 
     /**
-     * The ICBM class's tougher response: immune to fire + gunfire like {@link #HARDENED}, and also takes only
+     * The ICBM class's tougher response: immune to fire like {@link #HARDENED}, and also takes only
      * {@link #ICBM_DAMAGE_MULT} of everything else (explosions, blast-adjacent CIWS rounds), so the reinforced
      * airframe shrugs off attacks that would rattle a normal missile. Still immune once downed.
      */
@@ -57,7 +47,7 @@ public final class WFDamageResponses {
         if (missile.damage().isDowned()) {
             return 0.0f;
         }
-        if (source.is(DamageTypeTags.IS_FIRE) || source.is(TACZ_BULLETS)) {
+        if (source.is(DamageTypeTags.IS_FIRE)) {
             return 0.0f;
         }
         return amount * ICBM_DAMAGE_MULT;

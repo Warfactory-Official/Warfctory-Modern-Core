@@ -24,6 +24,9 @@ public final class WFSounds {
     public static final DeferredHolder<SoundEvent, SoundEvent> MISSILE_JARTY = register("missile_jartydrone");
     public static final DeferredHolder<SoundEvent, SoundEvent> MISSILE_EMP = register("missile_emp");
 
+    public static final DeferredHolder<SoundEvent, SoundEvent> TITLE_MUSIC = register("title_music");
+    public static final DeferredHolder<SoundEvent, SoundEvent> TITLE_HOVER = register("title_hover");
+
     private WFSounds() {}
 
     private static DeferredHolder<SoundEvent, SoundEvent> register(String name) {

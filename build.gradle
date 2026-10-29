@@ -76,7 +76,7 @@ sourceSets.main.java {
     // DEFERRED source lives under deferred/ and is not on this source set at all
     // (see deferred/README.md and plan §3.2).
     //
-    // Phase 7 — integrations against other mods' APIs (KubeJS, TACZ, WarForge, Ultimate Weight)
+    // Phase 7 — integrations against other mods' APIs (KubeJS, WarForge, Ultimate Weight)
     // and the JEI/EMI recipe-viewer bridge.
     // WarForge is NOT excluded: the ported 2.4.3 jar is on the classpath, and the research gate,
     // mining explosion, nameplate and missile-launcher GUI all reach into it, so it has to come along
@@ -111,15 +111,6 @@ sourceSets.main.java {
     // Phase 7a: KubeJS integration ported and on the dev runtime. The bolt gun was never broken — it ships
     // no built-in conversions ("the pack owns the whole map"), so it stays inert until a startup script
     // registers one. run/kubejs/startup_scripts/wfcore_bolt_gun.js is the dev smoke test for that.
-    //
-    // Phase 7c: the work queue is EMPTY. wfweight + tacz came off it together — WeightGate moved to
-    // Ultimate Weight's 1.21.1 views (the IPlayerWeightData capability is gone), the TACZ ballistics
-    // adapter took the 1.21 RegistryFriendlyByteBuf / ItemStack.parse changes, and EntityKineticBulletAccessor
-    // is back in its OWN mixin config (wfcore.tacz.mixins.json, required=false) because TACZ is optional and
-    // wfcore.mixins.json's required=true would hard-crash without it. New: a TACZ loaded-ammo weight
-    // provider replacing the deleted SBW launcher one, plus WFWeight/TaczWeights — Ultimate Weight keys on
-    // item id, but every TACZ gun is tacz:modern_kinetic_gun and every round is tacz:ammo, so per-model
-    // weights have to be resolved by TACZ id instead.
     //
     // Phase 7b: the 7 vehicle factories now spawn Limitless vehicles. Vehicles there are data-driven
     // BaseVehicleData entries, NOT entity types, so the EntityType axis through isDeployBlocked/isSpawnClear/
@@ -322,9 +313,6 @@ dependencies {
     compileOnly("dev.latvian.mods:rhino:${rhino_version}") { transitive = false }
     compileOnly("org.embeddedt:embeddium-1.21:${embeddium_version}") { transitive = false }
     compileOnly("maven.modrinth:iris:${iris_version}") { transitive = false }
-    // TACZ — MUKSC's 1.21.1 fork (plan §3.3). localRuntime too, so the weight compat can be verified.
-    compileOnly("curse.maven:${tacz_version}") { transitive = false }
-    localRuntime("curse.maven:${tacz_version}") { transitive = false }
     // Ultimate Weight. Built from ~/projects/wf2-21/Ultimate-Weight versions/1.21.1/neoforge.
     compileOnly files('libs/wfweight-1.21.1-NeoForge-1.0.0.jar')
     localRuntime files('libs/wfweight-1.21.1-NeoForge-1.0.0.jar')

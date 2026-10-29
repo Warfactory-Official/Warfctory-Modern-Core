@@ -20,7 +20,6 @@ public class WFCoreKubePlugin implements KubeJSPlugin {
             bindings.add("WFRadar", new WFRadarBindings());
             bindings.add("WFBoltGun", new WFBoltGunBindings());
             bindings.add("WFVehicles", new WFVehicleBindings());
-            bindings.add("WFWeight", new WFWeightBindings());
         }
     }
 }

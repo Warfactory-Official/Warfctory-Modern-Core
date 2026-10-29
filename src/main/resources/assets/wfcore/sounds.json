@@ -67,5 +67,23 @@
         "stream": false
       }
     ]
+  },
+  "title_music": {
+    "category": "music",
+    "sounds": [
+      {
+        "name": "wfcore:title/menu",
+        "stream": true
+      }
+    ]
+  },
+  "title_hover": {
+    "category": "master",
+    "sounds": [
+      {
+        "name": "wfcore:title/hit",
+        "stream": false
+      }
+    ]
   }
 }

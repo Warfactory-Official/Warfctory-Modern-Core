@@ -15,11 +15,6 @@ license = "${mod_license}"
 [[mixins]]
     config = "wfcore.mixins.json"
 
-# Separate config because TACZ is optional: required=false lets it no-op when the target is absent,
-# where wfcore.mixins.json's required=true would be a hard crash.
-[[mixins]]
-    config = "wfcore.tacz.mixins.json"
-
 [[dependencies.${mod_id}]]
     modId = "neoforge"
     type = "required"
@@ -78,15 +73,6 @@ license = "${mod_license}"
 # Must load before wfcore so its capabilities are registered first.
 [[dependencies.${mod_id}]]
     modId = "warforge"
-    type = "optional"
-    versionRange = "*"
-    ordering = "AFTER"
-    side = "BOTH"
-
-# Optional: TACZ off-thread ballistics adapter + gas-mask compat.
-# TODO(port, phase 7): promote to "required" once the MUKSC 1.21.1 fork is wired in.
-[[dependencies.${mod_id}]]
-    modId = "tacz"
     type = "optional"
     versionRange = "*"
     ordering = "AFTER"

@@ -12,8 +12,8 @@ import net.neoforged.neoforge.common.crafting.DataComponentIngredient;
  * One item cost of a {@link Research} run: an {@link Ingredient} plus a required {@link #count()}.
  *
  * <p>
- * A cost can be either an <em>exact</em> item — component-strict, so e.g. a {@code tacz:ammo} cost still only
- * accepts the matching {@code AmmoId} (this is the 1.21 successor to the old NBT-strict behaviour) —
+ * A cost can be either an <em>exact</em> item — component-strict, so a cost on a component-bearing item
+ * only accepts stacks with matching components (this is the 1.21 successor to the old NBT-strict behaviour) —
  * or a <em>tag</em>, where any member satisfies it (e.g. {@code #gtceu:circuits/lv} accepts any LV circuit,
  * instead of hard-coding one specific circuit item). The Research Unit matches input-bus items via
  * {@link #test(ItemStack)}; the research GUI shows {@link #displayStack()} (the first tag member for a tag).

@@ -192,7 +192,6 @@ public class WFCore {
             BoltGunConversions.apply();
             LOGGER.info("Bolt gun conversions: {} entry(ies)", BoltGunConversions.size());
             WFRecipeTypeTweaks.init();
-            com.norwood.wfcore.integration.wfweight.TaczWeightIntegration.register();
         });
     }
 
