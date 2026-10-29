@@ -28,7 +28,7 @@ import java.util.Optional;
  */
 public record ResourceAllocation(ResourceKey<Level> dimension, Map<String, Zone> zones, List<Rule> rules,
         List<DepositNodeSpec> depositNodes, List<DepositRegionSpec> depositRegions, List<Paint> paint,
-        Map<String, Integer> grids) {
+        Map<String, Integer> grids, List<AnomalyCaveSpec> anomalyCaves) {
 
     public static final ResourceKey<Registry<ResourceAllocation>> REGISTRY =
             ResourceKey.createRegistryKey(WFCore.id("resource_allocation"));
@@ -44,7 +44,9 @@ public record ResourceAllocation(ResourceKey<Level> dimension, Map<String, Zone>
                     .forGetter(ResourceAllocation::depositRegions),
             Paint.CODEC.listOf().optionalFieldOf("paint", List.of()).forGetter(ResourceAllocation::paint),
             Codec.unboundedMap(Codec.STRING, Codec.INT).optionalFieldOf("grids", Map.of())
-                    .forGetter(ResourceAllocation::grids))
+                    .forGetter(ResourceAllocation::grids),
+            AnomalyCaveSpec.CODEC.listOf().optionalFieldOf("anomaly_caves", List.of())
+                    .forGetter(ResourceAllocation::anomalyCaves))
             .apply(i, ResourceAllocation::new));
 
     public static void register(DataPackRegistryEvent.NewRegistry event) {
@@ -123,5 +125,29 @@ public record ResourceAllocation(ResourceKey<Level> dimension, Map<String, Zone>
                 Codec.INT.optionalFieldOf("max_size").forGetter(DepositRegionSpec::maxSize),
                 Codec.INT.optionalFieldOf("yield").forGetter(DepositRegionSpec::yield))
                 .apply(i, DepositRegionSpec::new));
+    }
+
+    /**
+     * WFLib cave anomaly fields, a fixed allotment: exactly {@code count} fields on {@code zone} (>= 0.5) land of the
+     * rectangle, at least {@code spacing} blocks apart, sharing exactly {@code artefacts} artefacts by tier
+     * ({@code tierShare}); {@code tiers} = relative field counts per tier 1-4.
+     */
+    public record AnomalyCaveSpec(int minX, int minZ, int maxX, int maxZ, int count, int artefacts,
+            List<Double> tiers, List<Double> tierShare, double spacing, Optional<String> zone) {
+
+        public static final Codec<AnomalyCaveSpec> CODEC = RecordCodecBuilder.create(i -> i.group(
+                Codec.INT.fieldOf("min_x").forGetter(AnomalyCaveSpec::minX),
+                Codec.INT.fieldOf("min_z").forGetter(AnomalyCaveSpec::minZ),
+                Codec.INT.fieldOf("max_x").forGetter(AnomalyCaveSpec::maxX),
+                Codec.INT.fieldOf("max_z").forGetter(AnomalyCaveSpec::maxZ),
+                Codec.INT.fieldOf("count").forGetter(AnomalyCaveSpec::count),
+                Codec.INT.fieldOf("artefacts").forGetter(AnomalyCaveSpec::artefacts),
+                Codec.DOUBLE.listOf(4, 4).optionalFieldOf("tiers", List.of(0.4, 0.3, 0.2, 0.1))
+                        .forGetter(AnomalyCaveSpec::tiers),
+                Codec.DOUBLE.listOf(4, 4).optionalFieldOf("tier_share", List.of(1.0, 2.0, 3.0, 4.0))
+                        .forGetter(AnomalyCaveSpec::tierShare),
+                Codec.DOUBLE.optionalFieldOf("spacing", 0.0).forGetter(AnomalyCaveSpec::spacing),
+                Codec.STRING.optionalFieldOf("zone").forGetter(AnomalyCaveSpec::zone))
+                .apply(i, AnomalyCaveSpec::new));
     }
 }

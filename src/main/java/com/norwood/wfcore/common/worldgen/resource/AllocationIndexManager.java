@@ -44,8 +44,9 @@ public final class AllocationIndexManager {
         AllocationIndex index = AllocationIndex.build(level);
         if (!index.isEmpty()) {
             WFCore.LOGGER.info("Resource allocation in {}: {} file(s), {} deposit node(s), {} deposit region(s), "
-                    + "compiled in {} ms", level.dimension().location(), index.sources(),
-                    index.depositNodes().size(), index.depositRegions().size(),
+                    + "{} cave field(s) with {} artefact(s), compiled in {} ms", level.dimension().location(),
+                    index.sources(), index.depositNodes().size(), index.depositRegions().size(),
+                    index.caveSlots().size(), index.caveSlots().stream().mapToInt(AnomalyCaveQuota.Slot::artefacts).sum(),
                     (System.nanoTime() - started) / 1_000_000L);
         }
         return index;

@@ -49,7 +49,7 @@ public final class AllocationIndex {
     public static final AllocationIndex EMPTY = new AllocationIndex(0L, new EnumMap<>(ResourceSystem.class),
             new EnumMap<>(ResourceSystem.class), new EnumMap<>(ResourceSystem.class),
             new EnumMap<>(ResourceSystem.class), new EnumMap<>(ResourceSystem.class), new IdentityHashMap<>(),
-            new IdentityHashMap<>(), List.of(), List.of(), 0);
+            new IdentityHashMap<>(), List.of(), List.of(), List.of(), 0);
 
     @FunctionalInterface
     interface Field {
@@ -121,6 +121,8 @@ public final class AllocationIndex {
     private final IdentityHashMap<PlacedFeature, String> featureIds;
     private final List<DepositNode> depositNodes;
     private final List<DepositRegion> depositRegions;
+    private final List<AnomalyCaveQuota.Slot> caveSlots;
+    private final Long2ObjectOpenHashMap<AnomalyCaveQuota.Slot> caveSlotAt = new Long2ObjectOpenHashMap<>();
     private final int sources;
     // diagnostics (dump / at): every file's zones by name, rules in file order as {density, richness}
     private Map<String, Field> zoneFields = Map.of();
@@ -131,7 +133,7 @@ public final class AllocationIndex {
             EnumMap<ResourceSystem, Long2ObjectOpenHashMap<List<Pick>>> paint,
             EnumMap<ResourceSystem, Integer> grids, IdentityHashMap<PlacedFeature, Target> features,
             IdentityHashMap<PlacedFeature, String> featureIds, List<DepositNode> depositNodes,
-            List<DepositRegion> depositRegions, int sources) {
+            List<DepositRegion> depositRegions, List<AnomalyCaveQuota.Slot> caveSlots, int sources) {
         this.seed = seed;
         this.weights = weights;
         this.wildcard = wildcard;
@@ -142,6 +144,8 @@ public final class AllocationIndex {
         this.featureIds = featureIds;
         this.depositNodes = depositNodes;
         this.depositRegions = depositRegions;
+        this.caveSlots = caveSlots;
+        caveSlots.forEach(s -> caveSlotAt.put(ChunkPos.asLong(s.chunkX(), s.chunkZ()), s));
         this.sources = sources;
     }
 
@@ -267,6 +271,16 @@ public final class AllocationIndex {
         return depositRegions;
     }
 
+    /** WFLib cave fields, fixed by the pack and the seed. */
+    public List<AnomalyCaveQuota.Slot> caveSlots() {
+        return caveSlots;
+    }
+
+    @Nullable
+    public AnomalyCaveQuota.Slot caveSlotAt(int chunkX, int chunkZ) {
+        return caveSlotAt.get(ChunkPos.asLong(chunkX, chunkZ));
+    }
+
     public int sources() {
         return sources;
     }
@@ -308,6 +322,7 @@ public final class AllocationIndex {
         Set<String> decidedFeatures = new HashSet<>();
         List<DepositNode> nodes = new ArrayList<>();
         List<DepositRegion> regions = new ArrayList<>();
+        List<AnomalyCaveQuota.Slot> caveSlots = new ArrayList<>();
         Compiler compiler = new Compiler(seed, level.getChunkSource().randomState(),
                 level.registryAccess().registryOrThrow(Registries.DENSITY_FUNCTION));
         int sources = 0;
@@ -407,6 +422,13 @@ public final class AllocationIndex {
                 spec.yield().ifPresent(region::yield);
                 regions.add(region.build());
             }
+            for (var spec : allocation.anomalyCaves()) {
+                Field zone = spec.zone().map(z -> compiled(source, compiled, z)).orElse(null);
+                for (var slot : AnomalyCaveQuota.allocate(spec, seed, (x, z) -> zone == null || zone.at(x, z) >= 0.5)) {
+                    caveSlots.add(new AnomalyCaveQuota.Slot(caveSlots.size(), slot.chunkX(), slot.chunkZ(),
+                            slot.tier(), slot.artefacts(), slot.seed()));
+                }
+            }
         }
         if (sources == 0) {
             return EMPTY;
@@ -427,7 +449,7 @@ public final class AllocationIndex {
         }
         decidedFeatures.forEach(id -> featureIds.put(placed.get(ResourceLocation.parse(id)), id));
         AllocationIndex index = new AllocationIndex(seed, weights, wildcard, assign, paint, grids, features,
-                featureIds, List.copyOf(nodes), List.copyOf(regions), sources);
+                featureIds, List.copyOf(nodes), List.copyOf(regions), List.copyOf(caveSlots), sources);
         index.zoneFields = allZones;
         index.ruleFields = allRules;
         return index;
