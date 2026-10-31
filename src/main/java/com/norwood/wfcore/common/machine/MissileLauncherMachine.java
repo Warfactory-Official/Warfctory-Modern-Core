@@ -42,18 +42,18 @@ import net.minecraft.world.phys.Vec3;
 
 import brachy.modularui.factory.BlockEntityUIFactory;
 import com.norwood.wfcore.common.data.WFDataComponents;
-import com.wf.wflib.MissileEntity;
-import com.wf.wflib.api.MissileData;
-import com.wf.wflib.api.WFTelemetry;
-import com.wf.wflib.api.WFTelemetryEvent;
-import com.wf.wflib.api.WFLibAPI;
-import com.wf.wflib.compat.WarforgeCompat;
-import com.wf.wflib.flight.AttackProfile;
-import com.wf.wflib.item.MissileItem;
-import com.wf.wflib.item.MissilePreset;
-import com.wf.wflib.missile.MissileBuilder;
-import com.wf.wflib.sim.IMissileListener;
-import com.wf.wflib.sim.MissileListenerRegistry;
+import com.wf.wflib.missile.api.MissileEntity;
+import com.wf.wflib.missile.api.MissileData;
+import com.wf.wflib.missile.api.WFTelemetry;
+import com.wf.wflib.missile.api.WFTelemetryEvent;
+import com.wf.wflib.missile.api.WFLibAPI;
+import com.wf.wflib.compat.api.WarforgeCompat;
+import com.wf.wflib.missile.api.AttackProfile;
+import com.wf.wflib.missile.api.MissileItem;
+import com.wf.wflib.missile.api.MissilePreset;
+import com.wf.wflib.missile.api.MissileBuilder;
+import com.wf.wflib.missile.api.IMissileListener;
+import com.wf.wflib.missile.api.MissileListenerData;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -1118,13 +1118,13 @@ public class MissileLauncherMachine extends MultiblockControllerMachine
 
     public void registerMissileListener() {
         if (level instanceof ServerLevel serverLevel) {
-            MissileListenerRegistry.get(serverLevel).register(getBlockPos(), this);
+            MissileListenerData.get(serverLevel).register(getBlockPos(), this);
         }
     }
 
     public void deregisterMissileListener() {
         if (level instanceof ServerLevel serverLevel) {
-            MissileListenerRegistry.get(serverLevel).deregister(getBlockPos());
+            MissileListenerData.get(serverLevel).deregister(getBlockPos());
         }
     }
 

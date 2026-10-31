@@ -1,0 +1,25 @@
+{
+  "values": {
+    "wfcore:sandbags": {
+      "resistance": 40
+    },
+    "wfcore:hesco_bastion": {
+      "resistance": 40
+    },
+    "wfcore:standard_concrete": {
+      "resistance": 130
+    },
+    "wfcore:reinforced_concrete": {
+      "resistance": 250
+    },
+    "wfcore:ballistic_glass": {
+      "resistance": 300
+    },
+    "wfcore:hardened_steel": {
+      "resistance": 1000
+    },
+    "wfcore:tungsten_plating": {
+      "resistance": 1500
+    }
+  }
+}

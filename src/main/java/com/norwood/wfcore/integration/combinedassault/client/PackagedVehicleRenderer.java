@@ -15,9 +15,8 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
-import com.wf.combinedassault.client.render.item.SlotQuad;
+import com.wf.combinedassault.vehicle.api.client.VehicleSlots;
 import org.jetbrains.annotations.NotNull;
-import com.wf.combinedassault.client.resource.ClientAssetsManager;
 
 /**
  * Draws a packaged vehicle as the CombinedAssault "slot" card for the vehicle it encodes, so a factory's output
@@ -35,10 +34,7 @@ public class PackagedVehicleRenderer extends BlockEntityWithoutLevelRenderer {
                              @NotNull PoseStack poseStack, @NotNull MultiBufferSource buffers,
                              int packedLight, int packedOverlay) {
         ResourceLocation vehicleId = PackagedVehicleItem.getVehicleId(stack);
-        ResourceLocation texture = vehicleId == null ? null : ClientAssetsManager.INSTANCE
-                .getVehicleDisplay(vehicleId)
-                .map(display -> display.getSlotTexture())
-                .orElse(null);
+        ResourceLocation texture = vehicleId == null ? null : VehicleSlots.texture(vehicleId).orElse(null);
 
         poseStack.pushPose();
         poseStack.translate(0.5, 0.5, 0.5);
@@ -47,7 +43,7 @@ public class PackagedVehicleRenderer extends BlockEntityWithoutLevelRenderer {
         }
         VertexConsumer buffer = buffers.getBuffer(RenderType.entityTranslucent(
                 texture != null ? texture : MissingTextureAtlasSprite.getLocation()));
-        SlotQuad.render(poseStack, buffer, packedLight, packedOverlay);
+        VehicleSlots.renderQuad(poseStack, buffer, packedLight, packedOverlay);
         poseStack.popPose();
     }
 }

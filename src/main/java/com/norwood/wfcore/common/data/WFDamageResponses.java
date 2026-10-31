@@ -1,9 +1,9 @@
 package com.norwood.wfcore.common.data;
 
 import com.norwood.wfcore.WFCore;
-import com.wf.wflib.MissileEntity;
-import com.wf.wflib.damage.MissileDamageRegistry;
-import com.wf.wflib.damage.MissileDamageResponse;
+import com.wf.wflib.missile.api.MissileEntity;
+import com.wf.wflib.damage.api.MissileDamageResponses;
+import com.wf.wflib.damage.api.MissileDamageResponse;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.DamageTypeTags;
 
@@ -56,7 +56,7 @@ public final class WFDamageResponses {
     private WFDamageResponses() {}
 
     public static void register() {
-        MissileDamageRegistry.register(HARDENED_ID, HARDENED);
-        MissileDamageRegistry.register(HARDENED_ICBM_ID, HARDENED_ICBM);
+        MissileDamageResponses.register(HARDENED_ID, HARDENED);
+        MissileDamageResponses.register(HARDENED_ICBM_ID, HARDENED_ICBM);
     }
 }

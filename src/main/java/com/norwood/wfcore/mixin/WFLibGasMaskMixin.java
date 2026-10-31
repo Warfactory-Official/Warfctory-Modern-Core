@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * Makes wflib gas clouds ignore players who are protected against gas: those wearing a full set of
  * GregTech PPE / hazmat armor (any full PPE suit — hazmat, QuarkTech, etc.).
  */
-@Mixin(targets = "com.wf.wflib.entity.MistEntity", remap = false)
+@Mixin(targets = "com.wf.wflib.mist.api.MistEntity", remap = false)
 public class WFLibGasMaskMixin {
 
     @Inject(method = "isAffectable", at = @At("HEAD"), cancellable = true, remap = false)

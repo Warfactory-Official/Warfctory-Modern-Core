@@ -1,6 +1,6 @@
 package com.norwood.wfcore.mixin;
 
-import com.norwood.wfcore.client.FlashbackReplay;
+import com.wf.wflib.fx.api.Replay;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -19,14 +19,14 @@ public class JadeReplayHideMixin {
 
     @Inject(method = "shouldShow", at = @At("HEAD"), cancellable = true)
     private static void wfcore$hideInReplay(CallbackInfoReturnable<Boolean> cir) {
-        if (FlashbackReplay.active()) {
+        if (Replay.active()) {
             cir.setReturnValue(false);
         }
     }
 
     @Inject(method = "shouldShowImmediately", at = @At("HEAD"), cancellable = true)
     private static void wfcore$hideLingerInReplay(CallbackInfoReturnable<Boolean> cir) {
-        if (FlashbackReplay.active()) {
+        if (Replay.active()) {
             cir.setReturnValue(false);
         }
     }

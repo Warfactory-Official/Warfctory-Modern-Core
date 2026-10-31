@@ -5,13 +5,13 @@ import net.minecraft.resources.ResourceLocation;
 import com.norwood.wfcore.WFCore;
 import com.tterrag.registrate.util.entry.ItemEntry;
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
-import com.wf.wflib.MissileEntity;
-import com.wf.wflib.MissileModels;
-import com.wf.wflib.content.WFLibContent;
-import com.wf.wflib.flight.FlightStageRegistry;
-import com.wf.wflib.item.MissileItem;
-import com.wf.wflib.item.MissilePreset;
-import com.wf.wflib.warhead.WarheadRegistry;
+import com.wf.wflib.missile.api.MissileEntity;
+import com.wf.wflib.missile.api.MissileModels;
+import com.wf.wflib.core.api.WFLibContent;
+import com.wf.wflib.missile.api.FlightStages;
+import com.wf.wflib.missile.api.MissileItem;
+import com.wf.wflib.missile.api.MissilePreset;
+import com.wf.wflib.warhead.api.Warheads;
 import com.norwood.wfcore.common.sound.WFSounds;
 
 import java.util.Map;
@@ -78,25 +78,25 @@ public class WFMissiles {
     // and a 2-block commit radius, so a fast missile still comes down fast (a hypersonic dives at ~7 b/t) but
     // actually converges on the target. WF-B's plain "dive"/VerticalDiveStage (~18 b/t) plunges past and misses.
     private static ResourceLocation controlledDive() {
-        return FlightStageRegistry.rl(ControlledDiveStage.ID);
+        return FlightStages.rl(ControlledDiveStage.ID);
     }
 
     // Fast controlled descent (~12 b/t) for the ICBM class: quick enough that a lower-tier interceptor can't run
     // it down (crossing shots only), yet still converges (same pure-pursuit logic, not a blind plunge).
     private static ResourceLocation icbmDive() {
-        return FlightStageRegistry.rl(ControlledDiveStage.ICBM_ID);
+        return FlightStages.rl(ControlledDiveStage.ICBM_ID);
     }
 
     private static ResourceLocation mediumDive() {
-        return FlightStageRegistry.rl(ControlledDiveStage.MEDIUM_ID);
+        return FlightStages.rl(ControlledDiveStage.MEDIUM_ID);
     }
 
     private static ResourceLocation weakDive() {
-        return FlightStageRegistry.rl(ControlledDiveStage.WEAK_ID);
+        return FlightStages.rl(ControlledDiveStage.WEAK_ID);
     }
 
     private static ResourceLocation airLaunch() {
-        return FlightStageRegistry.rl("air_launch");
+        return FlightStages.rl("air_launch");
     }
 
     // --- Demolition ---
@@ -163,7 +163,7 @@ public class WFMissiles {
                         .accel(0.2, 0.3).fuel(MissileEntity.FuelType.LIQUID, 8000));
 
         DUMMY = missile("dummy", "Dummy Missile",
-                MissileModels.rl("v2"), WarheadRegistry.rl("inert"),
+                MissileModels.rl("v2"), Warheads.rl("inert"),
                 b -> b.highAltitude(300.0).cruiseSpeed(1.1).health(10.0f)
                         .diveAngleRange(68.0, 90.0).attackStage(controlledDive())
                         .accel(0.1, 0.4).fuel(MissileEntity.FuelType.LIQUID, 8000));
@@ -277,7 +277,7 @@ public class WFMissiles {
         // Anti-entity area coverage, little-to-no ground damage. The airburst offset lets bomblets rain.
 
         CLUSTER = missile("cluster", "Cluster Munition Missile",
-                MissileModels.rl("v2_cluster"), WarheadRegistry.rl("fragmentation"),
+                MissileModels.rl("v2_cluster"), Warheads.rl("fragmentation"),
                 b -> b.highAltitude(280.0).cruiseSpeed(2.0).health(30.0f).fragmentCount(32)
                         .explosionOffset(24.0f)
                         .diveAngleRange(55.0, 75.0).attackStage(controlledDive())
@@ -356,13 +356,13 @@ public class WFMissiles {
         // deny its evasion (min(1, missileSpeed/interceptorSpeed) in evadeBoost).
 
         INTERCEPTOR = missile("interceptor", "Interceptor Missile",
-                MissileModels.rl("abm"), WarheadRegistry.rl("interceptor"),
+                MissileModels.rl("abm"), Warheads.rl("interceptor"),
                 b -> b.highAltitude(300.0).cruiseSpeed(8.0).turnRate(0.6).health(25.0f)
                         .interceptor(0.85f).accel(1.2, 1.2)
                         .fuel(MissileEntity.FuelType.SOLID, 1000));
 
         INTERCEPTOR_MK2 = missile("interceptor_mk2", "Interceptor Missile Mk.II",
-                MissileModels.rl("abm"), WarheadRegistry.rl("interceptor"),
+                MissileModels.rl("abm"), Warheads.rl("interceptor"),
                 b -> b.highAltitude(300.0).cruiseSpeed(11.0).turnRate(0.65).health(25.0f)
                         .interceptor(0.90f).accel(1.4, 1.4)
                         .fuel(MissileEntity.FuelType.SOLID, 1200));
@@ -370,7 +370,7 @@ public class WFMissiles {
         // Ace: fast enough to run down and out-speed nearly everything (denying evasion); competitive with all
         // but the top evasive (hypersonic) round, which can match its speed factor.
         INTERCEPTOR_ACE = missile("interceptor_ace", "Ace Interceptor Missile",
-                MissileModels.rl("abm"), WarheadRegistry.rl("interceptor"),
+                MissileModels.rl("abm"), Warheads.rl("interceptor"),
                 b -> b.highAltitude(300.0).cruiseSpeed(14.0).turnRate(0.8).health(30.0f)
                         .interceptor(0.90f).exhaustColor(0xFFE24D).accel(1.8, 1.8)
                         .fuel(MissileEntity.FuelType.SOLID, 1400));
@@ -394,7 +394,7 @@ public class WFMissiles {
                         .accel(0.8, 0.5).fuel(MissileEntity.FuelType.SOLID, 200));
 
         ATGM_FRAG = missile("atgm_frag", "Blast-Fragmentation ATGM",
-                MissileModels.rl("atgm"), WarheadRegistry.rl("fragmentation"),
+                MissileModels.rl("atgm"), Warheads.rl("fragmentation"),
                 b -> b.ascentStage(airLaunch()).attackStage(mediumDive())
                         .cruiseSpeed(4.0).turnRate(0.25).health(8.0f).fragmentCount(12)
                         .explosionOffset(3.0f).diveAngleRange(35.0, 55.0)
@@ -428,9 +428,9 @@ public class WFMissiles {
                         .accel(0.15, 0.2).fuel(MissileEntity.FuelType.LIQUID, 12000));
 
         LOITER_DRONE = missile("loiter_drone", "Loitering Drone",
-                MissileModels.rl("shahedjarty"), WarheadRegistry.rl("inert"),
+                MissileModels.rl("shahedjarty"), Warheads.rl("inert"),
                 b -> b.highAltitude(200.0).cruiseSpeed(1.5).health(20.0f)
-                        .cruiseStage(FlightStageRegistry.rl(LoiterUntilDryStage.ID))
+                        .cruiseStage(FlightStages.rl(LoiterUntilDryStage.ID))
                         .exhaustColor(0x487800)
                         .flightSound(WFSounds.MISSILE_JARTY.getId())
                         .flightSoundSpeedPitch(0.0).flightSoundRange(1000.0)

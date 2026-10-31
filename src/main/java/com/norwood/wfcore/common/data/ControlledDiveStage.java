@@ -1,9 +1,9 @@
 package com.norwood.wfcore.common.data;
 
-import com.wf.wflib.MissileEntity;
-import com.wf.wflib.flight.FlightContext;
-import com.wf.wflib.flight.FlightStage;
-import com.wf.wflib.flight.FlightStageRegistry;
+import com.wf.wflib.missile.api.MissileEntity;
+import com.wf.wflib.missile.api.FlightContext;
+import com.wf.wflib.missile.api.FlightStage;
+import com.wf.wflib.missile.api.FlightStages;
 import net.minecraft.world.phys.Vec3;
 
 
@@ -55,10 +55,10 @@ public final class ControlledDiveStage implements FlightStage {
 
     /** Register both dive variants for the ATTACK phase. Call once at mod construction, before any preset uses them. */
     public static void register() {
-        FlightStageRegistry.register(MissileEntity.Phase.ATTACK, INSTANCE);
-        FlightStageRegistry.register(MissileEntity.Phase.ATTACK, ICBM);
-        FlightStageRegistry.register(MissileEntity.Phase.ATTACK, MEDIUM);
-        FlightStageRegistry.register(MissileEntity.Phase.ATTACK, WEAK);
+        FlightStages.register(MissileEntity.Phase.ATTACK, INSTANCE);
+        FlightStages.register(MissileEntity.Phase.ATTACK, ICBM);
+        FlightStages.register(MissileEntity.Phase.ATTACK, MEDIUM);
+        FlightStages.register(MissileEntity.Phase.ATTACK, WEAK);
     }
 
     @Override

@@ -6,26 +6,24 @@ import com.norwood.wfcore.common.sound.WFDelayedSounds;
 import com.norwood.wfcore.common.sound.WFSounds;
 import com.norwood.wfcore.common.warhead.BlockAllocatorEMPRay;
 import com.norwood.wfcore.common.warhead.BlockProcessorPulverize;
-import com.wf.wflib.MissileEntity;
-import com.wf.wflib.MissileModels;
-import com.wf.wflib.ModEntities;
-import com.wf.wflib.aef.ExplosionAEF;
-import com.wf.wflib.aef.nuke.MiniNuke;
-import com.wf.wflib.aef.nuke.MiniNuke.MukeParams;
-import com.wf.wflib.aef.standard.*;
-import com.wf.wflib.audio.Acoustics;
-import com.wf.wflib.entity.BombletEntity;
-import com.wf.wflib.entity.mist.GasCloud;
-import com.wf.wflib.flight.FlightStageRegistry;
-import com.wf.wflib.fluid.WFFluids;
-import com.wf.wflib.fx.EMPCreator;
-import com.wf.wflib.fx.ExplosionCreator;
-import com.wf.wflib.fx.ExplosionSmallCreator;
-import com.wf.wflib.missile.MissileBuilder;
-import com.wf.wflib.swarm.SwarmManager;
-import com.wf.wflib.util.FragmentationUtil;
-import com.wf.wflib.warhead.BombletWarhead;
-import com.wf.wflib.warhead.WarheadRegistry;
+import com.wf.wflib.missile.api.MissileEntity;
+import com.wf.wflib.missile.api.MissileModels;
+import com.wf.wflib.explosion.api.ExplosionAEF;
+import com.wf.wflib.explosion.api.MiniNuke;
+import com.wf.wflib.explosion.api.MiniNuke.MukeParams;
+import com.wf.wflib.audio.api.Acoustics;
+import com.wf.wflib.warhead.api.BombletEntity;
+import com.wf.wflib.mist.api.GasCloud;
+import com.wf.wflib.missile.api.FlightStages;
+import com.wf.wflib.mist.api.WFFluids;
+import com.wf.wflib.explosion.api.EMPCreator;
+import com.wf.wflib.explosion.api.ExplosionCreator;
+import com.wf.wflib.explosion.api.ExplosionSmallCreator;
+import com.wf.wflib.missile.api.MissileBuilder;
+import com.wf.wflib.missile.api.SwarmManager;
+import com.wf.wflib.explosion.api.FragmentationUtil;
+import com.wf.wflib.warhead.api.BombletWarhead;
+import com.wf.wflib.warhead.api.Warheads;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
@@ -48,6 +46,16 @@ import net.minecraft.world.phys.Vec3;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import com.wf.wflib.missile.api.MissileContent;
+import com.wf.wflib.explosion.api.BlockAllocatorBlockEntities;
+import com.wf.wflib.explosion.api.BlockAllocatorShapedCharge;
+import com.wf.wflib.explosion.api.BlockAllocatorStandard;
+import com.wf.wflib.explosion.api.BlockMutatorDebris;
+import com.wf.wflib.explosion.api.BlockProcessorEMP;
+import com.wf.wflib.explosion.api.BlockProcessorStandard;
+import com.wf.wflib.explosion.api.EntityProcessorCone;
+import com.wf.wflib.explosion.api.EntityProcessorCross;
+import com.wf.wflib.explosion.api.PlayerProcessorStandard;
 
 import static com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialIconType.seed;
 
@@ -140,7 +148,7 @@ public final class WFWarheads {
 
     // One low-yield fragmentation pop: a tiny drop-free blast that breaks wood/leaves and chips entities, but a
     // size-3 ray-march barely scratches stone/concrete — the "weak explosive" the storm saturates an area with.
-    private static final WarheadRegistry.Detonation FRAG_LOW_DET = (source, pos) -> {
+    private static final Warheads.Detonation FRAG_LOW_DET = (source, pos) -> {
         Level level = source.level();
         if (level.isClientSide) {
             return;
@@ -165,7 +173,7 @@ public final class WFWarheads {
     private static final EmpEffect EMP_LONG = new EmpEffect(60, true, false, true);
 
     // A small EMP burst carried by each emp-cluster bomblet (registered so it survives bomblet save/load).
-    private static final WarheadRegistry.Detonation EMP_BOMBLET_DET = (source, pos) -> empBlast(source.level(), pos, 10, EMP_STANDARD);
+    private static final Warheads.Detonation EMP_BOMBLET_DET = (source, pos) -> empBlast(source.level(), pos, 10, EMP_STANDARD);
 
     // EMP lance ray length (blocks) — shared by the block-entity allocator and the visible beam.
     private static final double EMP_RAY_LENGTH = 10.0;
@@ -175,25 +183,25 @@ public final class WFWarheads {
     public static void register() {
         // --- Demolition -----------------------------------------------------------------------------------
         // Both cruise-missile warheads are a plain destructive blast, differing only in size (HE vs. lighter).
-        WarheadRegistry.register(HE, (source, pos) ->
+        Warheads.register(HE, (source, pos) ->
                 blast(source.level(), pos, HE_SIZE, 32, new EntityProcessorCross()),
-                WarheadRegistry.STANDARD_INTERCEPT);
+                Warheads.STANDARD_INTERCEPT);
 
-        WarheadRegistry.register(LONG_RANGE, (source, pos) ->
+        Warheads.register(LONG_RANGE, (source, pos) ->
                 blast(source.level(), pos, LONG_RANGE_SIZE, 32, new EntityProcessorCross()),
-                WarheadRegistry.STANDARD_INTERCEPT);
+                Warheads.STANDARD_INTERCEPT);
 
         // Thermobaric: a moderate crater but a very wide, hard-hitting entity blast (fuel-air overpressure).
-        WarheadRegistry.register(THERMOBARIC, (source, pos) ->
+        Warheads.register(THERMOBARIC, (source, pos) ->
                 blast(source.level(), pos, THERMOBARIC_SIZE, 24,
                         new EntityProcessorCross().withRangeMod(THERMOBARIC_ENTITY_RANGE_MOD)),
-                WarheadRegistry.STANDARD_INTERCEPT);
+                Warheads.STANDARD_INTERCEPT);
 
         // Mini-nuke (custom): WF-B's built-in mininuke is a surface-cratering sphere with poor penetration
         // against hardened armour. Keep its (good) area effect — crater, fire, ~55-block kill radius, mushroom —
         // but fire a heavy shaped jet down the impact heading FIRST so it drives deep through fortification into
         // the structure, defeating bunkers instead of just scorching their roof.
-        WarheadRegistry.register(MININUKE, (source, pos) -> {
+        Warheads.register(MININUKE, (source, pos) -> {
             Level level = source.level();
             if (level.isClientSide) {
                 return;
@@ -218,20 +226,20 @@ public final class WFWarheads {
         // spherical entity kill at the impact point. Its jet power is deliberately LOW (4/6), well under even the
         // entry bunker buster (MK1 = 8), so it does NOT dig deep or defeat hardened armour — that's the bunker
         // family's job. The ICBM is a precise concentrated surface strike, not a penetrator.
-        WarheadRegistry.register(ICBM, (source, pos) ->
+        Warheads.register(ICBM, (source, pos) ->
                 icbmStrike(source.level(), pos, source.angle(), 8.0f, 4.0f),
-                WarheadRegistry.STANDARD_INTERCEPT);
-        WarheadRegistry.register(ICBM_HEAVY, (source, pos) ->
+                Warheads.STANDARD_INTERCEPT);
+        Warheads.register(ICBM_HEAVY, (source, pos) ->
                 icbmStrike(source.level(), pos, source.angle(), 10.0f, 6.0f),
-                WarheadRegistry.STANDARD_INTERCEPT);
+                Warheads.STANDARD_INTERCEPT);
 
         // --- Drones (cheap, separate class) ---------------------------------------------------------------
-        WarheadRegistry.register(DRONE, (source, pos) ->
+        Warheads.register(DRONE, (source, pos) ->
                 blast(source.level(), pos, DRONE_SIZE, 16,
                         new EntityProcessorCross().withRangeMod(DRONE_ENTITY_RANGE_MOD)),
-                WarheadRegistry.STANDARD_INTERCEPT);
+                Warheads.STANDARD_INTERCEPT);
 
-        WarheadRegistry.register(DRONE_GAS, (source, pos) -> {
+        Warheads.register(DRONE_GAS, (source, pos) -> {
             Level level = source.level();
             if (level.isClientSide) {
                 return;
@@ -248,25 +256,25 @@ public final class WFWarheads {
         // Narrow shaped jet down the impact heading. Mk1 breaks concrete-class blocks and cracks everything
         // tougher (steel/tungsten) to gravel; Mk2 hits harder + drives its crack threshold up so it breaks the
         // steel and only cracks tungsten. Neither finishes tungsten alone — that's the "needs follow-up" role.
-        WarheadRegistry.register(BUNKER_MK1, (source, pos) ->
+        Warheads.register(BUNKER_MK1, (source, pos) ->
                 bunker(source.level(), pos, source.angle(), 10.0f, 8.0f, 18.0f, 30.0f),
-                WarheadRegistry.STANDARD_INTERCEPT);
-        WarheadRegistry.register(BUNKER_MK2, (source, pos) ->
+                Warheads.STANDARD_INTERCEPT);
+        Warheads.register(BUNKER_MK2, (source, pos) ->
                 bunker(source.level(), pos, source.angle(), 12.0f, 14.0f, 16.0f, 100.0f),
-                WarheadRegistry.STANDARD_INTERCEPT);
-        WarheadRegistry.register(SHITBOX_BUSTER, (source, pos) ->
+                Warheads.STANDARD_INTERCEPT);
+        Warheads.register(SHITBOX_BUSTER, (source, pos) ->
                         shitboxBuster(source.level(), pos, source.angle(), 10, 1, 2),
-                WarheadRegistry.STANDARD_INTERCEPT);
+                Warheads.STANDARD_INTERCEPT);
 
         // Tunneller (final-tier bunker buster): instead of a surface shaped-charge, it BORES a shaft up to
         // TUNNEL_MAX_DEPTH blocks down the impact heading — stopped early when it meets heavy shielding
         // (tungsten-class) — then detonates a secondary blast INSIDE. That secondary only breaks blocks about as
         // well as a first-tier HE round, so it clears and kills the interior without widening the breach: get
         // in, then boom (and follow up to actually level the structure).
-        WarheadRegistry.register(TUNNELLER, WFWarheads::tunneller, WarheadRegistry.STANDARD_INTERCEPT);
+        Warheads.register(TUNNELLER, WFWarheads::tunneller, Warheads.STANDARD_INTERCEPT);
 
         // The legacy "shaped" warhead (destroys + scatters gravel debris) — kept for compatibility.
-        WarheadRegistry.register(SHAPED, (source, pos) -> {
+        Warheads.register(SHAPED, (source, pos) -> {
             ExplosionAEF blast = new ExplosionAEF(source.level(), pos.x, pos.y, pos.z, 10);
             blast.setBlockAllocator(new BlockAllocatorShapedCharge(source.angle(), 15, 10));
             blast.setBlockProcessor(new BlockProcessorStandard().withBlockEffect(new BlockMutatorDebris(Blocks.GRAVEL)));
@@ -274,12 +282,12 @@ public final class WFWarheads {
             blast.setPlayerProcessor(new PlayerProcessorStandard());
             blast.explode();
             ExplosionCreator.composeEffectLarge(source.level(), pos.x, pos.y, pos.z);
-        }, WarheadRegistry.STANDARD_INTERCEPT);
+        }, Warheads.STANDARD_INTERCEPT);
 
         // --- Frag / cluster -------------------------------------------------------------------------------
         // Gas "swiss cheese": many small, short-lived mustard pools scattered wide, denying an area in patches
         // rather than one solid cloud. Minimal terrain damage.
-        WarheadRegistry.register(GAS_SWISS, (source, pos) -> {
+        Warheads.register(GAS_SWISS, (source, pos) -> {
             Level level = source.level();
             if (level.isClientSide) {
                 return;
@@ -296,11 +304,11 @@ public final class WFWarheads {
         // Skyfall: bursts high (via a large explosionOffset on the preset) and rains a spread of small
         // submunitions, each seeking a distinct entity within SKYFALL_SCAN_RANGE (falling back to scattered
         // ground points when there aren't enough targets).
-        WarheadRegistry.register(SKYFALL, WFWarheads::skyfall);
+        Warheads.register(SKYFALL, WFWarheads::skyfall);
 
         // Fire cluster (tighter than WF-B's 60-degree fire_cluster): a narrow 35-degree cone of incendiary
         // bomblets, so the fire lands in a concentrated patch instead of a wide sprawl.
-        WarheadRegistry.register(FIRE_CLUSTER, (source, pos) -> {
+        Warheads.register(FIRE_CLUSTER, (source, pos) -> {
             Level level = source.level();
             if (level.isClientSide) {
                 return;
@@ -315,8 +323,8 @@ public final class WFWarheads {
         // over a wide area; each of those, on airburst, throws FRAG_STORM_CHILD_FRAGS low-yield bomblets. Net:
         // dense saturation of a large footprint with weak explosions — great at clearing wood/leaves and
         // chipping infantry, but they barely scratch real cover.
-        WarheadRegistry.register(FRAG_LOW, FRAG_LOW_DET);
-        WarheadRegistry.register(FRAG_STORM_CHILD, (source, pos) -> {
+        Warheads.register(FRAG_LOW, FRAG_LOW_DET);
+        Warheads.register(FRAG_STORM_CHILD, (source, pos) -> {
             Level level = source.level();
             if (level.isClientSide) {
                 return;
@@ -324,13 +332,13 @@ public final class WFWarheads {
             FragmentationUtil.burst(level, pos, FRAG_STORM_CHILD_FRAGS, 0.6, 0.2, FRAG_LOW, FRAG_LOW_DET, BombletEntity.DEFAULT_FUSE, null);
             ExplosionSmallCreator.composeEffect(level, pos.x, pos.y, pos.z, 5, 1, 1);
         });
-        WarheadRegistry.register(FRAG_STORM, WFWarheads::fragStorm);
+        Warheads.register(FRAG_STORM, WFWarheads::fragStorm);
 
         // --- Pylon rounds ---------------------------------------------------------------------------------
-        WarheadRegistry.register(ATGM, (source, pos) ->
+        Warheads.register(ATGM, (source, pos) ->
                 icbmStrike(source.level(), pos, source.angle(), ATGM_SIZE, ATGM_JET_POWER),
-                WarheadRegistry.STANDARD_INTERCEPT);
-        WarheadRegistry.register(GUIDED_ROCKET, (source, pos) -> {
+                Warheads.STANDARD_INTERCEPT);
+        Warheads.register(GUIDED_ROCKET, (source, pos) -> {
             Level level = source.level();
             if (level.isClientSide) {
                 return;
@@ -342,19 +350,19 @@ public final class WFWarheads {
             pop.setPlayerProcessor(new PlayerProcessorStandard());
             pop.explode();
             ExplosionSmallCreator.composeEffect(level, pos.x, pos.y, pos.z, 6, 1, 1);
-        }, WarheadRegistry.STANDARD_INTERCEPT);
+        }, Warheads.STANDARD_INTERCEPT);
 
         // --- EMP ------------------------------------------------------------------------------------------
-        WarheadRegistry.register(EMP_SMALL, (source, pos) -> empBlast(source.level(), pos, 16, EMP_STANDARD),
-                WarheadRegistry.STANDARD_INTERCEPT);
-        WarheadRegistry.register(EMP_LARGE, (source, pos) -> empBlast(source.level(), pos, 40, EMP_LONG),
-                WarheadRegistry.STANDARD_INTERCEPT);
+        Warheads.register(EMP_SMALL, (source, pos) -> empBlast(source.level(), pos, 16, EMP_STANDARD),
+                Warheads.STANDARD_INTERCEPT);
+        Warheads.register(EMP_LARGE, (source, pos) -> empBlast(source.level(), pos, 40, EMP_LONG),
+                Warheads.STANDARD_INTERCEPT);
 
         // The small EMP each cluster bomblet carries (referenced by the cone below, registered for save/load).
-        WarheadRegistry.register(EMP_BOMBLET, EMP_BOMBLET_DET);
+        Warheads.register(EMP_BOMBLET, EMP_BOMBLET_DET);
 
         // Non-stealth EMP cluster: a downward cone of bomblets that each pop a small EMP, blanketing a wide area.
-        WarheadRegistry.register(EMP_CLUSTER, (source, pos) -> {
+        Warheads.register(EMP_CLUSTER, (source, pos) -> {
             Level level = source.level();
             if (level.isClientSide) {
                 return;
@@ -368,7 +376,7 @@ public final class WFWarheads {
         // Pinpoint EMP lance: a narrow 2x2 ray down the impact heading disables machines it threads through — no
         // terrain damage, no area effect. The penetrator-EMP. A bright laser beam marks the strike path so it's
         // easy to see exactly what it hit.
-        WarheadRegistry.register(EMP_RAY, (source, pos) -> {
+        Warheads.register(EMP_RAY, (source, pos) -> {
             Level level = source.level();
             if (level.isClientSide) {
                 return;
@@ -382,13 +390,13 @@ public final class WFWarheads {
             EMPCreator.compose(level, pos.x, pos.y, pos.z, 4);
             empRayBeam(level, pos, axis, EMP_RAY_LENGTH);
             playEMP(pos,level);
-        }, WarheadRegistry.STANDARD_INTERCEPT);
+        }, Warheads.STANDARD_INTERCEPT);
 
         // --- Interceptor ----------------------------------------------------------------------------------
         // Cluster interceptor: when the parent engages (its intercept effect fires), it airbursts into a handful
         // of small, fast child interceptors that each home on the nearest remaining missile — one shot to blunt
         // a barrage. Children carry the plain "interceptor" warhead so they don't re-cluster.
-        WarheadRegistry.register(INTERCEPT_CLUSTER, (source, pos) -> {}, WFWarheads::interceptCluster);
+        Warheads.register(INTERCEPT_CLUSTER, (source, pos) -> {}, WFWarheads::interceptCluster);
     }
 
     private static void shitboxBuster(Level level, Vec3 pos, Vec3 heading, int radius, int fortune, int tier) {
@@ -498,7 +506,7 @@ public final class WFWarheads {
      * Bore a shaft down {@code source.angle()} up to {@link #TUNNEL_MAX_DEPTH} blocks, stopping early when the
      * dig budget runs out or it meets a tungsten-class block, then detonate a modest secondary blast at the end.
      */
-    private static void tunneller(com.wf.wflib.warhead.WarheadCarrier source, Vec3 pos) {
+    private static void tunneller(com.wf.wflib.warhead.api.WarheadCarrier source, Vec3 pos) {
         Level level = source.level();
         if (level.isClientSide) {
             return;
@@ -594,7 +602,7 @@ public final class WFWarheads {
     }
 
     /** Skyfall: spawn a spread of entity-seeking submunitions around the burst point. */
-    private static void skyfall(com.wf.wflib.warhead.WarheadCarrier source, Vec3 pos) {
+    private static void skyfall(com.wf.wflib.warhead.api.WarheadCarrier source, Vec3 pos) {
         Level level = source.level();
         if (!(level instanceof ServerLevel server)) {
             return;
@@ -622,10 +630,10 @@ public final class WFWarheads {
                 int gy = server.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, Mth.floor(tx), Mth.floor(tz));
                 target = new Vec3(tx, gy, tz);
             }
-            MissileBuilder b = MissileEntity.builder(ModEntities.STEALTH_MISSILE.get(), server)
+            MissileBuilder b = MissileEntity.builder(MissileContent.STEALTH_MISSILE.get(), server)
                     .model(MissileModels.rl("cluster_part"))
                     .target(target)
-                    .detonation(WarheadRegistry.rl("bomblet"))
+                    .detonation(Warheads.rl("bomblet"))
                     .swarmId(swarm)
                     .startInAttack()
                     .cruiseSpeed(3.0)
@@ -653,7 +661,7 @@ public final class WFWarheads {
     }
 
     /** Fragmentation storm: scatter FRAG_STORM_CHILDREN small frag missiles over a wide area around the burst. */
-    private static void fragStorm(com.wf.wflib.warhead.WarheadCarrier source, Vec3 pos) {
+    private static void fragStorm(com.wf.wflib.warhead.api.WarheadCarrier source, Vec3 pos) {
         Level level = source.level();
         if (!(level instanceof ServerLevel server)) {
             return;
@@ -670,13 +678,13 @@ public final class WFWarheads {
             double tz = pos.z + Math.sin(ang) * r;
             int gy = server.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, Mth.floor(tx), Mth.floor(tz));
             Vec3 target = new Vec3(tx, gy, tz);
-            MissileBuilder b = MissileEntity.builder(ModEntities.STEALTH_MISSILE.get(), server)
+            MissileBuilder b = MissileEntity.builder(MissileContent.STEALTH_MISSILE.get(), server)
                     .model(MissileModels.rl("cluster_part"))
                     .target(target)
                     .detonation(FRAG_STORM_CHILD)
                     .swarmId(swarm)
                     .startInAttack()
-                    .attackStage(FlightStageRegistry.rl(ControlledDiveStage.ID))
+                    .attackStage(FlightStages.rl(ControlledDiveStage.ID))
                     .explosionOffset(10.0f)     // airburst so the 4 bomblets spread before hitting the ground
                     .cruiseSpeed(2.0)
                     .terrainFollow(6.0)
@@ -697,7 +705,7 @@ public final class WFWarheads {
     }
 
     /** Cluster interceptor: airburst into several small homing child interceptors. */
-    private static void interceptCluster(com.wf.wflib.warhead.WarheadCarrier source, Vec3 pos) {
+    private static void interceptCluster(com.wf.wflib.warhead.api.WarheadCarrier source, Vec3 pos) {
         Level level = source.level();
         if (level.isClientSide) {
             return;
@@ -705,7 +713,7 @@ public final class WFWarheads {
         long swarm = SwarmManager.newId(level);
         UUID control = source instanceof MissileEntity m ? m.getControlId() : null;
         for (int i = 0; i < 9; i++) {
-            MissileBuilder b = MissileEntity.builder(ModEntities.STEALTH_MISSILE.get(), level)
+            MissileBuilder b = MissileEntity.builder(MissileContent.STEALTH_MISSILE.get(), level)
                     .model(MissileModels.rl("abm"))
                     .target(pos)
                     .interceptor(true)

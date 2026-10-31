@@ -34,6 +34,13 @@ public final class VehicleGate {
         return loaded;
     }
 
+    /** Mod construction: CA absent => nothing. */
+    public static void install() {
+        if (isLoaded()) {
+            VehicleOverrides.install();
+        }
+    }
+
     public static boolean isKnown(@Nullable ResourceLocation vehicleId) {
         return isLoaded() && CombinedAssaultVehicles.isKnown(vehicleId);
     }

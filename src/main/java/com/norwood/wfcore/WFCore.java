@@ -1,5 +1,7 @@
 package com.norwood.wfcore;
 
+import com.wf.wflib.core.api.WFLibContent;
+import com.wf.wflib.core.api.WFSystems;
 import net.minecraft.resources.ResourceLocation;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -79,6 +81,13 @@ public class WFCore {
     public static GTRegistrate WF_MACHINES = GTRegistrate.create(WFCore.MOD_ID);
 
     public WFCore(IEventBus modEventBus, ModContainer container) {
+        com.norwood.wfcore.integration.combinedassault.VehicleGate.install();
+        WFSystems.require(MOD_ID, "wflib:nvg");
+        WFLibContent.nvg(MOD_ID, "nvg_gen1", "nvg_pvs7", "nvg_pvs14", "nvg_pvs31", "nvg_gpnvg18");
+        WFLibContent.armor(WFCore.MOD_ID, "plate_carrier", "steel_plate", "ceramic_plate", "hazmat_suit", "combat_helmet");
+        WFSystems.require(MOD_ID, "wflib:armor");
+        WFSystems.require(MOD_ID, "wflib:mine");
+        WFLibContent.mines(WFCore.MOD_ID, "ap", "bounding", "claymore", "heat", "naval", "scatter_ap", "scatter_at", "dispenser_ap", "dispenser_at");
         // NeoForge-native TOML config. Registration + baking replace the old snakeyaml wfcore.yaml/radar.yaml.
         // ModLoadingContext is gone; the container is injected into the constructor instead.
         container.registerConfig(ModConfig.Type.COMMON, WFCoreConfig.SPEC, "wfcore.toml");

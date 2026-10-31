@@ -16,13 +16,13 @@ import net.neoforged.fml.common.EventBusSubscriber;
 
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.machine.MissileLauncherMachine;
-import com.wf.wflib.ModEntities;
-import com.wf.wflib.client.flywheel.FlywheelEffectManager;
-import com.wf.wflib.client.flywheel.InstancedTrailEffect;
+import com.wf.wflib.fx.api.FlywheelEffectManager;
+import com.wf.wflib.fx.api.InstancedTrailEffect;
 
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import com.wf.wflib.missile.api.MissileContent;
 
 /**
  * Drives WFLib' real Flywheel exhaust trail for the launch-rise animation. On fire, the display
@@ -56,7 +56,7 @@ public final class MissileLaunchTrail {
         if (level == null || src == null || !FlywheelEffectManager.isAvailable(level)) {
             return;
         }
-        Entity source = ModEntities.STEALTH_MISSILE.get().create(level);
+        Entity source = MissileContent.STEALTH_MISSILE.get().create(level);
         if (source == null) {
             return;
         }

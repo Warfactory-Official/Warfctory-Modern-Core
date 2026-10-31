@@ -1,11 +1,13 @@
 package com.norwood.wfcore.integration.wflib;
 
+import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.common.worldgen.resource.AllocationIndex;
 import com.norwood.wfcore.common.worldgen.resource.AllocationIndexManager;
 import com.norwood.wfcore.common.worldgen.resource.AnomalyCaveQuota;
 import com.norwood.wfcore.common.worldgen.resource.ResourceSystem;
-import com.wf.wflib.anomaly.site.AnomalyCaves;
-import com.wf.wflib.anomaly.site.AnomalySites;
+import com.wf.wflib.anomaly.api.AnomalyCaves;
+import com.wf.wflib.anomaly.api.AnomalySites;
+import com.wf.wflib.core.api.WFSystems;
 import net.minecraft.server.MinecraftServer;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 import org.jetbrains.annotations.Nullable;
@@ -15,7 +17,7 @@ import java.util.List;
 /**
  * WFWorldGen's {@code anomalies} section into WFLib, from the overworld's {@link AllocationIndex}:
  * {@link ResourceSystem#ANOMALY_SITE} rules -> site density (each tier's sites as much likelier at a place as its rule
- * says; stock (1) without a server); {@code anomaly_caves} -> {@link AnomalyCaves#allocation} (no server => none).
+ * says; stock (1) without a server); {@code anomaly_caves} -> {@link AnomalyCaves#ALLOCATION} (no server => none).
  */
 public final class AnomalySiteDensity {
 
@@ -33,12 +35,15 @@ public final class AnomalySiteDensity {
     }
 
     public static void register() {
-        AnomalySites.density = (tier, x, z) -> {
+        if (!WFSystems.enabled("wflib:anomaly")) {
+            return;
+        }
+        AnomalySites.DENSITY.set(WFCore.MOD_ID, (tier, x, z) -> {
             AllocationIndex index = index();
             return index == null ? 1.0 : index.multiplier(ResourceSystem.ANOMALY_SITE,
                     "wflib:anomaly_site_tier_" + tier, x + 0.5, z + 0.5);
-        };
-        AnomalyCaves.allocation = new AnomalyCaves.Allocation() {
+        });
+        AnomalyCaves.ALLOCATION.set(WFCore.MOD_ID, new AnomalyCaves.Allocation() {
             @Override
             public AnomalyCaves.Slot at(int chunkX, int chunkZ) {
                 AllocationIndex index = index();
@@ -62,6 +67,6 @@ public final class AnomalySiteDensity {
                 AllocationIndex index = index();
                 return index != null && !index.caveSlots().isEmpty();
             }
-        };
+        });
     }
 }

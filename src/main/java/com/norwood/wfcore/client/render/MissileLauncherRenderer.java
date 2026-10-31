@@ -14,10 +14,9 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 import com.norwood.wfcore.common.machine.MissileLauncherMachine;
-import com.norwood.wfcore.common.machine.MissileLauncherMachine;
-import com.wf.wflib.client.flywheel.FlywheelEffectManager;
-import com.wf.wflib.client.render.MissileItemRenderer;
-import com.wf.wflib.item.MissileItem;
+import com.wf.wflib.fx.api.FlywheelEffectManager;
+import com.wf.wflib.missile.api.client.MissileItemRenderer;
+import com.wf.wflib.missile.api.MissileItem;
 
 /**
  * Renders the loaded missile as a 3D model on the silo's launch pad (the 3x3 steel frame at the base),

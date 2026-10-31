@@ -3,7 +3,7 @@ package com.norwood.wfcore.integration.combinedassault;
 import net.minecraft.resources.ResourceLocation;
 
 import com.google.gson.JsonObject;
-import com.wf.combinedassault.api.CombinedAssaultAPI;
+import com.wf.combinedassault.vehicle.api.VehicleCatalogue;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -18,17 +18,19 @@ final class VehicleOverrides {
 
     private static final List<Entry> OVERRIDES = new CopyOnWriteArrayList<>();
 
-    static {
-        CombinedAssaultAPI.patchVehicleDefs(VehicleOverrides::apply);
-    }
-
     private VehicleOverrides() {}
+
+    /** Mod construction: registration must precede load complete; entries may arrive from scripts any time later. */
+    static void install() {
+        VehicleCatalogue.DEF_PATCHES.register(ResourceLocation.fromNamespaceAndPath("wfcore", "energy_overrides"), 0,
+                VehicleOverrides::apply);
+    }
 
     static void add(String vehicle, JsonObject energyInfo) {
         OVERRIDES.add(new Entry(vehicle, energyInfo));
     }
 
-    private static void apply(ResourceLocation id, JsonObject def) {
+    static void apply(ResourceLocation id, JsonObject def) {
         String key = id.toString();
         for (Entry o : OVERRIDES) {
             if (o.vehicle.equals(VehicleGate.ALL) && !isElectric(def)) {

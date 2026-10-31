@@ -50,14 +50,13 @@ import com.norwood.wfcore.common.data.WFMissiles;
 import com.tterrag.registrate.util.entry.ItemEntry;
 import com.norwood.wfcore.integration.warforge.FactionNotifier;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
-import com.wf.wflib.MissileEntity;
-import com.wf.wflib.compat.WarforgeCompat;
-import com.wf.wflib.flight.FlightStageRegistry;
-import com.wf.wflib.item.MissileItem;
-import com.wf.wflib.item.MissilePreset;
-import com.wf.wflib.missile.MissileInterceptor;
-import com.wf.wflib.sim.MissileSimConfig;
-import com.wf.wflib.warhead.WarheadRegistry;
+import com.wf.wflib.missile.api.MissileEntity;
+import com.wf.wflib.compat.api.WarforgeCompat;
+import com.wf.wflib.missile.api.FlightStages;
+import com.wf.wflib.missile.api.MissileItem;
+import com.wf.wflib.missile.api.MissilePreset;
+import com.wf.wflib.missile.api.MissileInterceptor;
+import com.wf.wflib.warhead.api.Warheads;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -75,6 +74,7 @@ import brachy.modularui.screen.UISettings;
 import brachy.modularui.value.sync.PanelSyncManager;
 import com.norwood.wfcore.client.render.mask.RenderMaskManager;
 import com.norwood.wfcore.common.gui.InterceptorGui;
+import com.wf.wflib.missile.api.MissileConfig;
 
 /**
  * Interceptor battery controller. A point-defense installation that automatically engages incoming hostile
@@ -125,11 +125,11 @@ public class InterceptorMachine extends MultiblockControllerMachine
     private static final double TARGET_BOOST_SPEED_MULT = 2.0;
     /** WF-B's inert warhead id — an inert round is transparently harmless, so the auto-picker ignores it (the
      *  {@link com.norwood.wfcore.common.data.WFMissiles#DUMMY dummy}) unless it's a loitering decoy (below). */
-    private static final ResourceLocation INERT_WARHEAD_ID = WarheadRegistry.rl("inert");
+    private static final ResourceLocation INERT_WARHEAD_ID = Warheads.rl("inert");
     /** The loiter-until-dry cruise stage id ({@link com.norwood.wfcore.common.data.WFMissiles#LOITER_DRONE}):
      *  an inert missile flying it reads as a live loitering munition, so the battery deliberately engages it —
      *  wasting a round on the decoy is exactly what it's for. */
-    private static final ResourceLocation LOITER_STAGE_ID = FlightStageRegistry.rl(LoiterUntilDryStage.ID);
+    private static final ResourceLocation LOITER_STAGE_ID = FlightStages.rl(LoiterUntilDryStage.ID);
 
 
     // Positions of the linked missile factories, server-authoritative. @SaveField persists it directly:
@@ -598,7 +598,7 @@ public class InterceptorMachine extends MultiblockControllerMachine
 
         double base = interceptor.interceptChance();
         if (interceptorSpeed <= targetSpeed) {
-            base *= MissileSimConfig.INTERCEPTOR_CROSSING_HIT_FACTOR; // couldn't overtake it -> unreliable crossing shot
+            base *= MissileConfig.interceptorCrossingHitFactor(); // couldn't overtake it -> unreliable crossing shot
         }
 
         double escape = 0.0;

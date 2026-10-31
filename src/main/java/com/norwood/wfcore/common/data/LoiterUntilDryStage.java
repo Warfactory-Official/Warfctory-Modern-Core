@@ -1,9 +1,9 @@
 package com.norwood.wfcore.common.data;
 
-import com.wf.wflib.MissileEntity;
-import com.wf.wflib.flight.FlightContext;
-import com.wf.wflib.flight.FlightStage;
-import com.wf.wflib.flight.FlightStageRegistry;
+import com.wf.wflib.missile.api.MissileEntity;
+import com.wf.wflib.missile.api.FlightContext;
+import com.wf.wflib.missile.api.FlightStage;
+import com.wf.wflib.missile.api.FlightStages;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.Nullable;
@@ -30,7 +30,7 @@ public final class LoiterUntilDryStage implements FlightStage {
     private LoiterUntilDryStage() {}
 
     public static void register() {
-        FlightStageRegistry.register(MissileEntity.Phase.CRUISE, INSTANCE);
+        FlightStages.register(MissileEntity.Phase.CRUISE, INSTANCE);
     }
 
     @Override
