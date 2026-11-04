@@ -13,10 +13,6 @@ import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.items.IItemHandler;
 
 import com.flansmod.warforge.api.WarforgeAPI;
-import com.flansmod.warforge.common.WarForgeMod;
-import com.flansmod.warforge.common.util.DimBlockPos;
-import com.flansmod.warforge.common.util.DimChunkPos;
-import com.flansmod.warforge.server.Faction;
 import com.norwood.wfcore.api.research.ResearchAccessCache;
 import com.norwood.wfcore.api.research.ResearchDataItem;
 import com.norwood.wfcore.common.machine.ResearchUnitMachine;
@@ -34,8 +30,7 @@ import java.util.UUID;
  * claimed, loaded territory.
  *
  * <p>
- * Only referenced once WarForge is confirmed loaded, so the hard {@code com.flansmod.warforge} imports are
- * safe.
+ * Only referenced once WarForge is confirmed loaded.
  */
 public final class FactionLibraryAccess {
 
@@ -44,8 +39,8 @@ public final class FactionLibraryAccess {
     /** Whether the faction owning the chunk at {@code pos} has qualifying data storage in its loaded claims. */
     public static boolean hasLibraryAccess(Level world, BlockPos pos) {
         if (world == null || world.isClientSide || pos == null) return false;
-        UUID faction = WarForgeMod.FACTIONS.getClaim(new DimChunkPos(world.dimension(), pos));
-        if (faction == null || Faction.nullUuid.equals(faction)) return false;
+        UUID faction = WarforgeAPI.ownerOf(world.dimension(), new ChunkPos(pos));
+        if (faction == null) return false;
         return WarforgeAPI.anyLoadedClaimedTile(faction, FactionLibraryAccess::tileHoldsData);
     }
 
@@ -56,27 +51,25 @@ public final class FactionLibraryAccess {
      */
     public static boolean hasResearch(Level world, BlockPos pos, String researchId) {
         if (world == null || world.isClientSide || pos == null || researchId == null) return false;
-        UUID faction = WarForgeMod.FACTIONS.getClaim(new DimChunkPos(world.dimension(), pos));
-        if (faction == null || Faction.nullUuid.equals(faction)) return false;
+        UUID faction = WarforgeAPI.ownerOf(world.dimension(), new ChunkPos(pos));
+        if (faction == null) return false;
 
         Boolean cached = ResearchAccessCache.peek(faction, researchId);
         if (cached != null) {
             return cached;
         }
         boolean result = WarforgeAPI.anyLoadedClaimedTile(faction, be -> tileHasResearch(be, researchId));
-        UUID factionId = faction;
-        ResearchAccessCache.record(faction, researchId, result, () -> collectClaimedChunks(factionId));
+        ResearchAccessCache.record(faction, researchId, result, () -> collectClaimedChunks(faction));
         return result;
     }
 
     private static Set<ResearchAccessCache.ChunkKey> collectClaimedChunks(UUID factionId) {
-        Faction faction = WarForgeMod.FACTIONS.getFaction(factionId);
-        if (faction == null) return Set.of();
         Set<ResearchAccessCache.ChunkKey> chunks = new HashSet<>();
-        for (DimBlockPos claim : faction.claims.keySet()) {
-            DimChunkPos cpos = claim.toChunkPos();
-            chunks.add(new ResearchAccessCache.ChunkKey(cpos.dim, ChunkPos.asLong(cpos.x, cpos.z)));
-        }
+        WarforgeAPI.claimedChunks(factionId).forEach((dim, packed) -> {
+            for (long chunk : packed) {
+                chunks.add(new ResearchAccessCache.ChunkKey(dim, chunk));
+            }
+        });
         return chunks;
     }
 

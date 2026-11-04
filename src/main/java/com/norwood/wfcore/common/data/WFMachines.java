@@ -660,12 +660,12 @@ public class WFMachines {
                                     .or(autoAbilities(true, false, false)))
                             .where('E', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get()))
                             .where('F', blocks(WFBlocks.CONDENSED_CABLES.get()))
-                            .where('G', blocks(matBlock(WFMaterials.GalvanizedSteel)))
+                            .where('G', blocks(matBlock(WFMaterials.GalvanizedSteel.value())))
                             // Requires the bolted casing block: built with the unbolted casing, then bolted
                             // into place with the bolt gun to complete the structure (1.12.2 mechanic).
                             .where('H', blocks(WFBlocks.BOLTABLE_CASING_BOLTED.get()))
                             .where('I', frames(GTMaterials.Aluminium))
-                            .where('J', blocks(matBlock(GTMaterials.Aluminium)))
+                            .where('J', blocks(matBlock(GTMaterials.Aluminium.value())))
                             .where(' ', any())
                             .build();
                 })
@@ -694,7 +694,7 @@ public class WFMachines {
                                 .or(autoAbilities(true, false, false)))
                         .where('E', blocks(WFBlocks.GALVANIZED_STEEL_CASING.get()))
                         .where('F', blocks(WFBlocks.CONDENSED_CABLES.get()))
-                        .where('G', blocks(matBlock(WFMaterials.GalvanizedSteel)))
+                        .where('G', blocks(matBlock(WFMaterials.GalvanizedSteel.value())))
                         .where('I', frames(GTMaterials.Aluminium))
                         .where(' ', any())
                         .build())

@@ -21,7 +21,7 @@ import java.util.Set;
 @EventBusSubscriber(modid = WFCore.MOD_ID)
 public final class HazmatArmorStats {
 
-    private static final Set<String> HAZMAT_PIECES = Set.of(
+    public static final Set<String> HAZMAT_PIECES = Set.of(
             "gtceu:hazmat_headpiece", "gtceu:hazmat_chestpiece", "gtceu:hazmat_leggings", "gtceu:hazmat_boots");
 
     /** One stable modifier UUID per armor slot, so the four pieces stack instead of overwriting each other. */

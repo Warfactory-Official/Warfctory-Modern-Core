@@ -24,7 +24,7 @@ public abstract class FireClayFluidPipeMixin {
     private void wfcore$fireClayContainment(FluidStack stack, CallbackInfo ci) {
         if (stack == null || stack.isEmpty()) return;
         if (!(((IPipeNode<?, ?>) (Object) this).getPipeBlock() instanceof MaterialPipeBlock<?, ?, ?> pipeBlock)
-                || pipeBlock.material != WFMaterials.FireClay) {
+                || pipeBlock.material != WFMaterials.FireClay.value()) {
             return;
         }
         if (WFMaterials.isMoltenMetal(stack)) {

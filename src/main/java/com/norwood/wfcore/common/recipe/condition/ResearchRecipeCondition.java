@@ -46,7 +46,7 @@ public class ResearchRecipeCondition extends RecipeCondition<ResearchRecipeCondi
 
     @Override
     public RecipeConditionType<ResearchRecipeCondition> getType() {
-        return WFRecipeConditions.RESEARCH;
+        return WFRecipeConditions.RESEARCH.get();
     }
 
     @Override

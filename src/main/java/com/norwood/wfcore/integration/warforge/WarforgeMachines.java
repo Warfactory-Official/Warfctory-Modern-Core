@@ -49,19 +49,19 @@ public final class WarforgeMachines {
 
     public static void init() {
         CHUNK_REINFORCER_LV = register("chunk_reinforcer_lv", GTValues.LV, 1, 2, "Basic Chunk Reinforcer (LV)",
-                GTBlocks.MACHINE_CASING_LV, GTBlocks.CASING_STEEL_SOLID, GTMaterials.Steel,
+                GTBlocks.MACHINE_CASING_LV, GTBlocks.CASING_STEEL_SOLID, GTMaterials.Steel.value(),
                 GTCEu.id("block/casings/solid/machine_casing_solid_steel"));
         CHUNK_REINFORCER_MV = register("chunk_reinforcer_mv", GTValues.MV, 1, 3, "Hardened Chunk Reinforcer (MV)",
-                GTBlocks.MACHINE_CASING_MV, GTBlocks.CASING_ALUMINIUM_FROSTPROOF, GTMaterials.Aluminium,
+                GTBlocks.MACHINE_CASING_MV, GTBlocks.CASING_ALUMINIUM_FROSTPROOF, GTMaterials.Aluminium.value(),
                 GTCEu.id("block/casings/solid/machine_casing_frost_proof"));
         CHUNK_REINFORCER_HV = register("chunk_reinforcer_hv", GTValues.HV, 2, 4, "Fortified Chunk Reinforcer (HV)",
-                GTBlocks.MACHINE_CASING_HV, GTBlocks.CASING_STAINLESS_CLEAN, GTMaterials.StainlessSteel,
+                GTBlocks.MACHINE_CASING_HV, GTBlocks.CASING_STAINLESS_CLEAN, GTMaterials.StainlessSteel.value(),
                 GTCEu.id("block/casings/solid/machine_casing_clean_stainless_steel"));
         CHUNK_REINFORCER_EV = register("chunk_reinforcer_ev", GTValues.EV, 2, 6, "Advanced Chunk Reinforcer (EV)",
-                GTBlocks.MACHINE_CASING_EV, GTBlocks.CASING_TITANIUM_STABLE, GTMaterials.Titanium,
+                GTBlocks.MACHINE_CASING_EV, GTBlocks.CASING_TITANIUM_STABLE, GTMaterials.Titanium.value(),
                 GTCEu.id("block/casings/solid/machine_casing_stable_titanium"));
         CHUNK_REINFORCER_IV = register("chunk_reinforcer_iv", GTValues.IV, 3, 8, "Bastion Chunk Reinforcer (IV)",
-                GTBlocks.MACHINE_CASING_IV, GTBlocks.CASING_TUNGSTENSTEEL_ROBUST, GTMaterials.TungstenSteel,
+                GTBlocks.MACHINE_CASING_IV, GTBlocks.CASING_TUNGSTENSTEEL_ROBUST, GTMaterials.TungstenSteel.value(),
                 GTCEu.id("block/casings/solid/machine_casing_robust_tungstensteel"));
     }
 

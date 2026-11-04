@@ -60,7 +60,7 @@ public class DepositRecipeCondition extends RecipeCondition<DepositRecipeConditi
 
     @Override
     public RecipeConditionType<DepositRecipeCondition> getType() {
-        return WFRecipeConditions.DEPOSIT;
+        return WFRecipeConditions.DEPOSIT.get();
     }
 
     @Override

@@ -58,6 +58,7 @@ import com.norwood.wfcore.common.worldgen.road.WorldgenPackProvider;
 import com.norwood.wfcore.common.worldgen.transplant.VeinBackfillCommand;
 import com.norwood.wfcore.common.worldgen.transplant.VeinBackfillRunner;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
+import com.norwood.wfcore.integration.warforge.WarforgeFobGuard;
 import com.norwood.wfcore.integration.warforge.WarforgeVeinAllocation;
 import com.norwood.wfcore.config.WFCoreConfig;
 import com.norwood.wfcore.radar.RadarConfig;
@@ -87,6 +88,8 @@ public class WFCore {
         WFLibContent.armor(WFCore.MOD_ID, "plate_carrier", "steel_plate", "ceramic_plate", "hazmat_suit", "combat_helmet");
         WFSystems.require(MOD_ID, "wflib:armor");
         WFSystems.require(MOD_ID, "wflib:mine");
+        WFSystems.require(MOD_ID, "wflib:mist");
+        com.norwood.wfcore.integration.wflib.GasProtection.install();
         WFLibContent.mines(WFCore.MOD_ID, "ap", "bounding", "claymore", "heat", "naval", "scatter_ap", "scatter_at", "dispenser_ap", "dispenser_at");
         // NeoForge-native TOML config. Registration + baking replace the old snakeyaml wfcore.yaml/radar.yaml.
         // ModLoadingContext is gone; the container is injected into the constructor instead.
@@ -131,6 +134,7 @@ public class WFCore {
         NeoForge.EVENT_BUS.register(com.norwood.wfcore.common.worldgen.DensityDumpCommands.INSTANCE);
         if (WarforgeIntegration.isLoaded()) {
             WarforgeVeinAllocation.install();
+            WarforgeFobGuard.install();
         }
         NeoForge.EVENT_BUS.register(new WFComputeTooltips());
         NeoForge.EVENT_BUS.register(new WFBlockResistanceTooltip());

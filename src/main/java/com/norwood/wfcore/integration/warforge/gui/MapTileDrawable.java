@@ -5,21 +5,22 @@ import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.Tag;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.level.Level;
 
 import brachy.modularui.api.drawable.IDrawable;
 import brachy.modularui.drawable.GuiDraw;
 import brachy.modularui.screen.viewport.GuiContext;
 import brachy.modularui.theme.WidgetTheme;
-import com.flansmod.warforge.Tags;
-import com.flansmod.warforge.api.modularui.ChunkMapTextureDaemon;
+import com.flansmod.warforge.api.client.WarforgeClientApi;
 import com.norwood.wfcore.common.machine.MissileLauncherMachine;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.IntSupplier;
 
 /**
- * One chunk tile of the launcher's target map: draws the {@link ChunkMapTextureDaemon}-generated terrain
+ * One chunk tile of the launcher's target map: draws the WarForge chunk-map terrain
  * texture for the chunk plus a thin grid line, a block-precise target marker, a highlight on the silo's own
  * chunk, and a white block cursor under the mouse. The chunk coordinates come from suppliers so panning the
  * map (which shifts the client-side view centre) retargets every tile without rebuilding widgets.
@@ -59,6 +60,10 @@ final class MapTileDrawable implements IDrawable {
     private final BooleanSupplier isSelfChunk;
     /** Shared out-holder: world block (x, z) under the mouse, written by whichever tile is hovered. */
     private final int[] hoverBlock;
+    private ResourceLocation texture;
+    private int texX;
+    private int texZ;
+    private ResourceKey<Level> texDim;
 
     MapTileDrawable(String namespace, IntSupplier chunkX, IntSupplier chunkZ,
                      IntSupplier targetBlockX, IntSupplier targetBlockZ, BooleanSupplier hasTarget,
@@ -83,9 +88,12 @@ final class MapTileDrawable implements IDrawable {
         }
         int cx = chunkX.getAsInt();
         int cz = chunkZ.getAsInt();
-        // The daemon registers its DynamicTextures under warforge's namespace regardless of ours.
-        ResourceLocation texture = ResourceLocation.fromNamespaceAndPath(Tags.MODID,
-                ChunkMapTextureDaemon.getTextureName(namespace, level.dimension(), cx, cz));
+        if (texture == null || cx != texX || cz != texZ || level.dimension() != texDim) {
+            texture = WarforgeClientApi.chunkMapTexture(namespace, level.dimension(), cx, cz);
+            texX = cx;
+            texZ = cz;
+            texDim = level.dimension();
+        }
 
         AbstractTexture loaded = Minecraft.getInstance().getTextureManager().getTexture(texture, null);
         if (loaded instanceof DynamicTexture) {

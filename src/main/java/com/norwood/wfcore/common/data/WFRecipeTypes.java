@@ -223,10 +223,10 @@ public class WFRecipeTypes {
 
 
     private static void addStrandcasterRecipes(RecipeOutput provider) {
-        cast(provider, "steel_ingot", GTMaterials.Steel);
-        cast(provider, "brass_ingot", GTMaterials.Brass);
-        cast(provider, "bronze_ingot", GTMaterials.Bronze);
-        cast(provider, "red_alloy_ingot", GTMaterials.RedAlloy);
+        cast(provider, "steel_ingot", GTMaterials.Steel.value());
+        cast(provider, "brass_ingot", GTMaterials.Brass.value());
+        cast(provider, "bronze_ingot", GTMaterials.Bronze.value());
+        cast(provider, "red_alloy_ingot", GTMaterials.RedAlloy.value());
     }
 
     private static void cast(RecipeOutput provider, String id,

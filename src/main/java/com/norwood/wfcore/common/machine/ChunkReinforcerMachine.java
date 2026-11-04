@@ -28,13 +28,12 @@ import net.neoforged.neoforge.items.IItemHandlerModifiable;
 
 import com.flansmod.warforge.api.WarForgeCapabilities;
 import com.flansmod.warforge.api.interfaces.IChunkReinforcer;
-import com.flansmod.warforge.common.WarForgeMod;
-import com.flansmod.warforge.common.util.DimChunkPos;
-import com.flansmod.warforge.server.Faction;
+import com.flansmod.warforge.api.WarforgeAPI;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.block.Block;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
 import com.norwood.wfcore.common.data.WFMachines;
@@ -44,7 +43,7 @@ import com.norwood.wfcore.common.data.WFMachines;
  * burning, it raises the siege difficulty of every claimed chunk within {@link #reinforcementRadius} (queried
  * by WarForge through the {@code CHUNK_REINFORCER} capability exposed by {@link ChunkReinforcerBlockEntity}).
  * Radius and the defence bonus are fixed per voltage tier at registration. Only constructed when WarForge is
- * loaded, so the hard {@code com.flansmod.warforge} imports are safe.
+ * loaded.
  */
 public class ChunkReinforcerMachine extends MultiblockControllerMachine
                                     implements IChunkReinforcer, IControllable, IMuiMachine {
@@ -138,9 +137,7 @@ public class ChunkReinforcerMachine extends MultiblockControllerMachine
 
     private boolean computeClaimed() {
         if (getLevel() == null) return false;
-        DimChunkPos pos = new DimChunkPos(getLevel().dimension(), getBlockPos());
-        var claim = WarForgeMod.FACTIONS.getClaim(pos);
-        return claim != null && !Faction.nullUuid.equals(claim);
+        return WarforgeAPI.ownerOf(getLevel().dimension(), new ChunkPos(getBlockPos())) != null;
     }
 
     /** Consumes one food item from an input bus, returning the burn ticks it grants (0 if none). */

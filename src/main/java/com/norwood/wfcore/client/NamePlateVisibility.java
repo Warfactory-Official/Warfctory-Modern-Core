@@ -12,6 +12,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
+import com.flansmod.warforge.api.client.NameplatePolicy;
+import com.flansmod.warforge.api.client.WarforgeClientApi;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 
 
@@ -31,7 +33,7 @@ public final class NamePlateVisibility {
 
     public static boolean isHidden(Entity entity) {
 
-        if (!WarforgeIntegration.isLoaded() || !(entity instanceof Player)) {
+        if (!WarforgeIntegration.isLoaded() || !(entity instanceof Player player)) {
             return false;
         }
         Entity camera = Minecraft.getInstance().getCameraEntity();
@@ -41,17 +43,25 @@ public final class NamePlateVisibility {
         if (Minecraft.getInstance().getEntityRenderDispatcher().distanceToSqr(entity) <= VISIBLE_RANGE_SQ) {
             return false;
         }
-        return !FactionTeammateCache.isTeammate(entity);
+        return !WarforgeClientApi.isTeammate(player);
     }
 
     public static Font.DisplayMode displayMode(Entity entity) {
-        // WarForge teammates always show through walls; everyone else needs the aim/cover/line-of-sight gate.
-        // The FactionTeammateCache reference stays lazy behind isLoaded() so its WarForge imports never load
-        // when the mod is absent.
-        if (WarforgeIntegration.isLoaded() && FactionTeammateCache.isTeammate(entity)) {
+        if (WarforgeIntegration.isLoaded() && entity instanceof Player player && WarforgeClientApi.isTeammate(player)) {
             return Font.DisplayMode.SEE_THROUGH;
         }
         return shouldPierce(entity) ? Font.DisplayMode.SEE_THROUGH : Font.DisplayMode.NORMAL;
+    }
+
+    /** Behind {@link WarforgeIntegration#isLoaded()}; client only. */
+    public static void installWarforgePolicy() {
+        WarforgeClientApi.setNameplatePolicy(entity -> {
+            if (isHidden(entity)) {
+                return NameplatePolicy.Mode.HIDDEN;
+            }
+            return displayMode(entity) == Font.DisplayMode.SEE_THROUGH
+                    ? NameplatePolicy.Mode.SEE_THROUGH : NameplatePolicy.Mode.NORMAL;
+        });
     }
 
     public static boolean shouldPierce(Entity entity) {

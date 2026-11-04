@@ -1,17 +1,15 @@
 package com.norwood.wfcore.integration.warforge;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 
-import com.flansmod.warforge.common.WarForgeMod;
-import com.flansmod.warforge.common.network.PacketClientNotification;
-import com.flansmod.warforge.server.Faction;
+import com.flansmod.warforge.api.NotificationStyle;
+import com.flansmod.warforge.api.WarforgeAPI;
 
 import java.util.UUID;
 
 /**
- * Sends WarForge team notifications (the on-screen banner every faction member sees). All
- * {@code com.flansmod.warforge.*} references are isolated here, so this class is only loaded — and therefore
- * only touches WarForge — behind a {@link WarforgeIntegration#isLoaded()} check.
+ * Sends WarForge team notifications. Load only behind {@link WarforgeIntegration#isLoaded()}.
  */
 public final class FactionNotifier {
 
@@ -21,22 +19,14 @@ public final class FactionNotifier {
 
     private FactionNotifier() {}
 
-    /**
-     * Warns every online member of the faction identified by {@code factionId} that a missile is inbound and
-     * a battery is engaging it. No-op if the id is null/nullUuid or no such faction exists (e.g. the battery
-     * sits on unclaimed land).
-     */
+    /** No-op for a null id or unknown faction. */
     public static void warnIncomingMissile(UUID factionId, BlockPos batteryPos) {
-        if (factionId == null || factionId.equals(Faction.nullUuid)) {
+        if (factionId == null) {
             return;
         }
-        Faction faction = WarForgeMod.FACTIONS.getFaction(factionId);
-        if (faction == null) {
-            return;
-        }
-        WarForgeMod.notifyFaction(faction, MISSILE_TOKEN,
-                "Incoming Missile",
-                "Interceptor battery at " + batteryPos.getX() + ", " + batteryPos.getZ() + " engaging",
-                PacketClientNotification.COLOR_DANGER, WARN_DURATION_MS);
+        WarforgeAPI.notifyFaction(factionId, MISSILE_TOKEN,
+                Component.literal("Incoming Missile: interceptor battery at " + batteryPos.getX() + ", "
+                        + batteryPos.getZ() + " engaging"),
+                NotificationStyle.DANGER, WARN_DURATION_MS);
     }
 }

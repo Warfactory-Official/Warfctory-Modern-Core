@@ -25,6 +25,7 @@ import com.norwood.wfcore.common.data.WFBlocks;
 import com.norwood.wfcore.common.data.WFMachines;
 import com.norwood.wfcore.common.machine.MissileLauncherMachine;
 import com.norwood.wfcore.common.particle.WFParticles;
+import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 
 @EventBusSubscriber(modid = WFCore.MOD_ID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class WFClientEvents {
@@ -48,6 +49,9 @@ public class WFClientEvents {
     @SubscribeEvent
     public static void onClientSetup(FMLClientSetupEvent event) {
         PlayerRankUtil.init();
+        if (WarforgeIntegration.isLoaded()) {
+            NamePlateVisibility.installWarforgePolicy();
+        }
 
         // The animated machines are drawn by Flywheel visuals rather than block entity renderers, so
         // they are registered here instead of in RegisterRenderers. neverSkipVanillaRender because the

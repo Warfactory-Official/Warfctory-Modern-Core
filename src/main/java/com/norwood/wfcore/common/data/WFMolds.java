@@ -1,6 +1,7 @@
 package com.norwood.wfcore.common.data;
 
 import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.TagPrefixEntry;
 
 import net.minecraft.world.item.Item;
 
@@ -46,11 +47,11 @@ public final class WFMolds {
 
         public final String id;
         public final String display;
-        public final TagPrefix prefix;
+        public final TagPrefixEntry prefix;
         public final int size;
         public final String[] pattern;
 
-        Shape(String id, String display, TagPrefix prefix, int size, String... pattern) {
+        Shape(String id, String display, TagPrefixEntry prefix, int size, String... pattern) {
             this.id = id;
             this.display = display;
             this.prefix = prefix;

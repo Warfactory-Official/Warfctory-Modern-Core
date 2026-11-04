@@ -142,9 +142,6 @@ sourceSets.main.java {
     exclude 'com/norwood/wfcore/mixin/ProspectorOreDepositMixin.java'
     exclude 'com/norwood/wfcore/mixin/RenderablePngsManagerMixin.java'
     exclude 'com/norwood/wfcore/mixin/ServerLifecycleHooksMixin.java'
-    exclude 'com/norwood/wfcore/mixin/WarforgeFobWarpGuardMixin.java'
-    exclude 'com/norwood/wfcore/mixin/WarforgeNamePlateMixin.java'
-    exclude 'com/norwood/wfcore/mixin/WFLibGasMaskMixin.java'
     // ---------------------------------------------------------------------------------------
 }
 

@@ -1,6 +1,6 @@
 package com.norwood.wfcore.common.data;
 
-import com.gregtechceu.gtceu.api.data.tag.TagPrefix;
+import com.gregtechceu.gtceu.api.registry.registrate.entry.TagPrefixEntry;
 import com.gregtechceu.gtceu.common.data.GTMaterials;
 
 import net.minecraft.tags.BlockTags;
@@ -16,14 +16,15 @@ import com.norwood.wfcore.WFCore;
 public final class WFOres {
 
     // Hosted by veins of GT's deepslate layer: deeprock is in #minecraft:deepslate_ore_replaceables.
-    public static final TagPrefix oreDeeprock = TagPrefix
-            .oreTagPrefix(WFCore.id("deeprock"), BlockTags.MINEABLE_WITH_PICKAXE)
-            .langValue("Deeprock %s Ore")
-            .registerOre(WFOres::deeprock, () -> GTMaterials.Deepslate,
+    public static final TagPrefixEntry oreDeeprock = WFCore.WF_MACHINES
+            .oreTagPrefix("deeprock", BlockTags.MINEABLE_WITH_PICKAXE)
+            .lang("Deeprock %s Ore")
+            .registerOre(WFOres::deeprock, () -> GTMaterials.Deepslate.value(),
                     BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLUE).requiresCorrectToolForDrops()
                             .strength(WFBlocks.DEEPROCK_HARDNESS, WFBlocks.DEEPROCK_RESISTANCE)
                             .sound(SoundType.DEEPSLATE),
-                    WFCore.id("block/deeprock"), false, false, true);
+                    WFCore.id("block/deeprock"), false, false, true)
+            .register();
 
     private WFOres() {}
 

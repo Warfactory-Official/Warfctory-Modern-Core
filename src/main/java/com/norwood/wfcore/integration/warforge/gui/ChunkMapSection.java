@@ -11,31 +11,22 @@ import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.value.sync.IntSyncValue;
 import brachy.modularui.widget.ParentWidget;
 import brachy.modularui.widgets.TextWidget;
-import com.flansmod.warforge.api.modularui.ChunkMapTextureDaemon;
-import com.flansmod.warforge.common.WarForgeMod;
-import com.flansmod.warforge.common.network.PacketRequestTerrainColors;
-import com.flansmod.warforge.common.util.DimChunkPos;
+import com.flansmod.warforge.api.client.WarforgeClientApi;
 import com.norwood.wfcore.common.machine.MissileLauncherMachine;
 
-import java.util.Map;
-
 /**
- * The launcher GUI's pannable chunk-map target picker, built on WarForge's async map-tile pipeline:
- * {@link ChunkMapTextureDaemon} renders one 16x16 terrain texture per chunk off-thread (warforge's client
- * tick handler flushes the upload queue), a {@link PacketRequestTerrainColors} round-trip fills in chunks
- * the client hasn't loaded, and each grid cell draws its {@link MapTileDrawable} by texture name — so
- * panning only shifts the view centre and issues a new request, never rebuilds widgets.
+ * The launcher GUI's pannable chunk-map target picker, built on {@link WarforgeClientApi}'s chunk-map
+ * textures: each grid cell draws its {@link MapTileDrawable} by texture, so panning only shifts the view
+ * centre and issues a new request, never rebuilds widgets.
  *
  * <p>
  * Clicking a tile writes the chunk's centre block into the GUI's X/Z coordinate sync values (and resets Y
  * to auto), which is the same client→server conduit the text fields use — the server never needs to know
- * the client's pan state. This class is the only place that touches {@code com.flansmod.*} for the map, and
- * it is only reached behind {@code WarforgeIntegration.isLoaded()}; tiles and daemon calls are additionally
- * client-gated so a dedicated server building the same panel never loads client texture classes.
+ * the client's pan state. Reached only behind {@code WarforgeIntegration.isLoaded()}; client API calls are client-gated.
  */
 public final class ChunkMapSection {
 
-    /** Daemon texture namespace; distinct from warforge's own "claimmap"/siege namespaces. */
+    /** Distinct from warforge's own "claimmap"/siege namespaces. */
     private static final String NAMESPACE = "wfcore_launcher";
 
     private static final int RADIUS = 4;
@@ -73,13 +64,7 @@ public final class ChunkMapSection {
         // which would fight manual panning).
         int[] lastTarget = { mte.getTargetX() >> 4, mte.getTargetZ() >> 4 };
 
-        Runnable request = () -> {
-            ChunkMapTextureDaemon.requestMapUpdate(NAMESPACE, dim, center[0], center[1], RADIUS, Map.of());
-            PacketRequestTerrainColors terrainReq = new PacketRequestTerrainColors();
-            terrainReq.center = new DimChunkPos(dim, center[0], center[1]);
-            terrainReq.radius = RADIUS;
-            WarForgeMod.NETWORK.sendToServer(terrainReq);
-        };
+        Runnable request = () -> WarforgeClientApi.requestChunkMap(NAMESPACE, dim, center[0], center[1], RADIUS);
 
         // World block under the mouse, written each frame by the hovered tile's drawable (the draw pass is
         // the one place where mouse and tile coordinates are guaranteed to share a space) and read by the
@@ -141,7 +126,7 @@ public final class ChunkMapSection {
                 }
             }
             if (++ticks[0] % REBUILD_INTERVAL == 0) {
-                ChunkMapTextureDaemon.rebuildLast(NAMESPACE);
+                WarforgeClientApi.rebuildChunkMap(NAMESPACE);
             }
         });
 

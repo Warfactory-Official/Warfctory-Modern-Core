@@ -83,21 +83,21 @@ public final class FoundryMolds {
         if (molds == null) {
             Map<Item, Mold> map = new IdentityHashMap<>();
             // Small parts -> Foundry Mold Caster
-            map.put(GTItems.SHAPE_MOLD_NUGGET.get(), new Mold(TagPrefix.nugget, SIZE_CASTER));
-            map.put(GTItems.SHAPE_MOLD_INGOT.get(), new Mold(TagPrefix.ingot, SIZE_CASTER));
-            map.put(GTItems.SHAPE_MOLD_PLATE.get(), new Mold(TagPrefix.plate, SIZE_CASTER));
-            map.put(GTItems.SHAPE_MOLD_GEAR_SMALL.get(), new Mold(TagPrefix.gearSmall, SIZE_CASTER));
-            map.put(GTItems.SHAPE_MOLD_TINY_PIPE.get(), new Mold(TagPrefix.pipeTinyFluid, SIZE_CASTER));
-            map.put(GTItems.SHAPE_MOLD_SMALL_PIPE.get(), new Mold(TagPrefix.pipeSmallFluid, SIZE_CASTER));
-            map.put(GTItems.SHAPE_MOLD_NORMAL_PIPE.get(), new Mold(TagPrefix.pipeNormalFluid, SIZE_CASTER));
+            map.put(GTItems.SHAPE_MOLD_NUGGET.get(), new Mold(TagPrefix.nugget.value(), SIZE_CASTER));
+            map.put(GTItems.SHAPE_MOLD_INGOT.get(), new Mold(TagPrefix.ingot.value(), SIZE_CASTER));
+            map.put(GTItems.SHAPE_MOLD_PLATE.get(), new Mold(TagPrefix.plate.value(), SIZE_CASTER));
+            map.put(GTItems.SHAPE_MOLD_GEAR_SMALL.get(), new Mold(TagPrefix.gearSmall.value(), SIZE_CASTER));
+            map.put(GTItems.SHAPE_MOLD_TINY_PIPE.get(), new Mold(TagPrefix.pipeTinyFluid.value(), SIZE_CASTER));
+            map.put(GTItems.SHAPE_MOLD_SMALL_PIPE.get(), new Mold(TagPrefix.pipeSmallFluid.value(), SIZE_CASTER));
+            map.put(GTItems.SHAPE_MOLD_NORMAL_PIPE.get(), new Mold(TagPrefix.pipeNormalFluid.value(), SIZE_CASTER));
             // Bulky casts -> Foundry Casting Basin
-            map.put(GTItems.SHAPE_MOLD_BLOCK.get(), new Mold(TagPrefix.block, SIZE_BASIN));
-            map.put(GTItems.SHAPE_MOLD_GEAR.get(), new Mold(TagPrefix.gear, SIZE_BASIN));
-            map.put(GTItems.SHAPE_MOLD_ROTOR.get(), new Mold(TagPrefix.rotor, SIZE_BASIN));
-            map.put(GTItems.SHAPE_MOLD_LARGE_PIPE.get(), new Mold(TagPrefix.pipeLargeFluid, SIZE_BASIN));
-            map.put(GTItems.SHAPE_MOLD_HUGE_PIPE.get(), new Mold(TagPrefix.pipeHugeFluid, SIZE_BASIN));
+            map.put(GTItems.SHAPE_MOLD_BLOCK.get(), new Mold(TagPrefix.block.value(), SIZE_BASIN));
+            map.put(GTItems.SHAPE_MOLD_GEAR.get(), new Mold(TagPrefix.gear.value(), SIZE_BASIN));
+            map.put(GTItems.SHAPE_MOLD_ROTOR.get(), new Mold(TagPrefix.rotor.value(), SIZE_BASIN));
+            map.put(GTItems.SHAPE_MOLD_LARGE_PIPE.get(), new Mold(TagPrefix.pipeLargeFluid.value(), SIZE_BASIN));
+            map.put(GTItems.SHAPE_MOLD_HUGE_PIPE.get(), new Mold(TagPrefix.pipeHugeFluid.value(), SIZE_BASIN));
             for (WFMolds.Shape shape : WFMolds.Shape.values()) {
-                map.put(WFMolds.FIRED.get(shape).get(), new Mold(shape.prefix, shape.size));
+                map.put(WFMolds.FIRED.get(shape).get(), new Mold(shape.prefix.value(), shape.size));
             }
             molds = map;
         }

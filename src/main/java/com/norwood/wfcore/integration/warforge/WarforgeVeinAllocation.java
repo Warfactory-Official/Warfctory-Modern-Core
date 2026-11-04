@@ -7,10 +7,9 @@ import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import com.flansmod.warforge.api.WarforgeAPI;
-import com.flansmod.warforge.api.vein.Vein;
+import com.flansmod.warforge.api.vein.VeinSample;
+import com.flansmod.warforge.api.vein.VeinView;
 import com.flansmod.warforge.api.vein.VeinWeightProvider;
-import com.flansmod.warforge.api.vein.init.VeinUtils;
-import com.flansmod.warforge.common.WarForgeMod;
 
 import com.norwood.wfcore.common.worldgen.resource.AllocationIndex;
 import com.norwood.wfcore.common.worldgen.resource.AllocationIndexManager;
@@ -36,7 +35,7 @@ public final class WarforgeVeinAllocation {
         WarforgeAPI.setVeinWeightProvider(new VeinWeightProvider() {
 
             @Override
-            public ToDoubleFunction<Vein> multipliers(ResourceKey<Level> dim, int chunkX, int chunkZ) {
+            public ToDoubleFunction<VeinView> multipliers(ResourceKey<Level> dim, int chunkX, int chunkZ) {
                 return WarforgeVeinAllocation.multipliers(dim, chunkX, chunkZ);
             }
 
@@ -49,14 +48,14 @@ public final class WarforgeVeinAllocation {
                     return null;
                 }
                 AllocationIndex.Pick pick = picks.getFirst();
-                return new Assignment(pick.target().isEmpty() ? null : WarForgeMod.VEIN_HANDLER.findVein(pick.target()),
+                return new Assignment(pick.target().isEmpty() ? null : WarforgeAPI.findVein(pick.target()),
                         pick.richness());
             }
 
             @Override
-            public double richness(ResourceKey<Level> dim, int chunkX, int chunkZ, Vein vein) {
+            public double richness(ResourceKey<Level> dim, int chunkX, int chunkZ, VeinView vein) {
                 AllocationIndex index = index(dim);
-                return index == null ? 1.0 : index.richness(ResourceSystem.WARFORGE_VEIN, vein.translationKey,
+                return index == null ? 1.0 : index.richness(ResourceSystem.WARFORGE_VEIN, vein.key(),
                         (chunkX << 4) + 8.0, (chunkZ << 4) + 8.0);
             }
         });
@@ -70,33 +69,30 @@ public final class WarforgeVeinAllocation {
     }
 
     public static boolean knows(String translationKey) {
-        return WarForgeMod.VEIN_HANDLER != null && WarForgeMod.VEIN_HANDLER.ID_TO_VEINS.values().stream()
-                .anyMatch(v -> v.translationKey.equals(translationKey));
+        VeinView vein = WarforgeAPI.findVein(translationKey);
+        return vein != null && vein.key().equals(translationKey);
     }
 
     public static String rolled(ServerLevel level, int chunkX, int chunkZ) {
-        if (WarForgeMod.VEIN_HANDLER == null) {
+        if (WarforgeAPI.veins().isEmpty()) {
             return "unloaded";
         }
-        var vein = WarForgeMod.VEIN_HANDLER.getVein(level.dimension(), chunkX, chunkZ, level.getSeed());
-        return vein == null ? "none" : vein.getLeft().translationKey + " " + vein.getRight();
+        VeinSample sample = WarforgeAPI.veinAt(level, chunkX, chunkZ);
+        return sample == null ? "none" : sample.vein().key() + " " + sample.quality();
     }
 
     /** {@code [{id: translation key, dimensions: {dim: weight 0..1}}]} for the resource catalog. */
     public static JsonArray catalog() {
         JsonArray out = new JsonArray();
-        if (WarForgeMod.VEIN_HANDLER == null) {
-            return out;
-        }
-        WarForgeMod.VEIN_HANDLER.ID_TO_VEINS.values().stream()
-                .sorted(Comparator.comparing(v -> v.translationKey))
+        WarforgeAPI.veins().stream()
+                .sorted(Comparator.comparing(VeinView::key))
                 .forEach(vein -> {
                     JsonObject o = new JsonObject();
-                    o.addProperty("id", vein.translationKey);
+                    o.addProperty("id", vein.key());
                     JsonObject dims = new JsonObject();
-                    vein.getValidDims().stream().sorted(Comparator.comparing(k -> k.location().toString()))
-                            .forEach(dim -> dims.addProperty(dim.location().toString(),
-                                    vein.getDimWeight(dim) / (double) VeinUtils.WEIGHT_FRACTION_TENS_POW));
+                    vein.dimWeights().entrySet().stream()
+                            .sorted(Comparator.comparing(e -> e.getKey().location().toString()))
+                            .forEach(e -> dims.addProperty(e.getKey().location().toString(), e.getValue()));
                     o.add("dimensions", dims);
                     out.add(o);
                 });
@@ -104,7 +100,7 @@ public final class WarforgeVeinAllocation {
     }
 
     @Nullable
-    private static ToDoubleFunction<Vein> multipliers(ResourceKey<Level> dim, int chunkX, int chunkZ) {
+    private static ToDoubleFunction<VeinView> multipliers(ResourceKey<Level> dim, int chunkX, int chunkZ) {
         AllocationIndex index = index(dim);
         if (index == null || index.weightRules(ResourceSystem.WARFORGE_VEIN).isEmpty()) {
             return null;
@@ -113,12 +109,12 @@ public final class WarforgeVeinAllocation {
         double z = (chunkZ << 4) + 8.0;
         Map<String, Double> local = new HashMap<>();
         boolean stock = true;
-        for (Vein vein : WarForgeMod.VEIN_HANDLER.ID_TO_VEINS.values()) {
-            double m = index.multiplier(ResourceSystem.WARFORGE_VEIN, vein.translationKey, x, z);
+        for (VeinView vein : WarforgeAPI.veins()) {
+            double m = index.multiplier(ResourceSystem.WARFORGE_VEIN, vein.key(), x, z);
             // richness only reaches the quality through the weighted roll
-            stock &= m == 1.0 && index.richness(ResourceSystem.WARFORGE_VEIN, vein.translationKey, x, z) == 1.0;
-            local.put(vein.translationKey, m);
+            stock &= m == 1.0 && index.richness(ResourceSystem.WARFORGE_VEIN, vein.key(), x, z) == 1.0;
+            local.put(vein.key(), m);
         }
-        return stock ? null : vein -> local.getOrDefault(vein.translationKey, 1.0);
+        return stock ? null : vein -> local.getOrDefault(vein.key(), 1.0);
     }
 }
