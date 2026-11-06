@@ -14,10 +14,14 @@ import com.wf.wflib.ui.api.WidgetDef;
 import com.wf.wflib.ui.api.input.UiAction;
 import com.wf.wflib.ui.api.widget.Point;
 import net.minecraft.SharedConstants;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.AlertScreen;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.worldselection.SelectWorldScreen;
+import net.minecraft.network.chat.Component;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.client.gui.ModListScreen;
 
@@ -64,6 +68,9 @@ final class TitleMenu {
             List<WidgetDef> buttons = new ArrayList<>();
             buttons.add(entry("TESTING ENVIRONMENT", () -> new SelectWorldScreen(title())));
             buttons.add(entry("MULTIPLAYER", () -> new JoinMultiplayerScreen(title())));
+            if (ModList.get().isLoaded("flashback")) {
+                buttons.add(entry("FLASHBACK REPLAYS", () -> flashback(title())));
+            }
             buttons.add(entry("OPTIONS", () -> new OptionsScreen(title(), Minecraft.getInstance().options)));
             buttons.add(entry("MODS", () -> new ModListScreen(title())));
             buttons.add(action("QUIT", () -> Minecraft.getInstance().stop()));
@@ -90,6 +97,30 @@ final class TitleMenu {
 
     private static net.minecraft.client.gui.screens.Screen title() {
         return Minecraft.getInstance().screen;
+    }
+
+    private static Screen flashback(Screen parent) {
+        try {
+            // Flashback is optional and loaded through Connector, so resolve its API only on click.
+            if (!Screen.hasShiftDown()) {
+                Object incompatible = Class.forName("com.moulberry.flashback.Flashback")
+                        .getMethod("getReplayIncompatibleMods").invoke(null);
+                if (incompatible instanceof List<?> mods && !mods.isEmpty()) {
+                    String names = String.join(", ", mods.stream().map(Object::toString).toList());
+                    return new AlertScreen(() -> Minecraft.getInstance().setScreen(parent),
+                            Component.translatable("flashback.incompatible_with_viewing"),
+                            Component.translatable("flashback.incompatible_with_viewing_description")
+                                    .append(Component.literal(names).withStyle(ChatFormatting.RED)));
+                }
+            }
+            return Class.forName("com.moulberry.flashback.screen.select_replay.SelectReplayScreen")
+                    .asSubclass(Screen.class).getConstructor(Screen.class).newInstance(parent);
+        } catch (ReflectiveOperationException | LinkageError | ClassCastException e) {
+            WFCore.LOGGER.error("Unable to open Flashback replays", e);
+            return new AlertScreen(() -> Minecraft.getInstance().setScreen(parent),
+                    Component.literal("Unable to open Flashback replays"),
+                    Component.literal("Check that Flashback supports this Minecraft version. See latest.log for details."));
+        }
     }
 
     private static WidgetDef entry(String label, java.util.function.Supplier<net.minecraft.client.gui.screens.Screen> screen) {
