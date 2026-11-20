@@ -127,7 +127,7 @@ public final class RadarConfig {
                 "Use registry names directly; GregTech Modern machines are keyed by their registry name.",
                 "Format per entry: \"registryId=value\" where value is the richness contributed to the combined base score (defaults to 1 if the =value is omitted).",
                 "Example: \"gtceu:electric_blast_furnace=10\"")
-                .defineList("machines", java.util.List.of(
+                .defineList("machines", List.of(
                         "gtceu:electric_blast_furnace=10",
                         "gtceu:large_chemical_reactor=25",
                         "minecraft:furnace=1"),

@@ -9,7 +9,9 @@ import com.gregtechceu.gtceu.api.registry.GTRegistries;
 import com.norwood.wfcore.config.WFCoreConfig;
 
 import java.util.LinkedHashSet;
+import java.util.Locale;
 import java.util.Set;
+import javax.annotation.Nullable;
 
 /**
  * A drillable deposit kind. Held in the runtime {@link WFDeposits} registry rather than a Forge registry so
@@ -71,7 +73,7 @@ public final class DepositType {
      * composite a material overlay over stone — instead of the flat single {@link #texture()}. {@code null}
      * keeps the single-texture look.
      */
-    @javax.annotation.Nullable
+    @Nullable
     public ResourceLocation overlayTexture() {
         return overlayTexture;
     }
@@ -127,7 +129,7 @@ public final class DepositType {
      * GregTech Ore Prospector, or {@code null} to show as the plain deposit block. Read by
      * {@link WFDepositProspector} from the prospector-scan mixin.
      */
-    @javax.annotation.Nullable
+    @Nullable
     public String prospectorMaterial() {
         return prospectorMaterial;
     }
@@ -220,7 +222,7 @@ public final class DepositType {
             }
             int colon = material.indexOf(':');
             this.prospectorMaterial = (colon >= 0 ? material.substring(colon + 1) : material)
-                    .toLowerCase(java.util.Locale.ROOT);
+                    .toLowerCase(Locale.ROOT);
             return this;
         }
 

@@ -16,6 +16,7 @@ import dev.engine_room.flywheel.lib.visualization.SimpleBlockEntityVisualizer;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.particle.BlockDebrisParticle;
 import com.norwood.wfcore.client.particle.SmokePlumeParticle;
+import com.norwood.wfcore.client.particle.SteamPlumeParticle;
 import com.norwood.wfcore.client.render.DepositBlockEntityRenderer;
 import com.norwood.wfcore.client.render.FoundryCastingRenderer;
 import com.norwood.wfcore.client.render.MissileLauncherRenderer;
@@ -94,6 +95,6 @@ public class WFClientEvents {
         event.registerSpecial(WFParticles.BLOCK_DEBRIS.get(), new BlockDebrisParticle.Provider());
         event.registerSpriteSet(WFParticles.SMOKE_PLUME.get(), SmokePlumeParticle.Provider::new);
         event.registerSpriteSet(WFParticles.STRANDCASTER_STEAM.get(),
-                com.norwood.wfcore.client.particle.SteamPlumeParticle.Provider::new);
+                SteamPlumeParticle.Provider::new);
     }
 }

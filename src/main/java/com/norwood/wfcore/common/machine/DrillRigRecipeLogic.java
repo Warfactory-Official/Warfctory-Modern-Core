@@ -4,6 +4,7 @@ import com.gregtechceu.gtceu.api.machine.trait.recipe.RecipeLogic;
 import com.gregtechceu.gtceu.api.recipe.GTRecipe;
 
 import java.util.Iterator;
+import java.util.List;
 
 
 /**
@@ -31,7 +32,7 @@ public class DrillRigRecipeLogic extends RecipeLogic {
         if (getMachine() instanceof DrillRigMachine drill) {
             var base = drill.findBaseDrillingRecipe();
             if (base != null) {
-                return java.util.List.of(base).iterator();
+                return List.of(base).iterator();
             }
         }
         return stock;

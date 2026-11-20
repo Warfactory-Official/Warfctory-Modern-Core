@@ -1,5 +1,7 @@
 package com.norwood.wfcore.common.worldgen.road;
 
+import java.util.Arrays;
+
 /**
  * Turns a link's routed polyline into the centreline the rasteriser actually walks: a centripetal Catmull-Rom
  * spline through the routed vertices, then resampled at a fixed arc length so station {@code i} sits exactly
@@ -48,7 +50,7 @@ public final class RoadCurve {
             // A degenerate link still has to produce a walkable pair so callers need no special case.
             return new double[][] { { xs[0], xs[0] + 1.0 }, { zs[0], zs[0] } };
         }
-        return new double[][] { java.util.Arrays.copyOf(xs, kept), java.util.Arrays.copyOf(zs, kept) };
+        return new double[][] { Arrays.copyOf(xs, kept), Arrays.copyOf(zs, kept) };
     }
 
     private static double[][] spline(double[] px, double[] pz) {
@@ -85,7 +87,7 @@ public final class RoadCurve {
                 count++;
             }
         }
-        return new double[][] { java.util.Arrays.copyOf(xs, count), java.util.Arrays.copyOf(zs, count) };
+        return new double[][] { Arrays.copyOf(xs, count), Arrays.copyOf(zs, count) };
     }
 
     private static double knot(double ax, double az, double bx, double bz) {
@@ -150,7 +152,7 @@ public final class RoadCurve {
             zs[count] = cz;
             count++;
         }
-        return new double[][] { java.util.Arrays.copyOf(xs, count), java.util.Arrays.copyOf(zs, count) };
+        return new double[][] { Arrays.copyOf(xs, count), Arrays.copyOf(zs, count) };
     }
 
     /** Euclidean length. Math.hypot's overflow guards cost more than they buy at block coordinates. */
@@ -159,6 +161,6 @@ public final class RoadCurve {
     }
 
     private static double[] grow(double[] array, int needed) {
-        return needed < array.length ? array : java.util.Arrays.copyOf(array, Math.max(16, array.length * 2));
+        return needed < array.length ? array : Arrays.copyOf(array, Math.max(16, array.length * 2));
     }
 }

@@ -56,6 +56,7 @@ import com.wf.wflib.explosion.api.BlockProcessorStandard;
 import com.wf.wflib.explosion.api.EntityProcessorCone;
 import com.wf.wflib.explosion.api.EntityProcessorCross;
 import com.wf.wflib.explosion.api.PlayerProcessorStandard;
+import com.wf.wflib.warhead.api.WarheadCarrier;
 
 import static com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialIconType.seed;
 
@@ -506,7 +507,7 @@ public final class WFWarheads {
      * Bore a shaft down {@code source.angle()} up to {@link #TUNNEL_MAX_DEPTH} blocks, stopping early when the
      * dig budget runs out or it meets a tungsten-class block, then detonate a modest secondary blast at the end.
      */
-    private static void tunneller(com.wf.wflib.warhead.api.WarheadCarrier source, Vec3 pos) {
+    private static void tunneller(WarheadCarrier source, Vec3 pos) {
         Level level = source.level();
         if (level.isClientSide) {
             return;
@@ -602,7 +603,7 @@ public final class WFWarheads {
     }
 
     /** Skyfall: spawn a spread of entity-seeking submunitions around the burst point. */
-    private static void skyfall(com.wf.wflib.warhead.api.WarheadCarrier source, Vec3 pos) {
+    private static void skyfall(WarheadCarrier source, Vec3 pos) {
         Level level = source.level();
         if (!(level instanceof ServerLevel server)) {
             return;
@@ -661,7 +662,7 @@ public final class WFWarheads {
     }
 
     /** Fragmentation storm: scatter FRAG_STORM_CHILDREN small frag missiles over a wide area around the burst. */
-    private static void fragStorm(com.wf.wflib.warhead.api.WarheadCarrier source, Vec3 pos) {
+    private static void fragStorm(WarheadCarrier source, Vec3 pos) {
         Level level = source.level();
         if (!(level instanceof ServerLevel server)) {
             return;
@@ -705,7 +706,7 @@ public final class WFWarheads {
     }
 
     /** Cluster interceptor: airburst into several small homing child interceptors. */
-    private static void interceptCluster(com.wf.wflib.warhead.api.WarheadCarrier source, Vec3 pos) {
+    private static void interceptCluster(WarheadCarrier source, Vec3 pos) {
         Level level = source.level();
         if (level.isClientSide) {
             return;

@@ -1,6 +1,7 @@
 package com.norwood.wfcore.client.title;
 
 import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.math.Axis;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
@@ -44,7 +45,7 @@ final class TitleBackground {
         graphics.fill(0, 0, width, height, 0xFF000000);
         graphics.pose().pushPose();
         graphics.pose().translate(width / 2f + dx, height / 2f + dy, 0);
-        graphics.pose().mulPose(com.mojang.math.Axis.ZP.rotation(-rot));
+        graphics.pose().mulPose(Axis.ZP.rotation(-rot));
         graphics.pose().scale(1 / ZOOM, 1 / ZOOM, 1);
         draw(graphics, IMAGES[index], width, height, 1);
         if (fade > 0) {

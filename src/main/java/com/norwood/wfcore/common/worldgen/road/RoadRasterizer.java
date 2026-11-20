@@ -1,6 +1,7 @@
 package com.norwood.wfcore.common.worldgen.road;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import java.util.Arrays;
 
 /**
  * Road network -> blocks, one column at a time, as a distance field: the column's signed offset from each nearby
@@ -221,7 +222,7 @@ public final class RoadRasterizer {
          */
         private void group() {
             groups = 0;
-            java.util.Arrays.fill(groupOf, 0, count, -1);
+            Arrays.fill(groupOf, 0, count, -1);
             for (int assigned = 0; assigned < count; ) {
                 int best = -1;
                 for (int i = 0; i < count; i++) {

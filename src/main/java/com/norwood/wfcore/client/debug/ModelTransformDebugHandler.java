@@ -20,6 +20,8 @@ import net.neoforged.fml.common.EventBusSubscriber;
 import com.norwood.wfcore.WFCore;
 import com.norwood.wfcore.client.render.gltf.IAnimatedMachine;
 import com.norwood.wfcore.client.render.mask.RenderMaskManager;
+import net.minecraft.client.KeyMapping;
+import org.jetbrains.annotations.Nullable;
 
 /**
  * Drives {@link ModelTransformDebug} off the numpad keys registered in {@link WFDebugKeyMappings}, and
@@ -75,7 +77,7 @@ public class ModelTransformDebugHandler {
         }
     }
 
-    private static int clicks(net.minecraft.client.KeyMapping key) {
+    private static int clicks(KeyMapping key) {
         int n = 0;
         while (key.consumeClick()) {
             n++;
@@ -113,7 +115,7 @@ public class ModelTransformDebugHandler {
         }
     }
 
-    @org.jetbrains.annotations.Nullable
+    @Nullable
     private static IAnimatedMachine currentTargetInstance() {
         Minecraft mc = Minecraft.getInstance();
         Level level = mc.level;

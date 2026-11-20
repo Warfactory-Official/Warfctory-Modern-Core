@@ -7,11 +7,15 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
@@ -113,14 +117,14 @@ class RoadRealNetworkTest {
 
     /** Longest run of one piece's stations within touch of one earlier piece. */
     private static int sideBySide(List<RoadTopology.Piece> pieces) {
-        it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap<IntArrayList> grid =
-                new it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap<>();
+        Long2ObjectOpenHashMap<IntArrayList> grid =
+                new Long2ObjectOpenHashMap<>();
         int worst = 0;
         for (int i = 0; i < pieces.size(); i++) {
             RoadTopology.Piece piece = pieces.get(i);
-            it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap runs = new it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap();
+            Int2IntOpenHashMap runs = new Int2IntOpenHashMap();
             for (int s = 0; s < piece.stationCount(); s++) {
-                it.unimi.dsi.fastutil.ints.IntOpenHashSet near = new it.unimi.dsi.fastutil.ints.IntOpenHashSet();
+                IntOpenHashSet near = new IntOpenHashSet();
                 int cx = Math.floorDiv((int) Math.floor(piece.xs[s]), 16);
                 int cz = Math.floorDiv((int) Math.floor(piece.zs[s]), 16);
                 for (int dx = -2; dx <= 2; dx++) {
@@ -141,7 +145,7 @@ class RoadRealNetworkTest {
                         }
                     }
                 }
-                it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap next = new it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap();
+                Int2IntOpenHashMap next = new Int2IntOpenHashMap();
                 for (int k : near) {
                     int run = runs.get(k) + 1;
                     next.put(k, run);
@@ -171,7 +175,7 @@ class RoadRealNetworkTest {
         long solved = System.nanoTime();
 
         List<long[]> chunks = new ArrayList<>();
-        it.unimi.dsi.fastutil.longs.LongOpenHashSet seen = new it.unimi.dsi.fastutil.longs.LongOpenHashSet();
+        LongOpenHashSet seen = new LongOpenHashSet();
         IntArrayList hot = new IntArrayList();
         for (int i = 0; i < index.linkCount(); i++) {
             RoadIndex.LinkGeometry link = index.link(i);

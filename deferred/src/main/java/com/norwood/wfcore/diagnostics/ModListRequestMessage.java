@@ -1,5 +1,6 @@
 package com.norwood.wfcore.diagnostics;
 
+import com.norwood.wfcore.diagnostics.client.ModAuditClient;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
 import net.minecraftforge.network.NetworkEvent;
@@ -42,7 +43,7 @@ public record ModListRequestMessage(long nonce, List<String> signatures) {
     public static void handle(ModListRequestMessage msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
         context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> com.norwood.wfcore.diagnostics.client.ModAuditClient.onRequest(msg)));
+                () -> () -> ModAuditClient.onRequest(msg)));
         context.setPacketHandled(true);
     }
 }

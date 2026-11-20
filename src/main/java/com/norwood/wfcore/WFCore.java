@@ -17,9 +17,11 @@ import com.gregtechceu.gtceu.api.data.chemical.material.event.PostMaterialEvent;
 import com.gregtechceu.gtceu.api.registry.registrate.GTRegistrate;
 import net.minecraft.network.codec.ByteBufCodecs;
 import com.gregtechceu.gtceu.api.sync_system.data_transformers.ValueTransformers;
+import com.norwood.wfcore.common.block.PlayerUnbreakableHandler;
 
 import com.norwood.wfcore.common.block.WFBlockResistanceTooltip;
 import com.norwood.wfcore.common.block.WFBlockResistances;
+import com.norwood.wfcore.common.camera.ThirdPersonServer;
 import com.norwood.wfcore.common.chat.ChatModeration;
 import com.norwood.wfcore.common.compute.CPURegistry;
 import com.norwood.wfcore.common.compute.RAMRegistry;
@@ -35,6 +37,8 @@ import com.norwood.wfcore.common.data.WFMaterials;
 import com.norwood.wfcore.common.worldgen.transplant.VeinTransplant;
 import com.norwood.wfcore.common.data.WFRecipeTypes;
 import com.norwood.wfcore.common.data.VehicleFactoryRecipes;
+import com.norwood.wfcore.common.data.WFOres;
+import com.norwood.wfcore.common.deposit.DepositCommands;
 import com.norwood.wfcore.common.deposit.WFDeposits;
 import com.norwood.wfcore.common.fluid.CoolantRegistry;
 import com.norwood.wfcore.common.loot.WFLootEvents;
@@ -45,6 +49,7 @@ import com.norwood.wfcore.common.recipe.condition.WFRecipeConditions;
 import com.norwood.wfcore.common.shader.ShaderServerHandler;
 import com.norwood.wfcore.common.sound.WFSounds;
 import com.norwood.wfcore.common.tool.BoltGunConversions;
+import com.norwood.wfcore.common.worldgen.DensityDumpCommands;
 import com.norwood.wfcore.common.worldgen.DepositRetrofitHandler;
 import com.norwood.wfcore.common.worldgen.WFFeatures;
 import com.norwood.wfcore.common.worldgen.density.WFDensityFunctions;
@@ -61,7 +66,13 @@ import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 import com.norwood.wfcore.integration.warforge.WarforgeFobGuard;
 import com.norwood.wfcore.integration.warforge.WarforgeVeinAllocation;
 import com.norwood.wfcore.config.WFCoreConfig;
+import com.norwood.wfcore.integration.combinedassault.VehicleGate;
+import com.norwood.wfcore.integration.wflib.AnomalySiteDensity;
+import com.norwood.wfcore.integration.wflib.GasProtection;
+import com.norwood.wfcore.radar.RadarCommands;
 import com.norwood.wfcore.radar.RadarConfig;
+import com.norwood.wfcore.radar.RadarRegistryHandler;
+import com.norwood.wfcore.radar.Retrofitter;
 import com.norwood.wfcore.radar.WFRadarScripts;
 
 import org.apache.logging.log4j.LogManager;
@@ -82,14 +93,14 @@ public class WFCore {
     public static GTRegistrate WF_MACHINES = GTRegistrate.create(WFCore.MOD_ID);
 
     public WFCore(IEventBus modEventBus, ModContainer container) {
-        com.norwood.wfcore.integration.combinedassault.VehicleGate.install();
+        VehicleGate.install();
         WFSystems.require(MOD_ID, "wflib:nvg");
         WFLibContent.nvg(MOD_ID, "nvg_gen1", "nvg_pvs7", "nvg_pvs14", "nvg_pvs31", "nvg_gpnvg18");
         WFLibContent.armor(WFCore.MOD_ID, "plate_carrier", "steel_plate", "ceramic_plate", "hazmat_suit", "combat_helmet");
         WFSystems.require(MOD_ID, "wflib:armor");
         WFSystems.require(MOD_ID, "wflib:mine");
         WFSystems.require(MOD_ID, "wflib:mist");
-        com.norwood.wfcore.integration.wflib.GasProtection.install();
+        GasProtection.install();
         WFLibContent.mines(WFCore.MOD_ID, "ap", "bounding", "claymore", "heat", "naval", "scatter_ap", "scatter_at", "dispenser_ap", "dispenser_at");
         // NeoForge-native TOML config. Registration + baking replace the old snakeyaml wfcore.yaml/radar.yaml.
         // ModLoadingContext is gone; the container is injected into the constructor instead.
@@ -120,10 +131,10 @@ public class WFCore {
         // are all lambdas on the MOD bus above, so it has no @SubscribeEvent methods — and NeoForge 21.1
         // throws IllegalArgumentException on registering a listener object with none, where Forge quietly
         // accepted it.
-        NeoForge.EVENT_BUS.register(new com.norwood.wfcore.radar.RadarRegistryHandler());
-        NeoForge.EVENT_BUS.register(com.norwood.wfcore.radar.Retrofitter.INSTANCE);
-        NeoForge.EVENT_BUS.register(com.norwood.wfcore.radar.RadarCommands.INSTANCE);
-        NeoForge.EVENT_BUS.register(com.norwood.wfcore.common.deposit.DepositCommands.INSTANCE);
+        NeoForge.EVENT_BUS.register(new RadarRegistryHandler());
+        NeoForge.EVENT_BUS.register(Retrofitter.INSTANCE);
+        NeoForge.EVENT_BUS.register(RadarCommands.INSTANCE);
+        NeoForge.EVENT_BUS.register(DepositCommands.INSTANCE);
         NeoForge.EVENT_BUS.register(VeinBackfillCommand.INSTANCE);
         NeoForge.EVENT_BUS.register(VeinBackfillRunner.INSTANCE);
         NeoForge.EVENT_BUS.register(DepositRetrofitHandler.INSTANCE);
@@ -131,7 +142,7 @@ public class WFCore {
         NeoForge.EVENT_BUS.register(RoadCommands.INSTANCE);
         NeoForge.EVENT_BUS.register(AllocationIndexManager.INSTANCE);
         NeoForge.EVENT_BUS.register(ResourceCommands.INSTANCE);
-        NeoForge.EVENT_BUS.register(com.norwood.wfcore.common.worldgen.DensityDumpCommands.INSTANCE);
+        NeoForge.EVENT_BUS.register(DensityDumpCommands.INSTANCE);
         if (WarforgeIntegration.isLoaded()) {
             WarforgeVeinAllocation.install();
             WarforgeFobGuard.install();
@@ -139,16 +150,16 @@ public class WFCore {
         NeoForge.EVENT_BUS.register(new WFComputeTooltips());
         NeoForge.EVENT_BUS.register(new WFBlockResistanceTooltip());
         NeoForge.EVENT_BUS.register(new WFLootEvents());
-        NeoForge.EVENT_BUS.register(com.norwood.wfcore.common.block.PlayerUnbreakableHandler.INSTANCE);
+        NeoForge.EVENT_BUS.register(PlayerUnbreakableHandler.INSTANCE);
         NeoForge.EVENT_BUS.register(DarknessServerHandler.INSTANCE);
-        NeoForge.EVENT_BUS.register(com.norwood.wfcore.common.camera.ThirdPersonServer.INSTANCE);
+        NeoForge.EVENT_BUS.register(ThirdPersonServer.INSTANCE);
         NeoForge.EVENT_BUS.register(ShaderServerHandler.INSTANCE);
         NeoForge.EVENT_BUS.register(ChatModeration.INSTANCE);
         NeoForge.EVENT_BUS.register(MaintenanceService.INSTANCE);
 
         // GT content declared at construction (ordering AFTER gtceu), like GT's own CommonProxy#init.
         WFMaterials.init();
-        com.norwood.wfcore.common.data.WFOres.init();
+        WFOres.init();
         WFRecipeConditions.init();
         VehicleFactoryRecipes.init();
         WFRecipeTypes.init();
@@ -191,7 +202,7 @@ public class WFCore {
                     WFCoreConfig.isDepositHealEnabled());
             WFBlockResistances.registerDefaults();
             CoolantRegistry.register();
-            com.norwood.wfcore.integration.wflib.AnomalySiteDensity.register();
+            AnomalySiteDensity.register();
             CPURegistry.register();
             RAMRegistry.register();
             // Apply KubeJS compute overrides last so packs can add/override/remove any built-in above,

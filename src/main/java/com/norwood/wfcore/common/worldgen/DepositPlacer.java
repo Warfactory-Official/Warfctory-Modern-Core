@@ -1,5 +1,6 @@
 package com.norwood.wfcore.common.worldgen;
 
+import com.norwood.wfcore.WFCore;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.RandomSource;
@@ -122,7 +123,7 @@ public final class DepositPlacer {
             }
         }
         if (placed > 0 && WFCoreConfig.isDepositLogPlacements()) {
-            com.norwood.wfcore.WFCore.LOGGER.info("[deposit] placed {} cluster size {} at x={} z={}",
+            WFCore.LOGGER.info("[deposit] placed {} cluster size {} at x={} z={}",
                     type.id(), size, originX, originZ);
         }
         return placed;

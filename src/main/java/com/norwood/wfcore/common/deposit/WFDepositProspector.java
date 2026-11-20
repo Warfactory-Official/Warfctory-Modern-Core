@@ -1,5 +1,6 @@
 package com.norwood.wfcore.common.deposit;
 
+import com.norwood.wfcore.WFCore;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.chunk.LevelChunk;
@@ -56,7 +57,7 @@ public final class WFDepositProspector {
             }
         }
         if (labeled > 0) {
-            com.norwood.wfcore.WFCore.LOGGER.info("[deposit-prospector] chunk {} labeled {} deposit(s) ({} block entities total)",
+            WFCore.LOGGER.info("[deposit-prospector] chunk {} labeled {} deposit(s) ({} block entities total)",
                     chunk.getPos(), labeled, beCount);
         }
     }

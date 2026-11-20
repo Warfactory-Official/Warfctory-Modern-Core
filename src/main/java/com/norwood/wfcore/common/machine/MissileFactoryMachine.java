@@ -31,11 +31,13 @@ import net.minecraft.world.item.ItemStack;
 
 import com.norwood.wfcore.common.data.WFDataComponents;
 import com.norwood.wfcore.common.mui.WFMuiWidgets;
+import com.wf.wflib.missile.api.MissileItem;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 /**
  * Missile factory controller. Finished missiles are far too large for a player to carry, so recipes
@@ -77,10 +79,10 @@ public class MissileFactoryMachine extends WorkableElectricMultiblockMachine imp
 
     /** Every stored missile (strike + interceptor) by item registry id, for the factory's own readout. */
     public Map<String, Integer> storedAll() {
-        return stored(stack -> stack.getItem() instanceof com.wf.wflib.missile.api.MissileItem);
+        return stored(stack -> stack.getItem() instanceof MissileItem);
     }
 
-    private Map<String, Integer> stored(java.util.function.Predicate<ItemStack> filter) {
+    private Map<String, Integer> stored(Predicate<ItemStack> filter) {
         Map<String, Integer> out = new LinkedHashMap<>();
         for (int slot = 0; slot < missileStore.getSlots(); slot++) {
             ItemStack stack = missileStore.getStackInSlot(slot);
@@ -115,7 +117,7 @@ public class MissileFactoryMachine extends WorkableElectricMultiblockMachine imp
         return extract(missileId, InterceptorMachine::isInterceptorMissile);
     }
 
-    private ItemStack extract(String missileId, java.util.function.Predicate<ItemStack> filter) {
+    private ItemStack extract(String missileId, Predicate<ItemStack> filter) {
         for (int slot = 0; slot < missileStore.getSlots(); slot++) {
             ItemStack stack = missileStore.getStackInSlot(slot);
             if (!stack.isEmpty() && filter.test(stack) &&

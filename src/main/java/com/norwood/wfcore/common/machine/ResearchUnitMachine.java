@@ -74,6 +74,7 @@ import brachy.modularui.screen.ModularPanel;
 import brachy.modularui.screen.UISettings;
 import brachy.modularui.value.sync.PanelSyncManager;
 import com.norwood.wfcore.client.render.mask.RenderMaskManager;
+import net.minecraft.network.chat.Component;
 
 /**
  * 3x3x3 research multiblock. In CONTROL mode it presents the research tree and runs Factorio-style research:
@@ -475,7 +476,7 @@ public class ResearchUnitMachine extends MultiblockControllerMachine
         scanOpticalNetwork();
         pushResearchSync();
         markAsChanged();
-        player.displayClientMessage(net.minecraft.network.chat.Component.translatable(
+        player.displayClientMessage(Component.translatable(
                 slaveMode ? "wfcore.gui.research.slave_mode" : "wfcore.gui.research.control_mode"), true);
         return InteractionResult.CONSUME;
     }

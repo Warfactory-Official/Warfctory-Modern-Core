@@ -23,7 +23,9 @@ import com.norwood.wfcore.common.worldgen.DepositPlacer;
 import com.norwood.wfcore.config.WFCoreConfig;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.annotation.Nullable;
 
@@ -160,7 +162,7 @@ public final class DepositCommands {
         int ccx = at.getX() >> 4;
         int ccz = at.getZ() >> 4;
 
-        java.util.Map<ResourceLocation, Integer> counts = new java.util.LinkedHashMap<>();
+        Map<ResourceLocation, Integer> counts = new LinkedHashMap<>();
         int scannedChunks = 0;
         for (int dx = -chunkRadius; dx <= chunkRadius; dx++) {
             for (int dz = -chunkRadius; dz <= chunkRadius; dz++) {

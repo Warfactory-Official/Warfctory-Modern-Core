@@ -25,6 +25,7 @@ import com.norwood.wfcore.common.worldgen.rock.RockLayers;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -134,7 +135,7 @@ public final class DensityDumpCommands {
 
     private static Iterable<String> array(JsonObject request, String key) {
         if (!request.has(key)) {
-            return java.util.List.of();
+            return List.of();
         }
         return request.getAsJsonArray(key).asList().stream().map(e -> e.getAsString()).toList();
     }

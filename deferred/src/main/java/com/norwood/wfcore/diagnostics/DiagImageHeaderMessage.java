@@ -1,5 +1,6 @@
 package com.norwood.wfcore.diagnostics;
 
+import com.norwood.wfcore.diagnostics.client.DiagViewerClient;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -39,7 +40,7 @@ public record DiagImageHeaderMessage(long requestId, int imgWidth, int imgHeight
     public static void handle(DiagImageHeaderMessage msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
         context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> com.norwood.wfcore.diagnostics.client.DiagViewerClient.onImageHeader(msg)));
+                () -> () -> DiagViewerClient.onImageHeader(msg)));
         context.setPacketHandled(true);
     }
 }

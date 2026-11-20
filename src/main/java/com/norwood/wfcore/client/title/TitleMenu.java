@@ -33,6 +33,8 @@ import static com.wf.wflib.ui.api.Ui.stack;
 import static com.wf.wflib.ui.api.Ui.text;
 
 import com.norwood.wfcore.WFCore;
+import java.util.function.Supplier;
+import net.minecraft.client.gui.screens.Screen;
 
 /** Title screen as a PDA app on the {@link PdaShell} palette, {@link PdaShell#WIDTH} x {@link PdaShell#HEIGHT} units. */
 final class TitleMenu {
@@ -88,11 +90,11 @@ final class TitleMenu {
         return layout;
     }
 
-    private static net.minecraft.client.gui.screens.Screen title() {
+    private static Screen title() {
         return Minecraft.getInstance().screen;
     }
 
-    private static WidgetDef entry(String label, java.util.function.Supplier<net.minecraft.client.gui.screens.Screen> screen) {
+    private static WidgetDef entry(String label, Supplier<Screen> screen) {
         return action(label, () -> Minecraft.getInstance().setScreen(screen.get()));
     }
 

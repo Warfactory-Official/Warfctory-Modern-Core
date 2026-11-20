@@ -9,7 +9,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -214,7 +216,7 @@ class RoadFuzzTest {
     }
 
     private static void assertJunctionsAgree(RoadIndex index) {
-        java.util.Map<Long, Integer> height = new java.util.HashMap<>();
+        Map<Long, Integer> height = new HashMap<>();
         for (int i = 0; i < index.linkCount(); i++) {
             RoadTopology.Piece piece = index.piece(i);
             RoadIndex.LinkGeometry link = index.link(i);
@@ -223,7 +225,7 @@ class RoadFuzzTest {
         }
     }
 
-    private static void check(java.util.Map<Long, Integer> height, long junction, int deck) {
+    private static void check(Map<Long, Integer> height, long junction, int deck) {
         if (junction < 0) {
             return;
         }

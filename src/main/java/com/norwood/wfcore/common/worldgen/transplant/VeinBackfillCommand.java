@@ -13,6 +13,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.context.CommandContext;
+import net.minecraft.core.BlockPos;
 
 /**
  * Operator surface for the nether -> overworld vein migration. Permission level 4: the backfill
@@ -111,7 +112,7 @@ public final class VeinBackfillCommand {
         CommandSourceStack src = ctx.getSource();
         ServerLevel level = src.getLevel();
         int gridSize = Math.max(1, ConfigHolder.INSTANCE.worldgen.oreVeins.oreVeinGridSize);
-        ChunkPos here = new ChunkPos(net.minecraft.core.BlockPos.containing(src.getPosition()));
+        ChunkPos here = new ChunkPos(BlockPos.containing(src.getPosition()));
         ChunkPos origin = new ChunkPos(
                 Math.floorDiv(here.x, gridSize) * gridSize,
                 Math.floorDiv(here.z, gridSize) * gridSize);

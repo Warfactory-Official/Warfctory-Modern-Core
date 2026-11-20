@@ -12,6 +12,7 @@ import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import java.util.List;
 import java.util.Optional;
+import net.minecraft.world.level.block.Blocks;
 
 /**
  * One road class, datapack-defined at {@code data/<ns>/wfcore/road_type/<id>.json}. Each link takes the
@@ -114,8 +115,8 @@ public record RoadType(
                 .apply(i, Earthworks::new));
 
         static final Earthworks DEFAULT = new Earthworks(BlockStateProvider.simple(
-                net.minecraft.world.level.block.Blocks.STONE), 3,
-                BlockStateProvider.simple(net.minecraft.world.level.block.Blocks.STONE), 5, 1.0);
+                Blocks.STONE), 3,
+                BlockStateProvider.simple(Blocks.STONE), 5, 1.0);
     }
 
     /**

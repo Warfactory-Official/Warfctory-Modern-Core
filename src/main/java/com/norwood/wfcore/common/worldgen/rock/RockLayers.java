@@ -22,6 +22,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import net.minecraft.util.KeyDispatchDataCodec;
 
 /**
  * Surface-relative deeprock / deepslate, {@code data/<ns>/wfcore/rock_layers/<id>.json} from
@@ -140,7 +141,7 @@ public record RockLayers(ResourceKey<Level> dimension, DensityFunction surface, 
         }
 
         @Override
-        public net.minecraft.util.KeyDispatchDataCodec<? extends DensityFunction> codec() {
+        public KeyDispatchDataCodec<? extends DensityFunction> codec() {
             return wrapped.codec();
         }
     }

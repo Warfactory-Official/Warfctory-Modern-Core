@@ -11,8 +11,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
 import java.util.TreeSet;
@@ -129,7 +131,7 @@ public final class ClassEnumerator {
     }
 
     private static Set<ModuleLayer> newIdentitySet() {
-        return java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+        return Collections.newSetFromMap(new IdentityHashMap<>());
     }
 
     private static int collectClasspath(Set<String> out, boolean includePlatform, int[] failed, int[] filtered) {

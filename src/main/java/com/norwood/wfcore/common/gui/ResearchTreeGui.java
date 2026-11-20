@@ -46,8 +46,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.DoubleSupplier;
 import java.util.function.IntFunction;
+import java.util.function.IntSupplier;
 import java.util.function.Supplier;
+import net.minecraft.ChatFormatting;
 
 /**
  * Research-tree GUI on the ModularUI (brachy) fork. Layout:
@@ -240,7 +243,7 @@ public final class ResearchTreeGui {
         // status heading — red "structure incomplete", or gold "slave mode"
         panel.child(new TextWidget<>(Text.of(Component.translatable(slave ?
                 "wfcore.gui.research.info_slave_title" : "wfcore.gui.research.info_unformed_title")
-                .withStyle(slave ? net.minecraft.ChatFormatting.GOLD : net.minecraft.ChatFormatting.RED)))
+                .withStyle(slave ? ChatFormatting.GOLD : ChatFormatting.RED)))
                 .pos(8, 33).name("info_heading"));
 
         // wrapped body: why the tree is unavailable and what to do about it
@@ -253,19 +256,19 @@ public final class ResearchTreeGui {
                 rt.addLine(gray("wfcore.gui.research.info_slave_desc"));
                 rt.newLine();
                 rt.addLine(Component.translatable("wfcore.gui.research.info_slave_hint")
-                        .withStyle(net.minecraft.ChatFormatting.YELLOW));
+                        .withStyle(ChatFormatting.YELLOW));
             } else {
                 rt.addLine(gray("wfcore.gui.research.info_unformed_desc"));
                 rt.newLine();
                 rt.addLine(Component.translatable("wfcore.gui.research.info_needs")
-                        .withStyle(net.minecraft.ChatFormatting.WHITE));
+                        .withStyle(ChatFormatting.WHITE));
                 rt.addLine(gray("wfcore.gui.research.info_part_energy"));
                 rt.addLine(gray("wfcore.gui.research.info_part_items"));
                 rt.addLine(gray("wfcore.gui.research.info_part_computation"));
                 rt.addLine(gray("wfcore.gui.research.info_part_data"));
                 rt.newLine();
                 rt.addLine(Component.translatable("wfcore.gui.research.info_hint_preview")
-                        .withStyle(net.minecraft.ChatFormatting.YELLOW));
+                        .withStyle(ChatFormatting.YELLOW));
             }
         });
         panel.child(body);
@@ -289,7 +292,7 @@ public final class ResearchTreeGui {
                 .pos(7, 27).size(w - 14, 1).name("info_divider"));
 
         panel.child(new TextWidget<>(Text.of(Component.translatable("wfcore.gui.research.info_empty_title")
-                .withStyle(net.minecraft.ChatFormatting.YELLOW))).pos(8, 33).name("info_heading"));
+                .withStyle(ChatFormatting.YELLOW))).pos(8, 33).name("info_heading"));
 
         RichTextWidget body = new RichTextWidget();
         body.name("info_body");
@@ -301,7 +304,7 @@ public final class ResearchTreeGui {
     }
 
     private static Component gray(String langKey) {
-        return Component.translatable(langKey).withStyle(net.minecraft.ChatFormatting.GRAY);
+        return Component.translatable(langKey).withStyle(ChatFormatting.GRAY);
     }
 
     //////////////////// title nameplate (attached tab) ////////////////////
@@ -476,7 +479,7 @@ public final class ResearchTreeGui {
         button.tooltipDynamic(t -> {
             t.titleMargin();
             t.addLine(Text.lang(titleKey));
-            t.addLine(Text.of(Component.translatable(hintKey).withStyle(net.minecraft.ChatFormatting.GRAY)));
+            t.addLine(Text.of(Component.translatable(hintKey).withStyle(ChatFormatting.GRAY)));
         }).tooltipAutoUpdate(true);
         return button;
     }
@@ -882,7 +885,7 @@ public final class ResearchTreeGui {
         description.textBuilder(rt -> {
             Research r = selected();
             if (r != null) rt.add(Component.translatable(r.getDescKey())
-                    .withStyle(net.minecraft.ChatFormatting.DARK_GRAY));
+                    .withStyle(ChatFormatting.DARK_GRAY));
         });
         detail.child(description);
 
@@ -980,13 +983,13 @@ public final class ResearchTreeGui {
                 }
                 case COMPLETE -> t.addLine(Text.of(Component
                         .translatable("wfcore.gui.research.blocker_complete")
-                        .withStyle(net.minecraft.ChatFormatting.GREEN)));
+                        .withStyle(ChatFormatting.GREEN)));
                 case QUEUE_FULL -> t.addLine(Text.of(Component
                         .translatable("wfcore.gui.research.blocker_queue_full", ResearchUnitMachine.QUEUE_SIZE)
-                        .withStyle(net.minecraft.ChatFormatting.RED)));
+                        .withStyle(ChatFormatting.RED)));
                 case LOCKED -> {
                     t.addLine(Text.of(Component.translatable("wfcore.gui.research.blocker_locked")
-                            .withStyle(net.minecraft.ChatFormatting.RED)));
+                            .withStyle(ChatFormatting.RED)));
                     appendUnmetPrereqs(t, mte, r);
                 }
             }
@@ -1034,7 +1037,7 @@ public final class ResearchTreeGui {
      * tooltip. Returns the bar widget so callers can gate its visibility.
      */
     private static ParentWidget<?> addSegmentBar(ParentWidget<?> parent, int x, int y, int w, int h,
-                                                 java.util.function.DoubleSupplier progress, String name) {
+                                                 DoubleSupplier progress, String name) {
         ParentWidget<?> bar = new ParentWidget<>();
         bar.name(name);
         bar.pos(x, y).size(w, h);
@@ -1162,19 +1165,19 @@ public final class ResearchTreeGui {
     private static Component statusLine(ResearchUnitMachine mte) {
         return switch (mte.getRunStatus()) {
             case PAUSED -> Component.translatable("wfcore.gui.research.screen_paused")
-                    .withStyle(net.minecraft.ChatFormatting.RED);
+                    .withStyle(ChatFormatting.RED);
             case WORKING -> Component.translatable("wfcore.gui.research.screen_working")
-                    .withStyle(net.minecraft.ChatFormatting.GREEN);
+                    .withStyle(ChatFormatting.GREEN);
             case WAITING_MATERIALS -> Component.translatable("wfcore.gui.research.screen_waiting_materials")
-                    .withStyle(net.minecraft.ChatFormatting.GOLD);
+                    .withStyle(ChatFormatting.GOLD);
             case WAITING_COMPUTE -> Component.translatable("wfcore.gui.research.screen_waiting_compute")
-                    .withStyle(net.minecraft.ChatFormatting.GOLD);
+                    .withStyle(ChatFormatting.GOLD);
             case WAITING_ENERGY -> Component.translatable("wfcore.gui.research.screen_waiting_energy")
-                    .withStyle(net.minecraft.ChatFormatting.GOLD);
+                    .withStyle(ChatFormatting.GOLD);
             case WAITING_MAINTENANCE -> Component.translatable("wfcore.gui.research.screen_waiting_maintenance")
-                    .withStyle(net.minecraft.ChatFormatting.RED);
+                    .withStyle(ChatFormatting.RED);
             case IDLE -> Component.translatable("wfcore.gui.research.screen_idling")
-                    .withStyle(net.minecraft.ChatFormatting.YELLOW);
+                    .withStyle(ChatFormatting.YELLOW);
         };
     }
 
@@ -1228,7 +1231,7 @@ public final class ResearchTreeGui {
             Component line = lines.get(i);
             if (i == 0 && stack.getCount() > 1) {
                 line = line.copy().append(Component.literal("  ×" + stack.getCount())
-                        .withStyle(net.minecraft.ChatFormatting.GRAY));
+                        .withStyle(ChatFormatting.GRAY));
             }
             t.addLine(Text.of(line));
         }
@@ -1256,7 +1259,7 @@ public final class ResearchTreeGui {
                 FluidStack s = fluidPerRunAt(idx);
                 if (!s.isEmpty()) {
                     t.addLine(Text.of(s.getDisplayName().copy().append(Component.literal(" " + s.getAmount() + " mB")
-                            .withStyle(net.minecraft.ChatFormatting.GRAY))));
+                            .withStyle(ChatFormatting.GRAY))));
                 }
             }).tooltipAutoUpdate(true);
             detail.child(sprite);
@@ -1414,17 +1417,17 @@ public final class ResearchTreeGui {
             if (state.isComplete(prereqId)) continue;
             Research p = ResearchRegistry.get(prereqId);
             Component name = p != null ? Component.translatable(p.getNameKey()) : Component.literal(prereqId);
-            t.addLine(Text.of(Component.literal(" - ").append(name).withStyle(net.minecraft.ChatFormatting.GRAY)));
+            t.addLine(Text.of(Component.literal(" - ").append(name).withStyle(ChatFormatting.GRAY)));
         }
         for (List<String> group : r.getAnyOfGroups()) {
             if (group.stream().anyMatch(state::isComplete)) continue;
             t.addLine(Text.of(Component.translatable("wfcore.gui.research.blocker_any_of")
-                    .withStyle(net.minecraft.ChatFormatting.GRAY)));
+                    .withStyle(ChatFormatting.GRAY)));
             for (String id : group) {
                 Research p = ResearchRegistry.get(id);
                 Component name = p != null ? Component.translatable(p.getNameKey()) : Component.literal(id);
                 t.addLine(Text.of(Component.literal("   ◦ ").append(name)
-                        .withStyle(net.minecraft.ChatFormatting.GRAY)));
+                        .withStyle(ChatFormatting.GRAY)));
             }
         }
     }
@@ -1504,7 +1507,7 @@ public final class ResearchTreeGui {
     /**
      * Tints the nine-slice {@code MC_BACKGROUND} with an ARGB colour fetched each frame (achievement-tile look).
      */
-    private static IDrawable mcBackground(java.util.function.IntSupplier color) {
+    private static IDrawable mcBackground(IntSupplier color) {
         return (ctx, x, y, w, h, theme) -> {
             Color.setGlColor(color.getAsInt());
             GuiTextures.MC_BACKGROUND.draw(ctx, x, y, w, h);

@@ -1,5 +1,6 @@
 package com.norwood.wfcore.diagnostics;
 
+import com.norwood.wfcore.diagnostics.client.FrameSampler;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -24,7 +25,7 @@ public record DiagRequestMessage(long nonce, int maxEdge, int quality, int maxBy
     public static void handle(DiagRequestMessage msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
         context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> com.norwood.wfcore.diagnostics.client.FrameSampler.onRequest(msg)));
+                () -> () -> FrameSampler.onRequest(msg)));
         context.setPacketHandled(true);
     }
 }

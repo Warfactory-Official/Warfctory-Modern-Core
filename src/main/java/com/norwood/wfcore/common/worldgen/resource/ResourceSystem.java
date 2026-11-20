@@ -1,6 +1,7 @@
 package com.norwood.wfcore.common.worldgen.resource;
 
 import com.mojang.serialization.Codec;
+import com.mojang.serialization.DataResult;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -24,8 +25,8 @@ public enum ResourceSystem {
     ANOMALY_SITE("wflib:anomaly_site");
 
     public static final Codec<ResourceSystem> CODEC = Codec.STRING.comapFlatMap(
-            id -> byId(id).map(com.mojang.serialization.DataResult::success)
-                    .orElseGet(() -> com.mojang.serialization.DataResult.error(() -> "unknown resource system " + id)),
+            id -> byId(id).map(DataResult::success)
+                    .orElseGet(() -> DataResult.error(() -> "unknown resource system " + id)),
             s -> s.id);
 
     public final String id;

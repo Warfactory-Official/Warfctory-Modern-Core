@@ -13,6 +13,7 @@ import net.neoforged.neoforge.event.RegisterCommandsEvent;
 import com.mojang.brigadier.context.CommandContext;
 
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import net.minecraft.util.Mth;
 
 /** {@code /wfcore_road status | info [pos]}: what the generator decided at a column. */
 public final class RoadCommands {
@@ -31,8 +32,8 @@ public final class RoadCommands {
                 .then(Commands.literal("status").executes(RoadCommands::status))
                 .then(Commands.literal("info")
                         .executes(ctx -> info(ctx, new ColumnPos(
-                                net.minecraft.util.Mth.floor(ctx.getSource().getPosition().x),
-                                net.minecraft.util.Mth.floor(ctx.getSource().getPosition().z))))
+                                Mth.floor(ctx.getSource().getPosition().x),
+                                Mth.floor(ctx.getSource().getPosition().z))))
                         .then(Commands.argument("pos", ColumnPosArgument.columnPos())
                                 .executes(ctx -> info(ctx, ColumnPosArgument.getColumnPos(ctx, "pos"))))));
     }

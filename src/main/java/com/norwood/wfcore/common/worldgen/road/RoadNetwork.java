@@ -9,7 +9,9 @@ import com.mojang.serialization.DataResult;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.function.Function;
 
 /**
  * The road plan, as resolved by {@code worldgen-workspace} and written into the datapack at
@@ -66,10 +68,10 @@ public record RoadNetwork(ResourceKey<Level> dimension, int seaLevel, List<Junct
                 .apply(i, Link::new));
 
         private static RecordCodecBuilder<Link, OptionalInt> intOptional(String name,
-                java.util.function.Function<Link, OptionalInt> getter) {
+                Function<Link, OptionalInt> getter) {
             return Codec.INT.optionalFieldOf(name)
                     .xmap(o -> o.map(OptionalInt::of).orElse(OptionalInt.empty()),
-                            o -> o.isPresent() ? java.util.Optional.of(o.getAsInt()) : java.util.Optional.empty())
+                            o -> o.isPresent() ? Optional.of(o.getAsInt()) : Optional.empty())
                     .forGetter(getter);
         }
 

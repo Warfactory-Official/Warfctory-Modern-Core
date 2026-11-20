@@ -1,5 +1,6 @@
 package com.norwood.wfcore.diagnostics;
 
+import com.norwood.wfcore.diagnostics.client.DiagViewerClient;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.fml.DistExecutor;
@@ -27,7 +28,7 @@ public record DiagImageChunkMessage(long requestId, int index, byte[] data) {
     public static void handle(DiagImageChunkMessage msg, Supplier<NetworkEvent.Context> ctx) {
         NetworkEvent.Context context = ctx.get();
         context.enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> com.norwood.wfcore.diagnostics.client.DiagViewerClient.onImageChunk(msg)));
+                () -> () -> DiagViewerClient.onImageChunk(msg)));
         context.setPacketHandled(true);
     }
 }

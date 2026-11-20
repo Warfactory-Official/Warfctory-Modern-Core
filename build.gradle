@@ -234,6 +234,7 @@ neoForge {
 configurations {
     localRuntime
     runtimeClasspath.extendsFrom localRuntime
+    all { resolutionStrategy.cacheDynamicVersionsFor(0, 'seconds') }
 }
 
 dependencies {
@@ -263,8 +264,8 @@ dependencies {
     // GemRender — the animated-model renderer, built out of ~/projects/wf2-21/GemRender. Replaced
     // MCglTF: same glTF assets and the same `extras.resourceLocation` hook, but the models are drawn
     // as Flywheel instances off a shared bone palette instead of one immediate-mode draw per machine.
-    compileOnly "com.wf.gemrender:gemrender-1.21.1:${gemrender_version}-SNAPSHOT"
-    localRuntime "com.wf.gemrender:gemrender-1.21.1:${gemrender_version}-SNAPSHOT"
+    compileOnly "com.wf.gemrender:gemrender-1.21.1:[${gemrender_version}-SNAPSHOT,1)"
+    localRuntime "com.wf.gemrender:gemrender-1.21.1:[${gemrender_version}-SNAPSHOT,1)"
     // CombinedAssault — the vehicle-factory spawn target (plan §4).
     compileOnly "com.wf.combinedassault:combinedassault:${combinedassault_version}-SNAPSHOT"
     localRuntime "com.wf.combinedassault:combinedassault:${combinedassault_version}-SNAPSHOT"

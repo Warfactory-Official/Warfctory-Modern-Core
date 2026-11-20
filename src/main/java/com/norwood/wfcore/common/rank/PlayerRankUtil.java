@@ -26,6 +26,7 @@ import java.util.UUID;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.UnaryOperator;
 
 import javax.annotation.Nullable;
 
@@ -261,7 +262,7 @@ public final class PlayerRankUtil {
     public static String transformChatContent(@Nullable UUID id, String content) {
         String result = content;
         for (PlayerRank rank : getRanks(id)) {
-            java.util.function.UnaryOperator<String> transform = rank.contentTransform();
+            UnaryOperator<String> transform = rank.contentTransform();
             if (transform != null) {
                 result = transform.apply(result);
             }

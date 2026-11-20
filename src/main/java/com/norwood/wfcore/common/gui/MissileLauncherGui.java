@@ -32,6 +32,8 @@ import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
 import com.norwood.wfcore.integration.warforge.gui.ChunkMapSection;
 
 import java.util.Locale;
+import java.util.function.Supplier;
+import net.minecraft.ChatFormatting;
 
 /**
  * Launch-silo GUI on the ModularUI (brachy) fork. Left column: the missile pick-list (everything stored
@@ -409,21 +411,21 @@ public final class MissileLauncherGui {
     private static Component statusText(MissileLauncherMachine mte, MissileLauncherMachine.LaunchState state) {
         return switch (state) {
             case UNFORMED -> Component.translatable("wfcore.gui.launcher.status_unformed")
-                    .withStyle(net.minecraft.ChatFormatting.RED);
+                    .withStyle(ChatFormatting.RED);
             case LOW_TIER -> Component.translatable("wfcore.gui.launcher.status_low_tier")
-                    .withStyle(net.minecraft.ChatFormatting.RED);
+                    .withStyle(ChatFormatting.RED);
             case NO_MISSILE -> Component.translatable("wfcore.gui.launcher.status_no_missile")
-                    .withStyle(net.minecraft.ChatFormatting.YELLOW);
+                    .withStyle(ChatFormatting.YELLOW);
             case NO_ENERGY -> Component.translatable("wfcore.gui.launcher.status_no_energy")
-                    .withStyle(net.minecraft.ChatFormatting.RED);
+                    .withStyle(ChatFormatting.RED);
             case COOLDOWN -> Component.translatable("wfcore.gui.launcher.status_cooldown",
-                    (mte.getCooldown() + 19) / 20).withStyle(net.minecraft.ChatFormatting.YELLOW);
+                    (mte.getCooldown() + 19) / 20).withStyle(ChatFormatting.YELLOW);
             case READY -> Component.translatable("wfcore.gui.launcher.status_ready")
-                    .withStyle(net.minecraft.ChatFormatting.GREEN);
+                    .withStyle(ChatFormatting.GREEN);
             case MAINTENANCE -> Component.translatable("wfcore.gui.launcher.status_maintenance")
-                    .withStyle(net.minecraft.ChatFormatting.RED);
+                    .withStyle(ChatFormatting.RED);
             case NO_TARGET -> Component.translatable("wfcore.gui.launcher.status_no_target")
-                    .withStyle(net.minecraft.ChatFormatting.YELLOW);
+                    .withStyle(ChatFormatting.YELLOW);
         };
     }
 
@@ -490,7 +492,7 @@ public final class MissileLauncherGui {
     }
 
     private static ButtonWidget<?> cycleButton(String name, int y, StringSyncValue value, String[] values,
-                                                java.util.function.Supplier<Component> label, String tooltip) {
+                                                Supplier<Component> label, String tooltip) {
         ButtonWidget<?> button = new ButtonWidget<>();
         button.name(name).pos(SETTING_VALUE_X, y).size(SETTING_VALUE_W, FIELD_H);
         button.background(fieldBox()).overlay(Text.dynamic(label));

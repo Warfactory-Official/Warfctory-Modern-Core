@@ -25,6 +25,7 @@ import java.io.OutputStream;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Properties;
 import java.util.regex.Matcher;
@@ -175,12 +176,12 @@ public final class VeinBackfillRunner {
             }
 
             long[] sorted = orig.toLongArray();
-            java.util.Arrays.sort(sorted);
+            Arrays.sort(sorted);
 
             // Resume: skip origins already processed (value <= lastDone in sorted order).
             int resumeAt = 0;
             if (lastDone != Long.MIN_VALUE) {
-                int idx = java.util.Arrays.binarySearch(sorted, lastDone);
+                int idx = Arrays.binarySearch(sorted, lastDone);
                 resumeAt = idx >= 0 ? idx + 1 : -(idx + 1);
             }
 
