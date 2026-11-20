@@ -1,0 +1,8 @@
+{
+  "heavy": "wfcore:reinforced_concrete",
+  "body": "wfcore:standard_concrete",
+  "glass": "wfcore:ballistic_glass",
+  "steel": "wfcore:hardened_steel",
+  "hesco": "wfcore:hesco_bastion",
+  "bag": "wfcore:sandbags"
+}

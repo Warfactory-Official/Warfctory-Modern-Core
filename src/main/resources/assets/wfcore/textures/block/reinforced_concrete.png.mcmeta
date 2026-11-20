@@ -1,0 +1,5 @@
+{
+    "ldlib": {
+        "connection": "wfcore:block/reinforced_concrete_ctm"
+    }
+}
