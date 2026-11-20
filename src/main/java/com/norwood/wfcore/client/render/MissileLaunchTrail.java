@@ -34,7 +34,7 @@ import com.wf.wflib.missile.api.MissileContent;
  * <p>Tick-driven rather than render-driven, so the trail keeps tracking and cleans up even if the player
  * looks away mid-launch; the BER only kicks off {@link #ensure} on the frame it first sees the rise.
  */
-@EventBusSubscriber(modid = WFCore.MOD_ID, value = Dist.CLIENT)
+// Registered by GTBootstrap, only with GregTech loaded (an auto-subscribed class would be loaded regardless).
 public final class MissileLaunchTrail {
 
     /** Silo controller pos -> the stand-in entity carrying its trail. */

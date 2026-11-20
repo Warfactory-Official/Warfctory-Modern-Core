@@ -8,7 +8,7 @@ import com.tterrag.registrate.util.entry.RegistryEntry;
 import com.mojang.serialization.MapCodec;
 import com.norwood.wfcore.WFCore;
 
-/** Registered through {@code WFCore.WF_MACHINES}; call {@link #init()} at mod construction. */
+/** Registered through {@code com.norwood.wfcore.integration.gt.GTBootstrap.WF_MACHINES}; call {@link #init()} at mod construction. */
 public final class WFRecipeConditions {
 
     public static final String RESEARCH_NAME = "research_wfcore";
@@ -31,7 +31,7 @@ public final class WFRecipeConditions {
 
     private static <T extends RecipeCondition<T>> RegistryEntry<RecipeConditionType<?>, RecipeConditionType<T>> register(
             String name, RecipeConditionType.ConditionFactory<T> factory, MapCodec<T> codec) {
-        return WFCore.WF_MACHINES.simple(name, GTRegistries.Keys.RECIPE_CONDITION,
+        return com.norwood.wfcore.integration.gt.GTBootstrap.WF_MACHINES.simple(name, GTRegistries.Keys.RECIPE_CONDITION,
                 () -> new RecipeConditionType<>(factory, codec));
     }
 }

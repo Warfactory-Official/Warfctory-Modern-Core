@@ -34,7 +34,7 @@ import java.util.List;
  * through the ground. If red boxes appear but the machine screen still says "No ore", the server-side scan
  * is the culprit; if there are no boxes at all, there simply is no deposit within range of the head.
  */
-@EventBusSubscriber(modid = WFCore.MOD_ID, value = Dist.CLIENT)
+// Registered by GTBootstrap, only with GregTech loaded (an auto-subscribed class would be loaded regardless).
 public final class DrillScanDebugRenderer {
 
     /** How often (game ticks) the client re-scans - the scan walks columns to bedrock, too heavy per-frame. */

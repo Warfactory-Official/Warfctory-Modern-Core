@@ -51,7 +51,7 @@ import java.util.stream.Stream;
 
 import static com.gregtechceu.gtceu.api.multiblock.Predicates.*;
 import static com.gregtechceu.gtceu.common.data.models.GTMachineModels.createWorkableCasingMachineModel;
-import static com.norwood.wfcore.WFCore.WF_MACHINES;
+import static com.norwood.wfcore.integration.gt.GTBootstrap.WF_MACHINES;
 
 public class WFMachines {
 

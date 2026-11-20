@@ -34,7 +34,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.Set;
 
 
-@EventBusSubscriber(modid = WFCore.MOD_ID)
+// Registered by GTBootstrap, only with GregTech loaded (an auto-subscribed class would be loaded regardless).
 public final class PipeNetWalkerBehavior {
 
     private static final String DYE_SPRAY_SUFFIX = "_dye_spray_can";

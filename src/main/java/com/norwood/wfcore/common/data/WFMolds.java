@@ -11,7 +11,7 @@ import com.tterrag.registrate.util.entry.ItemEntry;
 import java.util.EnumMap;
 import java.util.Map;
 
-import static com.norwood.wfcore.WFCore.WF_MACHINES;
+import static com.norwood.wfcore.integration.gt.GTBootstrap.WF_MACHINES;
 import static com.norwood.wfcore.common.data.FoundryMolds.SIZE_BASIN;
 import static com.norwood.wfcore.common.data.FoundryMolds.SIZE_CASTER;
 

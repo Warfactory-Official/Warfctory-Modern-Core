@@ -1,6 +1,7 @@
 package com.norwood.wfcore.common.data;
 
-import static com.norwood.wfcore.WFCore.WF_MACHINES;
+import com.norwood.wfcore.integration.gt.GTIntegration;
+
 
 /**
  * Creates the registrate-backed content (creative tab, blocks, items) during mod construction, before
@@ -12,10 +13,14 @@ public final class WFContent {
 
     public static void init() {
         WFCreativeTabs.init();
-        WF_MACHINES.creativeModeTab(() -> WFCreativeTabs.WFCORE_TAB);
+        if (GTIntegration.isLoaded()) {
+            com.norwood.wfcore.integration.gt.GTBootstrap.WF_MACHINES.creativeModeTab(() -> WFCreativeTabs.WFCORE_TAB);
+        }
         WFBlocks.init();
         WFItems.init();
         WFMissiles.init();
-        WFMolds.init();
+        if (GTIntegration.isLoaded()) {
+            WFMolds.init();
+        }
     }
 }

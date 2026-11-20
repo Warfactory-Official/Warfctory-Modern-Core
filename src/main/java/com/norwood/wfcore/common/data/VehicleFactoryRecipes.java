@@ -21,7 +21,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.UnaryOperator;
 
-import static com.norwood.wfcore.WFCore.WF_MACHINES;
+import static com.norwood.wfcore.integration.gt.GTBootstrap.WF_MACHINES;
 
 /**
  * Per-machine GT recipe maps for the vehicle factories. Every vehicle-assembly multiblock owns its own

@@ -13,66 +13,32 @@ import net.neoforged.fml.event.lifecycle.FMLLoadCompleteEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.data.event.GatherDataEvent;
 
-import com.gregtechceu.gtceu.api.data.chemical.material.event.PostMaterialEvent;
-import com.gregtechceu.gtceu.api.registry.registrate.GTRegistrate;
-import net.minecraft.network.codec.ByteBufCodecs;
-import com.gregtechceu.gtceu.api.sync_system.data_transformers.ValueTransformers;
-import com.norwood.wfcore.common.block.PlayerUnbreakableHandler;
 
 import com.norwood.wfcore.common.block.WFBlockResistanceTooltip;
 import com.norwood.wfcore.common.block.WFBlockResistances;
-import com.norwood.wfcore.common.camera.ThirdPersonServer;
 import com.norwood.wfcore.common.chat.ChatModeration;
-import com.norwood.wfcore.common.compute.CPURegistry;
-import com.norwood.wfcore.common.compute.RAMRegistry;
-import com.norwood.wfcore.common.compute.WFComputeScripts;
-import com.norwood.wfcore.common.compute.WFComputeTooltips;
 import com.norwood.wfcore.common.darkness.DarknessServerHandler;
 import com.norwood.wfcore.common.data.WFContent;
 import com.norwood.wfcore.common.data.WFDataComponents;
-import com.norwood.wfcore.common.machine.ResearchUnitMachine;
-import com.norwood.wfcore.common.data.WFMachines;
-import com.norwood.wfcore.common.data.WFCovers;
-import com.norwood.wfcore.common.data.WFMaterials;
-import com.norwood.wfcore.common.worldgen.transplant.VeinTransplant;
-import com.norwood.wfcore.common.data.WFRecipeTypes;
-import com.norwood.wfcore.common.data.VehicleFactoryRecipes;
-import com.norwood.wfcore.common.data.WFOres;
-import com.norwood.wfcore.common.deposit.DepositCommands;
-import com.norwood.wfcore.common.deposit.WFDeposits;
-import com.norwood.wfcore.common.fluid.CoolantRegistry;
 import com.norwood.wfcore.common.loot.WFLootEvents;
 import com.norwood.wfcore.common.maintenance.MaintenanceService;
 import com.norwood.wfcore.common.particle.WFParticles;
-import com.norwood.wfcore.common.recipe.WFRecipeTypeTweaks;
-import com.norwood.wfcore.common.recipe.condition.WFRecipeConditions;
 import com.norwood.wfcore.common.shader.ShaderServerHandler;
 import com.norwood.wfcore.common.sound.WFSounds;
 import com.norwood.wfcore.common.tool.BoltGunConversions;
-import com.norwood.wfcore.common.worldgen.DensityDumpCommands;
-import com.norwood.wfcore.common.worldgen.DepositRetrofitHandler;
 import com.norwood.wfcore.common.worldgen.WFFeatures;
 import com.norwood.wfcore.common.worldgen.density.WFDensityFunctions;
 import com.norwood.wfcore.common.worldgen.resource.AllocationIndexManager;
 import com.norwood.wfcore.common.worldgen.resource.ResourceAllocation;
-import com.norwood.wfcore.common.worldgen.resource.ResourceCommands;
 import com.norwood.wfcore.common.worldgen.road.RoadCommands;
 import com.norwood.wfcore.common.worldgen.road.RoadIndexManager;
 import com.norwood.wfcore.common.worldgen.road.RoadRegistries;
 import com.norwood.wfcore.common.worldgen.road.WorldgenPackProvider;
-import com.norwood.wfcore.common.worldgen.transplant.VeinBackfillCommand;
-import com.norwood.wfcore.common.worldgen.transplant.VeinBackfillRunner;
+import com.norwood.wfcore.integration.gt.GTBootstrap;
+import com.norwood.wfcore.integration.gt.GTIntegration;
 import com.norwood.wfcore.integration.warforge.WarforgeIntegration;
-import com.norwood.wfcore.integration.warforge.WarforgeFobGuard;
-import com.norwood.wfcore.integration.warforge.WarforgeVeinAllocation;
 import com.norwood.wfcore.config.WFCoreConfig;
-import com.norwood.wfcore.integration.combinedassault.VehicleGate;
-import com.norwood.wfcore.integration.wflib.AnomalySiteDensity;
-import com.norwood.wfcore.integration.wflib.GasProtection;
-import com.norwood.wfcore.radar.RadarCommands;
 import com.norwood.wfcore.radar.RadarConfig;
-import com.norwood.wfcore.radar.RadarRegistryHandler;
-import com.norwood.wfcore.radar.Retrofitter;
 import com.norwood.wfcore.radar.WFRadarScripts;
 
 import org.apache.logging.log4j.LogManager;
@@ -87,41 +53,36 @@ public class WFCore {
     public static final boolean DEBUG = false;
     public static final Logger LOGGER = LogManager.getLogger();
     /**
-     * GT 8.0.0 removed {@code GTRegistrate#registerRegistrate}: {@code create(modId)} looks up this mod's
-     * event bus and registers its own listeners, so there is nothing left to call afterwards.
+     * The mod's registrate: GregTech's (a {@code GTRegistrate}) when GregTech is loaded, the plain one when it is not. Content that needs
+     * nothing of GregTech registers through this; machines, covers and pipes go through {@code GTBootstrap.WF_MACHINES}, the same instance.
      */
-    public static GTRegistrate WF_MACHINES = GTRegistrate.create(WFCore.MOD_ID);
+    public static final com.tterrag.registrate.AbstractRegistrate<?> REGISTRATE = WFRegistrate.create(WFCore.MOD_ID);
 
     public WFCore(IEventBus modEventBus, ModContainer container) {
-        VehicleGate.install();
+        com.norwood.wfcore.integration.combinedassault.VehicleGate.install();
         WFSystems.require(MOD_ID, "wflib:nvg");
         WFLibContent.nvg(MOD_ID, "nvg_gen1", "nvg_pvs7", "nvg_pvs14", "nvg_pvs31", "nvg_gpnvg18");
         WFLibContent.armor(WFCore.MOD_ID, "plate_carrier", "steel_plate", "ceramic_plate", "hazmat_suit", "combat_helmet");
         WFSystems.require(MOD_ID, "wflib:armor");
         WFSystems.require(MOD_ID, "wflib:mine");
-        WFSystems.require(MOD_ID, "wflib:mist");
-        GasProtection.install();
         WFLibContent.mines(WFCore.MOD_ID, "ap", "bounding", "claymore", "heat", "naval", "scatter_ap", "scatter_at", "dispenser_ap", "dispenser_at");
+        WFSystems.require(MOD_ID, "wflib:mist");
         // NeoForge-native TOML config. Registration + baking replace the old snakeyaml wfcore.yaml/radar.yaml.
         // ModLoadingContext is gone; the container is injected into the constructor instead.
         container.registerConfig(ModConfig.Type.COMMON, WFCoreConfig.SPEC, "wfcore.toml");
         container.registerConfig(ModConfig.Type.COMMON, RadarConfig.SPEC, "wfcore-radar.toml");
         modEventBus.addListener(this::onModConfig);
 
-        modEventBus.addListener(RoadRegistries::register);
-        modEventBus.addListener(ResourceAllocation::register);
-        modEventBus.addListener(WorldgenPackProvider::addPackFinders);
         modEventBus.addListener(this::commonSetup);
         modEventBus.addListener(this::loadComplete);
         modEventBus.addListener(this::onGatherData);
-        modEventBus.addListener(this::modifyMaterials);
 
-        // GregTech 8.0.0's sync system resolves a field's transformer the first time it sees the type, so
-        // wfcore's own @SaveField element types have to be registered before any machine is constructed.
-        ValueTransformers.registerCodecTransformer(ResearchUnitMachine.Job.class, ResearchUnitMachine.Job.CODEC,
-                ByteBufCodecs.fromCodecWithRegistries(ResearchUnitMachine.Job.CODEC));
+        if (GTIntegration.isLoaded()) {
+            GTBootstrap.construct(modEventBus);
+        } else {
+            LOGGER.info("GregTech is not installed: wfcore's machines, materials, pipes, covers, research and GT worldgen hooks are off");
+        }
 
-        WFFeatures.init(modEventBus);
         WFDensityFunctions.init(modEventBus);
         WFParticles.PARTICLE_TYPES.register(modEventBus);
         WFDataComponents.DATA_COMPONENTS.register(modEventBus);
@@ -131,41 +92,24 @@ public class WFCore {
         // are all lambdas on the MOD bus above, so it has no @SubscribeEvent methods — and NeoForge 21.1
         // throws IllegalArgumentException on registering a listener object with none, where Forge quietly
         // accepted it.
-        NeoForge.EVENT_BUS.register(new RadarRegistryHandler());
-        NeoForge.EVENT_BUS.register(Retrofitter.INSTANCE);
-        NeoForge.EVENT_BUS.register(RadarCommands.INSTANCE);
-        NeoForge.EVENT_BUS.register(DepositCommands.INSTANCE);
-        NeoForge.EVENT_BUS.register(VeinBackfillCommand.INSTANCE);
-        NeoForge.EVENT_BUS.register(VeinBackfillRunner.INSTANCE);
-        NeoForge.EVENT_BUS.register(DepositRetrofitHandler.INSTANCE);
-        NeoForge.EVENT_BUS.register(RoadIndexManager.INSTANCE);
-        NeoForge.EVENT_BUS.register(RoadCommands.INSTANCE);
-        NeoForge.EVENT_BUS.register(AllocationIndexManager.INSTANCE);
-        NeoForge.EVENT_BUS.register(ResourceCommands.INSTANCE);
-        NeoForge.EVENT_BUS.register(DensityDumpCommands.INSTANCE);
-        if (WarforgeIntegration.isLoaded()) {
-            WarforgeVeinAllocation.install();
-            WarforgeFobGuard.install();
+        if (GTIntegration.isLoaded()) {
+            GTBootstrap.gameBus();
         }
-        NeoForge.EVENT_BUS.register(new WFComputeTooltips());
+        if (WarforgeIntegration.isLoaded()) {
+            com.norwood.wfcore.integration.warforge.WarforgeFobGuard.install();
+        }
         NeoForge.EVENT_BUS.register(new WFBlockResistanceTooltip());
         NeoForge.EVENT_BUS.register(new WFLootEvents());
-        NeoForge.EVENT_BUS.register(PlayerUnbreakableHandler.INSTANCE);
+        NeoForge.EVENT_BUS.register(com.norwood.wfcore.common.block.PlayerUnbreakableHandler.INSTANCE);
         NeoForge.EVENT_BUS.register(DarknessServerHandler.INSTANCE);
-        NeoForge.EVENT_BUS.register(ThirdPersonServer.INSTANCE);
+        NeoForge.EVENT_BUS.register(com.norwood.wfcore.common.camera.ThirdPersonServer.INSTANCE);
         NeoForge.EVENT_BUS.register(ShaderServerHandler.INSTANCE);
         NeoForge.EVENT_BUS.register(ChatModeration.INSTANCE);
         NeoForge.EVENT_BUS.register(MaintenanceService.INSTANCE);
 
-        // GT content declared at construction (ordering AFTER gtceu), like GT's own CommonProxy#init.
-        WFMaterials.init();
-        WFOres.init();
-        WFRecipeConditions.init();
-        VehicleFactoryRecipes.init();
-        WFRecipeTypes.init();
-        WFCovers.init();
-        VeinTransplant.registerLayer();
-        WFMachines.init();
+        if (GTIntegration.isLoaded()) {
+            GTBootstrap.content();
+        }
         WFContent.init();
     }
 
@@ -193,29 +137,16 @@ public class WFCore {
 
     private void commonSetup(final FMLCommonSetupEvent event) {
         event.enqueueWork(() -> {
-            WFDeposits.registerDefaults();
-            LOGGER.info("Deposits: {} type(s), {} node(s), {} region(s); worldgen enabled={} scatter={} rarity={} heal={}",
-                    WFDeposits.all().size(), WFDeposits.nodeCount(), WFDeposits.regionCount(),
-                    WFCoreConfig.isDepositWorldgenEnabled(),
-                    WFCoreConfig.isDepositScatterEnabled(),
-                    WFCoreConfig.getDepositWorldgenRarity(),
-                    WFCoreConfig.isDepositHealEnabled());
             WFBlockResistances.registerDefaults();
-            CoolantRegistry.register();
-            AnomalySiteDensity.register();
-            CPURegistry.register();
-            RAMRegistry.register();
-            // Apply KubeJS compute overrides last so packs can add/override/remove any built-in above,
-            // plus retune the global WFComputeConfig tunables. (Startup scripts ran before this point.)
-            WFComputeScripts.apply();
-            LOGGER.info("Compute registries: {} CPU item(s), {} RAM item(s)",
-                    CPURegistry.size(),
-                    RAMRegistry.size());
+            if (GTIntegration.isLoaded()) {
+                GTBootstrap.commonSetup();
+            }
             // Flush WFRadar KubeJS ops now that the block registry is frozen (machine enumeration is safe here).
-            WFRadarScripts.apply();
+            if (GTIntegration.isLoaded()) {
+                WFRadarScripts.apply();
+            }
             BoltGunConversions.apply();
             LOGGER.info("Bolt gun conversions: {} entry(ies)", BoltGunConversions.size());
-            WFRecipeTypeTweaks.init();
         });
     }
 
@@ -265,11 +196,4 @@ public class WFCore {
         watchdog.start();
     }
 
-    /**
-     * (Optional) Used to modify pre-existing materials from GregTech. This is the one material event that
-     * survived 8.0.0 — it fires after every material is registered and before the registry freezes.
-     */
-    private void modifyMaterials(PostMaterialEvent event) {
-        // CustomMaterials.modify();
-    }
 }

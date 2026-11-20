@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-import static com.norwood.wfcore.WFCore.WF_MACHINES;
+import static com.norwood.wfcore.integration.gt.GTBootstrap.WF_MACHINES;
 
 public final class WarforgeMachines {
 

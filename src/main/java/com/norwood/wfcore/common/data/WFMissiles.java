@@ -17,7 +17,6 @@ import com.norwood.wfcore.common.sound.WFSounds;
 import java.util.Map;
 import java.util.function.UnaryOperator;
 
-import static com.norwood.wfcore.WFCore.WF_MACHINES;
 
 /**
  * WFCore's missile suite. Each entry is a carryable {@link MissileItem} wrapping a {@link MissilePreset} built
@@ -451,7 +450,7 @@ public class WFMissiles {
     private static ItemEntry<MissileItem> missile(String name, String lang, ResourceLocation airframe,
                                                   ResourceLocation warhead,
                                                   UnaryOperator<MissilePreset.Builder> cfg) {
-        return WF_MACHINES
+        return WFCore.REGISTRATE
                 .item("missile_" + name, props -> new MissileItem(
                         cfg.apply(MissilePreset.builder(WFCore.id("missile_" + name), airframe, warhead)
                                 .damageResponse(WFDamageResponses.HARDENED_ID)

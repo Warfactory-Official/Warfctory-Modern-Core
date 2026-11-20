@@ -35,7 +35,7 @@ import java.util.List;
  * locally with {@link ClientLevel#addParticle}. Drills are found via {@link RenderMaskManager} (the same
  * "currently rendering its GLTF model" set the animation uses), so effects only start for on-screen rigs.
  */
-@EventBusSubscriber(modid = WFCore.MOD_ID, value = Dist.CLIENT)
+// Registered by GTBootstrap, only with GregTech loaded (an auto-subscribed class would be loaded regardless).
 public final class DrillParticleHandler {
 
     /** Neutral deep-rock crumbs; the ore colour comes from the tinted dust, since block particles can't be tinted. */

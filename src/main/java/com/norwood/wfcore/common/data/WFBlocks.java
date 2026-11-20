@@ -1,9 +1,13 @@
 package com.norwood.wfcore.common.data;
 
-import com.gregtechceu.gtceu.GTCEu;
-import com.gregtechceu.gtceu.common.data.models.GTModels;
-import com.gregtechceu.gtceu.data.recipe.CustomTags;
 
+import com.gregtechceu.gtceu.common.blockentity.OpticalPipeBlockEntity;
+import com.norwood.wfcore.common.block.FoundryCastingBlock;
+import com.norwood.wfcore.common.machine.FoundryCastingBlockEntity;
+import com.norwood.wfcore.common.pipenet.ac.ACPipeBlock;
+import com.norwood.wfcore.common.pipenet.ac.ACPipeBlockEntity;
+import com.norwood.wfcore.common.pipenet.ac.ACPipeType;
+import com.norwood.wfcore.common.pipenet.optical.CopperNetworkCableBlock;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.BlockTags;
@@ -16,29 +20,19 @@ import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.material.MapColor;
 
 import com.norwood.wfcore.WFCore;
+import com.norwood.wfcore.integration.gt.GTIntegration;
 import com.norwood.wfcore.common.block.BoltableCasingBlock;
 import com.norwood.wfcore.common.block.DepositBlock;
-import com.norwood.wfcore.common.block.FoundryCastingBlock;
 import com.norwood.wfcore.common.block.MiningChargeBlock;
 import com.norwood.wfcore.common.machine.DepositBlockEntity;
-import com.norwood.wfcore.common.machine.FoundryCastingBlockEntity;
 import com.norwood.wfcore.common.machine.MiningChargeBlockEntity;
-import com.gregtechceu.gtceu.api.block.PipeBlock;
-import com.gregtechceu.gtceu.api.item.PipeBlockItem;
-import com.gregtechceu.gtceu.common.blockentity.OpticalPipeBlockEntity;
-import com.gregtechceu.gtceu.common.pipelike.optical.OpticalPipeType;
 
-import com.norwood.wfcore.common.pipenet.ac.ACPipeBlock;
-import com.norwood.wfcore.common.pipenet.ac.ACPipeBlockEntity;
-import com.norwood.wfcore.common.pipenet.ac.ACPipeBlockItem;
-import com.norwood.wfcore.common.pipenet.ac.ACPipeType;
-import com.norwood.wfcore.common.pipenet.optical.CopperNetworkCableBlock;
 import com.tterrag.registrate.providers.ProviderType;
 import com.tterrag.registrate.util.entry.BlockEntityEntry;
 import com.tterrag.registrate.util.entry.BlockEntry;
 import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
 
-import static com.norwood.wfcore.WFCore.WF_MACHINES;
+
 
 /**
  * WFCore casing blocks. Mirrors GTCEu's "one block per casing" convention (see GTBlocks).
@@ -62,12 +56,16 @@ public class WFBlocks {
     public static BlockEntry<MiningChargeBlock> MINING_CHARGE;
     public static BlockEntry<MiningChargeBlock> DEEP_MINING_CHARGE;
     public static BlockEntityEntry<MiningChargeBlockEntity> MINING_CHARGE_BE;
+    // The foundry, pipes and cable below need GregTech and are null/empty without it. Their generic types name GregTech classes, which is safe:
+    // generics are erased in the descriptors, so nothing is loaded; only the code that registers them (WFBlocksGT) is gated.
     public static BlockEntry<FoundryCastingBlock> FOUNDRY_BASIN;
     public static BlockEntry<FoundryCastingBlock> FOUNDRY_MOLD_CASTER;
     public static BlockEntityEntry<FoundryCastingBlockEntity> FOUNDRY_CASTING_BE;
 
+    /** The number of AC pipe types ({@code ACPipeType.VALUES.length}, which cannot be read here without loading GregTech; WFBlocksGT checks it). */
+    static final int AC_PIPE_TYPES = 5;
     @SuppressWarnings({ "unchecked", "rawtypes" })
-    public static final BlockEntry<ACPipeBlock>[] AC_PIPES = new BlockEntry[ACPipeType.VALUES.length];
+    public static final BlockEntry<ACPipeBlock>[] AC_PIPES = new BlockEntry[AC_PIPE_TYPES];
     public static BlockEntityEntry<ACPipeBlockEntity> AC_PIPE_BE;
 
     /** MV copper computation/data cable — a cheap optical-fibre alternative sharing GregTech's optical net. */
@@ -110,27 +108,11 @@ public class WFBlocks {
         CONCRETE_BASE = createCasingBlock("concrete_base",
                 WFCore.id("block/casings/concrete_base"));
 
-        // Drill head: the 'F' of the drilling-rig structure. Placeholder steel-casing art for now.
-        DRILL_HEAD = createCasingBlock("drill_head",
-                GTCEu.id("block/casings/solid/machine_casing_solid_steel"));
-
-        // Bedrock-floor deposit block: unbreakable, drops nothing, drawn by its block-entity renderer.
-        DEPOSIT = WF_MACHINES.block("deposit", DepositBlock::new)
-                .initialProperties(() -> Blocks.BEDROCK)
-                .properties(p -> p.strength(-1.0F, 3_600_000.0F)
-                        .noLootTable()
-                        .isValidSpawn((state, level, pos, ent) -> false))
-                .exBlockstate(GTModels.cubeAllModel(ResourceLocation.fromNamespaceAndPath("minecraft", "block/bedrock")))
-                .register();
-        DEPOSIT_BE = WF_MACHINES.blockEntity("deposit", DepositBlockEntity::new)
-                .validBlock(DEPOSIT)
-                .register();
-
         // Demolition charge: cube blast (radius 3) that mines only natural blocks, fortune II on ores. Inert
         // to fire/flint and steel; only a detonator sets it off. Tier 1 breaks surface stone/dirt/ores.
         // Blockstate/models/item-model are hand-authored (top/side/bottom + armed variants), so datagen is
         // suppressed with noop and the JSON under resources/assets/wfcore drives rendering.
-        MINING_CHARGE = WF_MACHINES.block("mining_charge", p -> new MiningChargeBlock(p, 3, 2, 1))
+        MINING_CHARGE = WFCore.REGISTRATE.block("mining_charge", p -> new MiningChargeBlock(p, 3, 2, 1))
                 .initialProperties(() -> Blocks.IRON_BLOCK)
                 .properties(p -> p.strength(0.8F).sound(SoundType.METAL)
                         .isValidSpawn((state, level, pos, ent) -> false))
@@ -143,7 +125,7 @@ public class WFBlocks {
                 .register();
 
         // Tier 2 charge: also chews through the deepslate/tuff matrix (see deep_blast_breakable tag).
-        DEEP_MINING_CHARGE = WF_MACHINES.block("deep_mining_charge", p -> new MiningChargeBlock(p, 3, 2, 2))
+        DEEP_MINING_CHARGE = WFCore.REGISTRATE.block("deep_mining_charge", p -> new MiningChargeBlock(p, 3, 2, 2))
                 .initialProperties(() -> Blocks.IRON_BLOCK)
                 .properties(p -> p.strength(0.8F).sound(SoundType.METAL)
                         .isValidSpawn((state, level, pos, ent) -> false))
@@ -156,56 +138,8 @@ public class WFBlocks {
                 .register();
 
         // Shared block entity for both charge tiers; stores the placer's UUID.
-        MINING_CHARGE_BE = WF_MACHINES.blockEntity("mining_charge", MiningChargeBlockEntity::new)
+        MINING_CHARGE_BE = WFCore.REGISTRATE.blockEntity("mining_charge", MiningChargeBlockEntity::new)
                 .validBlocks(MINING_CHARGE, DEEP_MINING_CHARGE)
-                .register();
-
-        // HBM-ported foundry casting: slot a mold in, pipe molten metal (GT material fluids) in, take the
-        // casting out. Basin = large size-1 molds (OBJ model), mold caster = small size-0 molds (elements
-        // model); blockstate/model JSON is hand-authored under resources/assets/wfcore, so datagen is nooped.
-        FOUNDRY_BASIN = WF_MACHINES
-                .block("foundry_basin", p -> new FoundryCastingBlock(p, FoundryMolds.SIZE_BASIN,
-                        Block.box(0, 0, 0, 16, 14, 16)))
-                .initialProperties(() -> Blocks.BRICKS)
-                .properties(p -> p.strength(2.5F).sound(SoundType.STONE).noOcclusion()
-                        .isValidSpawn((state, level, pos, ent) -> false))
-                .lang("Foundry Casting Basin")
-                .blockstate(NonNullBiConsumer.noop())
-                .tag(BlockTags.MINEABLE_WITH_PICKAXE)
-                .item(BlockItem::new)
-                .model(NonNullBiConsumer.noop())
-                .build()
-                .register();
-        FOUNDRY_MOLD_CASTER = WF_MACHINES
-                .block("foundry_mold_caster", p -> new FoundryCastingBlock(p, FoundryMolds.SIZE_CASTER,
-                        Block.box(0, 0, 0, 16, 6, 16)))
-                .initialProperties(() -> Blocks.BRICKS)
-                .properties(p -> p.strength(2.5F).sound(SoundType.STONE).noOcclusion()
-                        .isValidSpawn((state, level, pos, ent) -> false))
-                .lang("Foundry Mold Caster")
-                .blockstate(NonNullBiConsumer.noop())
-                .tag(BlockTags.MINEABLE_WITH_PICKAXE)
-                .item(BlockItem::new)
-                .model(NonNullBiConsumer.noop())
-                .build()
-                .register();
-        // One BE type serves both blocks; each reads its mold size from the owning FoundryCastingBlock.
-        FOUNDRY_CASTING_BE = WF_MACHINES.blockEntity("foundry_casting", FoundryCastingBlockEntity::new)
-                .validBlocks(FOUNDRY_BASIN, FOUNDRY_MOLD_CASTER)
-                .register();
-
-        for (int i = 0; i < ACPipeType.VALUES.length; i++) {
-            registerACPipe(i);
-        }
-        AC_PIPE_BE = WF_MACHINES.blockEntity("ac_pipe", ACPipeBlockEntity::new)
-                .onRegister(ACPipeBlockEntity::onBlockEntityRegister)
-                .validBlocks(AC_PIPES)
-                .register();
-
-        registerCopperNetworkCable();
-        // Reuses GregTech's own OpticalPipeBlockEntity, so it shares the LevelOpticalPipeNet (see the block javadoc).
-        COPPER_NETWORK_CABLE_BE = WF_MACHINES.blockEntity("copper_network_cable", OpticalPipeBlockEntity::new)
-                .validBlocks(COPPER_NETWORK_CABLE)
                 .register();
 
         SANDBAGS = createArmorBlock("sandbags", Blocks.SAND, SoundType.SAND, 0.5F, 9.0F,
@@ -226,15 +160,7 @@ public class WFBlocks {
         REINFORCED_CONCRETE = createCtmArmorBlock("reinforced_concrete", Blocks.POLISHED_DEEPSLATE,
                 SoundType.DEEPSLATE, 6.0F, 46.0F, WFCore.id("block/reinforced_concrete"),
                 WFCore.id("block/reinforced_concrete"), BlockTags.MINEABLE_WITH_PICKAXE);
-        // Placeholder art reusing GTCEu's steel/tungstensteel casing textures until this mod has its own.
-        HARDENED_STEEL = createArmorBlock("hardened_steel", Blocks.IRON_BLOCK, SoundType.METAL, 10.0F, 75.0F,
-                GTCEu.id("block/casings/solid/machine_casing_solid_steel"),
-                CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WRENCH);
-        TUNGSTEN_PLATING = createArmorBlock("tungsten_plating", Blocks.IRON_BLOCK, SoundType.METAL, 20.0F, 130.0F,
-                GTCEu.id("block/casings/solid/machine_casing_robust_tungstensteel"),
-                CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WRENCH);
-
-        DEEPROCK = WF_MACHINES.block("deeprock", RotatedPillarBlock::new)
+        DEEPROCK = WFCore.REGISTRATE.block("deeprock", RotatedPillarBlock::new)
                 .initialProperties(() -> Blocks.DEEPSLATE)
                 .properties(p -> p.mapColor(MapColor.COLOR_BLUE).strength(DEEPROCK_HARDNESS, DEEPROCK_RESISTANCE))
                 .blockstate(NonNullBiConsumer.noop())
@@ -245,7 +171,7 @@ public class WFBlocks {
                 .model(NonNullBiConsumer.noop())
                 .build()
                 .register();
-        COBBLED_DEEPROCK = WF_MACHINES.block("cobbled_deeprock", Block::new)
+        COBBLED_DEEPROCK = WFCore.REGISTRATE.block("cobbled_deeprock", Block::new)
                 .initialProperties(() -> Blocks.COBBLED_DEEPSLATE)
                 .properties(p -> p.mapColor(MapColor.COLOR_BLUE).strength(4.5F, 6.0F))
                 .blockstate(NonNullBiConsumer.noop())
@@ -259,19 +185,19 @@ public class WFBlocks {
 
         // Bolted and unbolted are separate blocks (post-flattening) so each has its own item and shows in the
         // creative menu. The bolt gun swaps one for the other via the data-driven BoltGunConversions map.
-        BOLTABLE_CASING = WF_MACHINES
+        BOLTABLE_CASING = WFCore.REGISTRATE
                 .block("boltable_casing", BoltableCasingBlock::new)
                 .initialProperties(() -> Blocks.IRON_BLOCK)
                 .properties(p -> p.isValidSpawn((state, level, pos, ent) -> false))
                 .addLayer(() -> RenderType::solid)
                 .blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(),
                         prov.models().cubeAll("boltable_casing", WFCore.id("block/casings/boltable_casing"))))
-                .tag(CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WRENCH)
+                .tag(WFBlockTags.MINEABLE_PICKAXE_OR_WRENCH)
                 .item(BlockItem::new)
                 .build()
                 .register();
 
-        BOLTABLE_CASING_BOLTED = WF_MACHINES
+        BOLTABLE_CASING_BOLTED = WFCore.REGISTRATE
                 .block("boltable_casing_bolted", BoltableCasingBlock::new)
                 .initialProperties(() -> Blocks.IRON_BLOCK)
                 .properties(p -> p.isValidSpawn((state, level, pos, ent) -> false))
@@ -279,58 +205,26 @@ public class WFBlocks {
                 .blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(),
                         prov.models().cubeAll("boltable_casing_bolted",
                                 WFCore.id("block/casings/boltable_casing_bolted"))))
-                .tag(CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WRENCH)
+                .tag(WFBlockTags.MINEABLE_PICKAXE_OR_WRENCH)
                 .item(BlockItem::new)
                 .build()
                 .register();
-    }
 
-    @SuppressWarnings("unchecked")
-    private static void registerCopperNetworkCable() {
-        COPPER_NETWORK_CABLE = (BlockEntry<CopperNetworkCableBlock>) (BlockEntry<?>) WF_MACHINES
-                .block("copper_network_cable", p -> new CopperNetworkCableBlock(p, OpticalPipeType.NORMAL))
-                .initialProperties(() -> Blocks.IRON_BLOCK)
-                .properties(p -> p.dynamicShape().noOcclusion().forceSolidOn())
-                .gtBlockstate(GTModels::createPipeBlockModel)
-                .defaultLoot()
-                .tag(CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WIRE_CUTTER)
-                .addLayer(() -> RenderType::cutoutMipped)
-                .item((block, props) -> new PipeBlockItem((PipeBlock) block, props))
-                .model(NonNullBiConsumer.noop())
-                .build()
-                .register();
-    }
-
-    @SuppressWarnings("unchecked")
-    private static void registerACPipe(int index) {
-        ACPipeType type = ACPipeType.VALUES[index];
-        AC_PIPES[index] = (BlockEntry<ACPipeBlock>) (BlockEntry<?>) WF_MACHINES
-                .block("%s_ac_pipe".formatted(type.getSerializedName()), p -> new ACPipeBlock(p, type))
-                .initialProperties(() -> Blocks.IRON_BLOCK)
-                .properties(p -> p.dynamicShape().noOcclusion().forceSolidOn())
-                .gtBlockstate(GTModels::createPipeBlockModel)
-                .defaultLoot()
-                .tag(CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WIRE_CUTTER)
-                .addLayer(() -> RenderType::cutoutMipped)
-                .addLayer(() -> RenderType::translucent)
-                .color(() -> ACPipeBlock::tintedColor)
-                .item(ACPipeBlockItem::new)
-                .model(NonNullBiConsumer.noop())
-                .color(() -> ACPipeBlockItem::tintColor)
-                .build()
-                .register();
+        if (GTIntegration.isLoaded()) {
+            WFBlocksGT.init();
+        }
     }
 
     /** A solid fortification block with its own hardness and blast resistance (see {@code strength(F, F)}). */
     private static BlockEntry<Block> createArmorBlock(String name, Block base, SoundType sound, float hardness,
                                                       float resistance, ResourceLocation texture,
                                                       TagKey<Block> tool) {
-        return WF_MACHINES.block(name, Block::new)
+        return WFCore.REGISTRATE.block(name, Block::new)
                 .initialProperties(() -> base)
                 .properties(p -> p.strength(hardness, resistance).sound(sound)
                         .isValidSpawn((state, level, pos, ent) -> false))
                 .addLayer(() -> RenderType::solid)
-                .exBlockstate(GTModels.cubeAllModel(texture))
+                .blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(), prov.models().cubeAll(ctx.getName(), texture)))
                 .tag(tool)
                 .item(BlockItem::new)
                 .build()
@@ -346,12 +240,12 @@ public class WFBlocks {
     private static BlockEntry<Block> createCtmArmorBlock(String name, Block base, SoundType sound, float hardness,
                                                           float resistance, ResourceLocation itemTexture,
                                                           ResourceLocation worldTexture, TagKey<Block> tool) {
-        return WF_MACHINES.block(name, Block::new)
+        return WFCore.REGISTRATE.block(name, Block::new)
                 .initialProperties(() -> base)
                 .properties(p -> p.strength(hardness, resistance).sound(sound)
                         .isValidSpawn((state, level, pos, ent) -> false))
                 .addLayer(() -> RenderType::solid)
-                .exBlockstate(GTModels.cubeAllModel(worldTexture))
+                .blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(), prov.models().cubeAll(ctx.getName(), worldTexture)))
                 .tag(tool)
                 .item(BlockItem::new)
                 .model((ctx, prov) -> prov.cubeAll(ctx.getName(), itemTexture))
@@ -363,12 +257,12 @@ public class WFBlocks {
                                                            float resistance, ResourceLocation side,
                                                            ResourceLocation bottom, ResourceLocation top,
                                                            TagKey<Block> tool) {
-        return WF_MACHINES.block(name, Block::new)
+        return WFCore.REGISTRATE.block(name, Block::new)
                 .initialProperties(() -> base)
                 .properties(p -> p.strength(hardness, resistance).sound(sound)
                         .isValidSpawn((state, level, pos, ent) -> false))
                 .addLayer(() -> RenderType::solid)
-                .exBlockstate((ctx, prov) -> prov.simpleBlock(ctx.getEntry(),
+                .blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(),
                         prov.models().cubeBottomTop(ctx.getName(), side, bottom, top)))
                 .tag(tool)
                 .item(BlockItem::new)
@@ -377,12 +271,12 @@ public class WFBlocks {
     }
 
     private static BlockEntry<Block> createCasingBlock(String name, ResourceLocation texture) {
-        return WF_MACHINES.block(name, Block::new)
+        return WFCore.REGISTRATE.block(name, Block::new)
                 .initialProperties(() -> Blocks.IRON_BLOCK)
                 .properties(p -> p.isValidSpawn((state, level, pos, ent) -> false))
                 .addLayer(() -> RenderType::solid)
-                .exBlockstate(GTModels.cubeAllModel(texture))
-                .tag(CustomTags.MINEABLE_WITH_CONFIG_VALID_PICKAXE_WRENCH)
+                .blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(), prov.models().cubeAll(ctx.getName(), texture)))
+                .tag(WFBlockTags.MINEABLE_PICKAXE_OR_WRENCH)
                 .item(BlockItem::new)
                 .build()
                 .register();
