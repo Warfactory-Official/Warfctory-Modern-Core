@@ -15,6 +15,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.TransparentBlock;
 import net.minecraft.world.level.block.RotatedPillarBlock;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.material.MapColor;
@@ -78,7 +79,7 @@ public class WFBlocks {
     // HESCO and ballistic glass are soft cover rather than proof armor).
     public static BlockEntry<Block> SANDBAGS;
     public static BlockEntry<Block> HESCO_BASTION;
-    public static BlockEntry<Block> BALLISTIC_GLASS;
+    public static BlockEntry<TransparentBlock> BALLISTIC_GLASS;
     public static BlockEntry<Block> STANDARD_CONCRETE;
     public static BlockEntry<Block> REINFORCED_CONCRETE;
     public static BlockEntry<Block> HARDENED_STEEL;
@@ -151,9 +152,18 @@ public class WFBlocks {
         // tiling on large walls -- see the .png.mcmeta next to each texture); the item icon uses the plain
         // single texture so the inventory/hand render isn't tied to a world position. Fusion is an optional
         // client-side dependency (mods.toml) -- without it, the world model just shows tile (0,0) statically.
-        BALLISTIC_GLASS = createCtmArmorBlock("ballistic_glass", Blocks.GLASS, SoundType.GLASS, 3.0F, 7.0F,
-                WFCore.id("block/reinforced_glass"), WFCore.id("block/reinforced_glass"),
-                BlockTags.MINEABLE_WITH_PICKAXE);
+        // glass, so cut out (the texture's clear panes show through) and a TransparentBlock (no inner faces, no occlusion)
+        BALLISTIC_GLASS = WFCore.REGISTRATE.block("ballistic_glass", TransparentBlock::new)
+                .initialProperties(() -> Blocks.GLASS)
+                .properties(p -> p.strength(3.0F, 7.0F).sound(SoundType.GLASS).noOcclusion()
+                        .isValidSpawn((state, level, pos, ent) -> false))
+                .addLayer(() -> RenderType::cutout)
+                .blockstate((ctx, prov) -> prov.simpleBlock(ctx.get(), prov.models().cubeAll(ctx.getName(), WFCore.id("block/reinforced_glass"))))
+                .tag(BlockTags.MINEABLE_WITH_PICKAXE)
+                .item(BlockItem::new)
+                .model((ctx, prov) -> prov.cubeAll(ctx.getName(), WFCore.id("block/reinforced_glass")))
+                .build()
+                .register();
         STANDARD_CONCRETE = createArmorBlock("standard_concrete", Blocks.LIGHT_GRAY_CONCRETE, SoundType.STONE, 2.0F,
                 22.0F, ResourceLocation.fromNamespaceAndPath("minecraft", "block/light_gray_concrete"),
                 BlockTags.MINEABLE_WITH_PICKAXE);
