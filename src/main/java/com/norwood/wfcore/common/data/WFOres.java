@@ -16,7 +16,7 @@ import com.norwood.wfcore.WFCore;
 public final class WFOres {
 
     // Hosted by veins of GT's deepslate layer: deeprock is in #minecraft:deepslate_ore_replaceables.
-    public static final TagPrefixEntry oreDeeprock = WFCore.WF_MACHINES
+    public static final TagPrefixEntry oreDeeprock = com.norwood.wfcore.integration.gt.GTBootstrap.WF_MACHINES
             .oreTagPrefix("deeprock", BlockTags.MINEABLE_WITH_PICKAXE)
             .lang("Deeprock %s Ore")
             .registerOre(WFOres::deeprock, () -> GTMaterials.Deepslate.value(),

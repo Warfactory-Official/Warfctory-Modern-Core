@@ -27,7 +27,7 @@ import com.norwood.wfcore.common.recipe.condition.DepositRecipeCondition;
 import net.minecraft.world.level.material.Fluids;
 import net.neoforged.neoforge.fluids.FluidStack;
 
-import static com.norwood.wfcore.WFCore.WF_MACHINES;
+import static com.norwood.wfcore.integration.gt.GTBootstrap.WF_MACHINES;
 
 
 /**

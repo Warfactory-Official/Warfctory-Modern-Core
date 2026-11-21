@@ -33,7 +33,7 @@ public final class WFCovers {
         for (int i = 0; i < FAN_TIERS.length; i++) {
             final int t = FAN_TIERS[i];
             final String texture = FAN_TEXTURES[i];
-            COOLING_FANS[t] = WFCore.WF_MACHINES.cover(
+            COOLING_FANS[t] = com.norwood.wfcore.integration.gt.GTBootstrap.WF_MACHINES.cover(
                     "cooling_fan." + GTValues.VN[t].toLowerCase(Locale.ROOT),
                     (def, coverable, side) -> new CoolingFanCover(def, coverable, side, t),
                     () -> () -> new SimpleCoverRenderer(WFCore.id("block/cover/" + texture)));

@@ -58,7 +58,6 @@ import com.wf.wflib.explosion.api.EntityProcessorCross;
 import com.wf.wflib.explosion.api.PlayerProcessorStandard;
 import com.wf.wflib.warhead.api.WarheadCarrier;
 
-import static com.gregtechceu.gtceu.api.data.chemical.material.info.MaterialIconType.seed;
 
 /**
  * WFCore's custom missile warheads, registered into WFLib' {@link WarheadRegistry} so the

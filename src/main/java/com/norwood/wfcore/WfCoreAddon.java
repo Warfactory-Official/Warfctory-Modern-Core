@@ -16,7 +16,7 @@ public class WfCoreAddon implements IGTAddon {
 
     @Override
     public GTRegistrate getRegistrate() {
-        return WFCore.WF_MACHINES;
+        return com.norwood.wfcore.integration.gt.GTBootstrap.WF_MACHINES;
     }
 
     @Override

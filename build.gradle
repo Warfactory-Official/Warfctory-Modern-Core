@@ -248,7 +248,9 @@ dependencies {
     localRuntime("com.gregtechceu.gtceu:gtceu-1.21.1:${gtceu_build}") { transitive = false }
 
     // GregTech's public API leaks these types, so they must be on the compile classpath too.
-    compileOnly "com.tterrag.registrate:Registrate:${registrate_version}"
+    // Registrate is bundled (jar-in-jar) so the mod runs without GregTech, which otherwise supplies it; with GregTech present the two
+    // copies are the same version and NeoForge keeps one.
+    jarJar(implementation("com.tterrag.registrate:Registrate:${registrate_version}")) { transitive = false; version { prefer registrate_version } }
     compileOnly "dev.toma.configuration:configuration-1.21.1:${configuration_version}"
     // ModularUI 3 — the single UI stack for this port. LDLib is gone entirely (plan §2).
     compileOnly("brachy.modularui:modularui-mc1.21.1:${mui_build}") { transitive = false }

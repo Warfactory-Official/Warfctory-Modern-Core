@@ -1,12 +1,10 @@
 package com.norwood.wfcore.common.data;
 
-import com.gregtechceu.gtceu.api.GTValues;
-import com.gregtechceu.gtceu.api.item.ComponentItem;
-import com.gregtechceu.gtceu.common.item.behavior.CoverPlaceBehavior;
 
 import net.minecraft.resources.ResourceLocation;
 
 import com.norwood.wfcore.WFCore;
+import com.norwood.wfcore.integration.gt.GTIntegration;
 import com.norwood.wfcore.common.item.BoltToolItem;
 import com.norwood.wfcore.common.item.DetonatorItem;
 import com.norwood.wfcore.common.item.PackagedVehicleItem;
@@ -16,7 +14,6 @@ import com.tterrag.registrate.util.nullness.NonNullBiConsumer;
 
 import java.util.Locale;
 
-import static com.norwood.wfcore.WFCore.WF_MACHINES;
 
 public class WFItems {
 
@@ -25,40 +22,34 @@ public class WFItems {
     public static ItemEntry<PackagedVehicleItem> PACKAGED_VEHICLE;
     public static ItemEntry<SiegeDefenseTesterItem> SIEGE_DEFENSE_TESTER;
 
+    /** GregTech only (null entries without it): the cooling fan covers, by GT voltage tier (GTValues has 15 tiers; 16 leaves room). */
     @SuppressWarnings("unchecked")
-    public static final ItemEntry<ComponentItem>[] COOLING_FAN_COVERS = new ItemEntry[GTValues.EV + 1];
+    public static final ItemEntry<com.gregtechceu.gtceu.api.item.ComponentItem>[] COOLING_FAN_COVERS = new ItemEntry[16];
 
     public static void init() {
-        BOLT_TOOL = WF_MACHINES.item("bolt_tool", BoltToolItem::new)
+        BOLT_TOOL = WFCore.REGISTRATE.item("bolt_tool", BoltToolItem::new)
                 .lang("Bolt Tool")
                 .model((ctx, prov) -> prov.generated(ctx, WFCore.id("item/bolt_tool")))
                 .register();
 
-        DETONATOR = WF_MACHINES.item("detonator", DetonatorItem::new)
+        DETONATOR = WFCore.REGISTRATE.item("detonator", DetonatorItem::new)
                 .lang("Detonator")
                 .properties(p -> p.stacksTo(1))
                 .model((ctx, prov) -> prov.generated(ctx, WFCore.id("item/detonator")))
                 .register();
 
-        PACKAGED_VEHICLE = WF_MACHINES.item("packaged_vehicle", PackagedVehicleItem::new)
+        PACKAGED_VEHICLE = WFCore.REGISTRATE.item("packaged_vehicle", PackagedVehicleItem::new)
                 .lang("Packaged Vehicle")
                 .model((ctx, prov) -> prov.generated(ctx, ResourceLocation.fromNamespaceAndPath("minecraft", "item/minecart")))
                 .register();
 
-        SIEGE_DEFENSE_TESTER = WF_MACHINES.item("siege_defense_tester", SiegeDefenseTesterItem::new)
+        SIEGE_DEFENSE_TESTER = WFCore.REGISTRATE.item("siege_defense_tester", SiegeDefenseTesterItem::new)
                 .lang("Siege Difficulty Probe")
                 .model(NonNullBiConsumer.noop())
                 .register();
 
-        for (int tier : WFCovers.FAN_TIERS) {
-            final int t = tier;
-            String vn = GTValues.VN[t].toLowerCase(Locale.ROOT);
-            COOLING_FAN_COVERS[t] = WF_MACHINES
-                    .item("cooling_fan_cover_" + vn, ComponentItem::new)
-                    .lang(GTValues.VN[t] + " Cooling Fan Cover")
-                    .model(NonNullBiConsumer.noop())
-                    .onRegister(item -> item.attachComponents(new CoverPlaceBehavior(WFCovers.COOLING_FANS[t])))
-                    .register();
+        if (GTIntegration.isLoaded()) {
+            WFItemsGT.init();
         }
     }
 

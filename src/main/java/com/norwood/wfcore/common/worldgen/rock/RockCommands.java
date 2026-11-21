@@ -36,7 +36,7 @@ import java.util.TreeMap;
  * relative to the column's {@link RockLayers} tops: block kinds, GT ores by host; per column: terrain top vs
  * predicted surface, highest deeprock / lowest stone vs deeprock top. -> {@code <server dir>/rock_census_<x>_<z>.json}.
  */
-@EventBusSubscriber(modid = WFCore.MOD_ID)
+// Registered by GTBootstrap, only with GregTech loaded (an auto-subscribed class would be loaded regardless).
 public final class RockCommands {
 
     private RockCommands() {}

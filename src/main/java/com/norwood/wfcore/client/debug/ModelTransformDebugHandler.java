@@ -30,7 +30,7 @@ import org.jetbrains.annotations.Nullable;
  * multiblock controller block the model belongs to is often buried or tiny compared to the model it
  * draws — nearest-on-screen is a far more forgiving way to pick "the one you're looking at".
  */
-@EventBusSubscriber(modid = WFCore.MOD_ID, value = Dist.CLIENT)
+// Registered by GTBootstrap, only with GregTech loaded (an auto-subscribed class would be loaded regardless).
 public class ModelTransformDebugHandler {
 
     @SubscribeEvent

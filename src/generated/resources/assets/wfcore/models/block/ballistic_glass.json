@@ -1,6 +1,7 @@
 {
   "parent": "minecraft:block/cube_all",
+  "render_type": "minecraft:cutout",
   "textures": {
-    "all": "wfcore:block/reinforced_glass_ctm"
+    "all": "wfcore:block/reinforced_glass"
   }
 }

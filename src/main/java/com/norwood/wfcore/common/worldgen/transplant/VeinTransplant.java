@@ -62,7 +62,7 @@ public final class VeinTransplant {
             return;
         }
         RuleTest target = new TagMatchTest(TRANSPLANT_REPLACEABLES);
-        layer = WFCore.WF_MACHINES.simple(LAYER_NAME, GTRegistries.Keys.WORLD_GEN_LAYER,
+        layer = com.norwood.wfcore.integration.gt.GTBootstrap.WF_MACHINES.simple(LAYER_NAME, GTRegistries.Keys.WORLD_GEN_LAYER,
                 () -> new SimpleWorldGenLayer(WFCore.id(LAYER_NAME), () -> target, Set.of(Level.OVERWORLD)));
     }
 

@@ -28,7 +28,7 @@ import com.norwood.wfcore.integration.warforge.WarforgeMachines;
  * a capability query from its own {@code getCapability} override. Everything that used to do that is
  * registered from {@link #registerCapabilities} instead.
  */
-@EventBusSubscriber(modid = WFCore.MOD_ID, bus = EventBusSubscriber.Bus.MOD)
+// Registered by GTBootstrap, only with GregTech loaded (an auto-subscribed class would be loaded regardless).
 public final class WFCapabilities {
 
     /** Sided because AC cables are point-to-point: a face either carries the net or it does not. */

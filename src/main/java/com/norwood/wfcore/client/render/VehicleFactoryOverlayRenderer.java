@@ -23,7 +23,7 @@ import org.joml.Matrix4f;
 
 import java.util.Set;
 
-@EventBusSubscriber(modid = WFCore.MOD_ID, value = Dist.CLIENT)
+// Registered by GTBootstrap, only with GregTech loaded (an auto-subscribed class would be loaded regardless).
 public final class VehicleFactoryOverlayRenderer {
 
     private VehicleFactoryOverlayRenderer() {}
