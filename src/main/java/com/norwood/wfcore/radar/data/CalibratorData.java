@@ -6,6 +6,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.level.saveddata.SavedData;
 
+import com.norwood.wfcore.common.world.LevelSavedCache;
+
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
@@ -23,23 +25,26 @@ public class CalibratorData extends SavedData {
         }
     }
 
+    private static final LevelSavedCache<CalibratorData> CACHE = LevelSavedCache.perLevel(DATA_NAME,
+            new SavedData.Factory<>(CalibratorData::new, CalibratorData::new));
+
     public static CalibratorData get(ServerLevel level) {
-        return level.getDataStorage().computeIfAbsent(new SavedData.Factory<>(CalibratorData::new, CalibratorData::new), DATA_NAME);
+        return CACHE.get(level);
     }
 
-    public void add(BlockPos pos) {
+    public synchronized void add(BlockPos pos) {
         if (positions.add(pos.asLong())) {
             setDirty();
         }
     }
 
-    public void remove(BlockPos pos) {
+    public synchronized void remove(BlockPos pos) {
         if (positions.remove(pos.asLong())) {
             setDirty();
         }
     }
 
-    public boolean hasWithin(int tx, int tz, int tol) {
+    public synchronized boolean hasWithin(int tx, int tz, int tol) {
         long tolSq = (long) tol * tol;
         for (LongIterator it = positions.iterator(); it.hasNext();) {
             BlockPos p = BlockPos.of(it.nextLong());
@@ -53,7 +58,7 @@ public class CalibratorData extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    public synchronized CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         tag.putLongArray("positions", positions.toLongArray());
         return tag;
     }

@@ -429,4 +429,6 @@ neoForge.addModdingDependenciesTo(sourceSets.test)
 
 tasks.named('test', Test).configure {
     useJUnitPlatform()
+    ['ldlib2.stock.jar', 'ldlib2.dump'].each { if (project.hasProperty(it)) systemProperty it, project.property(it) }
+    testLogging.showStandardStreams = project.hasProperty('ldlib2.dump')
 }

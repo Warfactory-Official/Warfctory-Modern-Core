@@ -7,10 +7,12 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.level.saveddata.SavedData;
 
+import com.norwood.wfcore.common.world.LevelSavedCache;
+
 import com.norwood.wfcore.radar.math.ClusterData;
 
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,7 +26,7 @@ public class RadarScanData extends SavedData {
 
     private static final String DATA_NAME = "wfcore_radar_scans";
 
-    private final Map<UUID, ScanRecord> database = new HashMap<>();
+    private final Map<UUID, ScanRecord> database = new ConcurrentHashMap<>();
 
     private record ScanRecord(List<ClusterData> clusters, long lastAccessed) {}
 
@@ -46,9 +48,11 @@ public class RadarScanData extends SavedData {
         }
     }
 
+    private static final LevelSavedCache<RadarScanData> CACHE = LevelSavedCache.overworld(DATA_NAME,
+            new SavedData.Factory<>(RadarScanData::new, RadarScanData::new));
+
     public static RadarScanData get(ServerLevel anyLevel) {
-        ServerLevel overworld = anyLevel.getServer().overworld();
-        return overworld.getDataStorage().computeIfAbsent(new SavedData.Factory<>(RadarScanData::new, RadarScanData::new), DATA_NAME);
+        return CACHE.get(anyLevel);
     }
 
     public void addScan(UUID id, List<ClusterData> clusters) {
@@ -67,11 +71,11 @@ public class RadarScanData extends SavedData {
     }
 
     public List<ClusterData> getScan(UUID id) {
-        ScanRecord record = database.get(id);
+        long now = System.currentTimeMillis();
+        ScanRecord record = database.computeIfPresent(id, (k, r) -> new ScanRecord(r.clusters(), now));
         if (record == null) {
             return null;
         }
-        database.put(id, new ScanRecord(record.clusters(), System.currentTimeMillis()));
         setDirty();
         return record.clusters();
     }

@@ -66,7 +66,7 @@ public final class RadarClustering {
                 map.put(new IntCoord2(pos), new DataPoint(TargetType.PLAYER, 0));
             }
         }
-        for (Long2IntMap.Entry entry : RadarRegistryData.get(level).getMachineMap().long2IntEntrySet()) {
+        for (Long2IntMap.Entry entry : RadarRegistryData.get(level).snapshot().long2IntEntrySet()) {
             long packed = entry.getLongKey();
             int x = BlockPos.getX(packed);
             int z = BlockPos.getZ(packed);

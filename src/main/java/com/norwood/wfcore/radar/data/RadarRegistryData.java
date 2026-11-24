@@ -8,6 +8,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.world.level.saveddata.SavedData;
 
+import com.norwood.wfcore.common.world.LevelSavedCache;
+
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 
 /**
@@ -41,16 +43,24 @@ public class RadarRegistryData extends SavedData {
         return machineMap;
     }
 
+    private static final LevelSavedCache<RadarRegistryData> CACHE = LevelSavedCache.perLevel(DATA_NAME,
+            new SavedData.Factory<>(RadarRegistryData::new, RadarRegistryData::new));
+
     public static RadarRegistryData get(ServerLevel level) {
-        return level.getDataStorage().computeIfAbsent(new SavedData.Factory<>(RadarRegistryData::new, RadarRegistryData::new), DATA_NAME);
+        return CACHE.get(level);
     }
 
-    public void addMachine(BlockPos pos, int value) {
+    /** Copy; the live map is written by block events from any thread. */
+    public synchronized Long2IntOpenHashMap snapshot() {
+        return new Long2IntOpenHashMap(machineMap);
+    }
+
+    public synchronized void addMachine(BlockPos pos, int value) {
         machineMap.put(pos.asLong(), value);
         setDirty();
     }
 
-    public void removeMachine(BlockPos pos) {
+    public synchronized void removeMachine(BlockPos pos) {
         if (machineMap.containsKey(pos.asLong())) {
             machineMap.remove(pos.asLong());
             setDirty();
@@ -58,7 +68,7 @@ public class RadarRegistryData extends SavedData {
     }
 
     @Override
-    public CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
+    public synchronized CompoundTag save(CompoundTag tag, HolderLookup.Provider registries) {
         ListTag list = new ListTag();
         for (var entry : machineMap.long2IntEntrySet()) {
             CompoundTag e = new CompoundTag();

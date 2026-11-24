@@ -7,14 +7,15 @@ import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 
 import com.norwood.wfcore.common.pipenet.ac.ACPipeProperties;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ACPipeNet extends PipeNet<ACPipeProperties> {
 
-    private final Map<BlockPos, ACRoutePath> netData = new Object2ObjectOpenHashMap<>();
+    // invalidated by replacement: a walk that began before the clear writes into the dead map
+    private volatile Map<BlockPos, ACRoutePath> netData = new ConcurrentHashMap<>();
 
     public ACPipeNet(LevelACPipeNet world) {
         super(world);
@@ -22,25 +23,26 @@ public class ACPipeNet extends PipeNet<ACPipeProperties> {
 
     @Nullable
     public ACRoutePath getNetData(BlockPos pipePos, Direction facing) {
-        ACRoutePath data = netData.get(pipePos);
+        Map<BlockPos, ACRoutePath> cache = netData;
+        ACRoutePath data = cache.get(pipePos);
         if (data == null) {
             data = ACNetWalker.createNetData(this, pipePos, facing);
             if (data == ACNetWalker.FAILED_MARKER) {
                 return null;
             }
-            netData.put(pipePos, data);
+            cache.put(pipePos, data);
         }
         return data;
     }
 
     @Override
     public void onNeighbourUpdate(BlockPos fromPos) {
-        netData.clear();
+        netData = new ConcurrentHashMap<>();
     }
 
     @Override
     public void onPipeConnectionsUpdate() {
-        netData.clear();
+        netData = new ConcurrentHashMap<>();
     }
 
     @Override

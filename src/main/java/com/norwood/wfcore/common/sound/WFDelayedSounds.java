@@ -16,9 +16,9 @@ import net.neoforged.neoforge.server.ServerLifecycleHooks;
 
 import com.norwood.wfcore.WFCore;
 
-import java.util.ArrayList;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.Iterator;
-import java.util.List;
 import java.util.UUID;
 
 /**
@@ -32,7 +32,7 @@ public final class WFDelayedSounds {
     private record Pending(int fireTick, ResourceKey<Level> dimension, UUID player, double x, double y, double z,
                            SoundEvent sound, SoundSource source, float volume, float pitch, long seed) {}
 
-    private static final List<Pending> QUEUE = new ArrayList<>();
+    private static final Queue<Pending> QUEUE = new ConcurrentLinkedQueue<>();
 
     private WFDelayedSounds() {}
 

@@ -307,7 +307,8 @@ public class RadarMachine extends MultiblockControllerMachine
         WFCore.LOGGER.info("[Radar@{}] startScan OK: isActive=true, scanDuration={} ticks, kicking off DBSCAN",
                 getBlockPos(), getScanDurationTicks());
 
-        RadarClustering.scan(serverLevel, profile, getBlockPos())
+        BlockPos origin = getBlockPos();
+        Runnable kick = () -> RadarClustering.scan(serverLevel, profile, origin)
                 .thenAccept(clusters -> serverLevel.getServer().execute(() -> {
                     UUID id = UUID.randomUUID();
                     RadarScanData.get(serverLevel).addScan(id, clusters);
@@ -318,6 +319,12 @@ public class RadarMachine extends MultiblockControllerMachine
                     serverLevel.getServer().execute(this::stopScan);
                     return null;
                 });
+        // scan reads level.players() + the per-level cache: server thread only
+        if (serverLevel.getServer().isSameThread()) {
+            kick.run();
+        } else {
+            serverLevel.getServer().execute(kick);
+        }
     }
 
     /** Cancel a running scan and return the radar to idle without writing anything to the data stick. */
