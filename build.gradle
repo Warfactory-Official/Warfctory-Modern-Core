@@ -162,11 +162,11 @@ repositories {
     maven { name = 'CurseMaven'; url = 'https://cursemaven.com'; content { includeGroup 'curse.maven' } }
     maven { name = 'JitPack'; url = 'https://jitpack.io'; content { includeGroupAndSubgroups 'com.github' } }
     // Local wflib / CombinedAssault (`publishToMavenLocal`) win over the published snapshot of the same version.
-    mavenLocal { content { includeGroup 'com.wf.wflib'; includeGroup 'com.wf.combinedassault' } }
+    mavenLocal { content { includeGroup 'com.wf.wflib'; includeGroup 'com.wf.combinedassault'; includeGroup 'com.flansmod.warforge' } }
     maven {
         name = 'Warfactory Snapshots'
         url = 'https://repo.warfactory.co/snapshots'
-        content { includeGroup 'com.wf.wflib'; includeGroup 'com.norwood'; includeGroup 'com.wf.gemrender'; includeGroup 'com.wf.combinedassault' }
+        content { includeGroup 'com.wf.wflib'; includeGroup 'com.norwood'; includeGroup 'com.wf.gemrender'; includeGroup 'com.wf.combinedassault'; includeGroup 'com.flansmod.warforge' }
     }
     flatDir { dirs 'libs' }
     mavenCentral()
@@ -259,8 +259,8 @@ dependencies {
     // AHF: WFLib's required hit-geometry dep; compileOnly for WFLib supertypes (RoundDamageSource).
     compileOnly "com.norwood:ahf-1.21.1-neoforge:${ahf_version}-SNAPSHOT"
     localRuntime "com.norwood:ahf-1.21.1-neoforge:${ahf_version}-SNAPSHOT"
-    compileOnly files('libs/warforge-remaintained-2.4.3.jar')
-    localRuntime files('libs/warforge-remaintained-2.4.3.jar')
+    compileOnly("com.flansmod.warforge:warforge-remaintained-1.21.1-neoforge:${warforge_version}-SNAPSHOT") { transitive = false }
+    localRuntime("com.flansmod.warforge:warforge-remaintained-1.21.1-neoforge:${warforge_version}-SNAPSHOT") { transitive = false }
     // GemRender — the animated-model renderer, built out of ~/projects/wf2-21/GemRender. Replaced
     // MCglTF: same glTF assets and the same `extras.resourceLocation` hook, but the models are drawn
     // as Flywheel instances off a shared bone palette instead of one immediate-mode draw per machine.
