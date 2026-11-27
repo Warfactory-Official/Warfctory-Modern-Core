@@ -23,20 +23,22 @@
   "earthworks": {
     "base": "minecraft:stone",
     "base_depth": 4,
-    "embankment": "minecraft:stone",
-    "margin": 6,
-    "batter": 0.8
+    "embankment": "minecraft:dirt",
+    "margin": 14,
+    "batter": 0.67,
+    "cut_batter": 1.0
   },
   "grade": {
-    "max": 0.05,
+    "max": 0.07,
     "smoothing_radius": 8,
     "sample_spacing": 16,
-    "fill_cost": 2.0
+    "fill_cost": 1.3
   },
   "water": {
     "min_deck_y": 90,
     "clearance": 5,
-    "sea_crossing_length": 48
+    "sea_crossing_length": 256,
+    "ford_length": 12
   },
   "bridge": {
     "structure": "minecraft:stone_bricks",
@@ -45,7 +47,10 @@
     "railing_height": 1,
     "pier_spacing": 16,
     "pier_radius": 3,
-    "min_height": 4
+    "min_height": 7,
+    "arch_rise": 6,
+    "truss": "minecraft:polished_deepslate",
+    "truss_length": 96
   },
   "tunnel": {
     "wall": "minecraft:stone_bricks",
@@ -54,7 +59,8 @@
     "light": "minecraft:sea_lantern",
     "light_spacing": 8,
     "height": 7,
-    "min_cover": 10
+    "min_cover": 10,
+    "min_length": 48
   },
   "themes": [
     {
@@ -74,5 +80,28 @@
       "accent": "minecraft:mossy_cobblestone",
       "wall": "minecraft:mossy_stone_bricks"
     }
-  ]
+  ],
+  "junction": {
+    "grade_separated": true,
+    "corner_radius": 6
+  },
+  "furniture": {
+    "lamp": {
+      "post": "minecraft:andesite_wall",
+      "light": "minecraft:lantern",
+      "height": 5,
+      "spacing": 48
+    },
+    "guard_rail": {
+      "block": "minecraft:iron_bars",
+      "min_fill": 3
+    },
+    "sign": {
+      "block": "minecraft:oak_sign",
+      "lines": [
+        "",
+        "STOP"
+      ]
+    }
+  }
 }

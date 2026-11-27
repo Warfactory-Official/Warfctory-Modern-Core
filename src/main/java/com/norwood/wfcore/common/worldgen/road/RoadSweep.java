@@ -88,5 +88,10 @@ public final class RoadSweep {
                 int connections) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public void turf(int x, int y, int z, int fromY, boolean fill, RoadIndex.LinkGeometry link, int station) {
+            throw new UnsupportedOperationException();
+        }
     }
 }

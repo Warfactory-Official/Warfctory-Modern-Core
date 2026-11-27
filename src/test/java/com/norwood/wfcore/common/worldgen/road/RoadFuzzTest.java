@@ -164,9 +164,10 @@ class RoadFuzzTest {
                 int sl = piece.crossings.getInt(c);
                 int sk = piece.crossings.getInt(c + 2);
                 int gap = link.deck(sl) - other.deck(sk);
+                // + 1: headroom intact, deck without its structure layer (three roads within one crossing).
                 boolean ok = Math.abs(gap) <= MERGED_STEP
-                        || gap >= RoadIndex.headroom(other.spec(), other.mode(sk)) + 2
-                        || -gap >= RoadIndex.headroom(link.spec(), link.mode(sl)) + 2;
+                        || gap >= RoadIndex.headroom(other.spec(), other.mode(sk)) + 1
+                        || -gap >= RoadIndex.headroom(link.spec(), link.mode(sl)) + 1;
                 if (!ok) {
                     System.out.printf("seed %d link %d station %d: crossing gap %d%n", seed, i, sl, gap);
                     unclear++;

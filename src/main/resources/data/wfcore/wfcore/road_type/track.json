@@ -36,19 +36,21 @@
     "base": "minecraft:packed_mud",
     "base_depth": 2,
     "embankment": "minecraft:coarse_dirt",
-    "margin": 3,
-    "batter": 1.2
+    "margin": 8,
+    "batter": 1.0,
+    "cut_batter": 1.2
   },
   "grade": {
-    "max": 0.11,
+    "max": 0.14,
     "smoothing_radius": 4,
     "sample_spacing": 16,
-    "fill_cost": 2.0
+    "fill_cost": 1.3
   },
   "water": {
     "min_deck_y": 70,
     "clearance": 3,
-    "sea_crossing_length": 64
+    "sea_crossing_length": 256,
+    "ford_length": 16
   },
   "bridge": {
     "deck": "minecraft:gravel",
@@ -58,7 +60,7 @@
     "railing_height": 1,
     "pier_spacing": 8,
     "pier_radius": 1,
-    "min_height": 4
+    "min_height": 6
   },
   "tunnel": {
     "wall": "minecraft:cobblestone",
@@ -66,7 +68,8 @@
     "light": "minecraft:shroomlight",
     "light_spacing": 10,
     "height": 5,
-    "min_cover": 8
+    "min_cover": 8,
+    "min_length": 32
   },
   "themes": [
     {
@@ -80,5 +83,8 @@
       "accent": "minecraft:cut_sandstone",
       "wall": "minecraft:sandstone"
     }
-  ]
+  ],
+  "junction": {
+    "corner_radius": 3
+  }
 }

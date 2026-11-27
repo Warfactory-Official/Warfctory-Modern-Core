@@ -2,7 +2,9 @@ package com.norwood.wfcore.common.worldgen.road;
 
 /**
  * Numeric half of a {@link RoadType}: all that geometry, profile and rasteriser read. No block providers, so it
- * loads without a bootstrapped registry. {@code markingWidth == 0} => no markings.
+ * loads without a bootstrapped registry. {@code markingWidth == 0} => no markings; {@code lampHeight == 0} => no
+ * lamps; {@code lampSpacing == 0} => lamps at junctions only; {@code guardRailFill == 0} => no guard rails;
+ * {@code archRise == 0} => flat soffit; {@code trussLength == 0} => no truss.
  */
 public record RoadSpec(
         int priority,
@@ -16,6 +18,7 @@ public record RoadSpec(
         int baseDepth,
         int margin,
         double batter,
+        double cutBatter,
         RoadType.Grade grade,
         RoadType.Water water,
         boolean railing,
@@ -23,10 +26,19 @@ public record RoadSpec(
         int pierSpacing,
         int pierRadius,
         int bridgeMinHeight,
+        int archRise,
+        int trussLength,
         boolean tunnelLight,
         int lightSpacing,
         int tunnelHeight,
-        int minCover) {
+        int minCover,
+        int tunnelMinLength,
+        boolean gradeSeparated,
+        int cornerRadius,
+        int lampSpacing,
+        int lampHeight,
+        int guardRailFill,
+        boolean stopSign) {
 
     public double pavedHalfWidth() {
         return width / 2.0;

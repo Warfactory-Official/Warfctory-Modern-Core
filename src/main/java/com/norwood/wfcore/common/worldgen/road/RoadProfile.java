@@ -6,9 +6,9 @@ import java.util.stream.IntStream;
 /**
  * Deck height and ground / bridge / tunnel mode per station, against probed terrain.
  *
- * <p>Exact fit: {@code min sum (ground - y)+ + fill_cost (y - ground)+} subject to {@code |y[i+1] - y[i]| <= max}
- * and the water floor / pins as hard terms (slope trick, O(n log n)). Then box blur (Lipschitz-preserving =>
- * vertical curves), floor raise, pin envelope clamp.
+ * <p>Exact fit: {@code min sum c(ground - y) + fill_cost c(y - ground)}, {@code c(d) = d+ + (d - DEEP)+}, subject
+ * to {@code |y[i+1] - y[i]| <= max} and the water floor / pins as hard terms (slope trick, O(n log n)). Then box
+ * blur (Lipschitz-preserving => vertical curves), floor raise, pin envelope clamp.
  */
 public final class RoadProfile {
 
@@ -18,6 +18,12 @@ public final class RoadProfile {
 
     static final int MIN_MODE_RUN = 16;
     static final int PORTAL_STATIONS = 2;
+    /** Cut / fill past this depth costs double: linear cost alone trenches 10+ deep through rolling ground. */
+    static final int DEEP = 5;
+    /** Rock over the tunnel threshold a short covered run may carry and still become a cutting. */
+    static final int OPEN_CUT = 6;
+    /** Deepest water a ford fills. */
+    static final int FORD_DEPTH = 2;
 
     private static final int[] NONE = new int[0];
 
@@ -60,7 +66,11 @@ public final class RoadProfile {
         link.setTerrain(ground, water);
     }
 
-    public record Profile(short[] deck, byte[] mode, boolean[] portal) {}
+    /**
+     * {@code fromStart} / {@code toEnd}: stations to the ends of the station's mode run. {@code truss}: bridge
+     * run carries side trusses.
+     */
+    public record Profile(short[] deck, byte[] mode, int[] fromStart, int[] toEnd, boolean[] truss) {}
 
     private static int[] probeStations(RoadIndex.LinkGeometry link) {
         int n = link.stationCount();
@@ -95,7 +105,8 @@ public final class RoadProfile {
             ground[i] = geometry.ground(i);
             surface[i] = geometry.water(i);
         }
-        double[] floor = waterFloor(spec, ground, surface);
+        byte[] wet = new byte[n];
+        double[] floor = waterFloor(spec, ground, surface, wet);
         double maxRise = spec.grade().max() * RoadCurve.STATION_SPACING;
         double[] y = blur(fit(ground, floor, maxRise, spec.grade().fillCost(), pinAt, pinY),
                 spec.grade().smoothingRadius());
@@ -111,16 +122,57 @@ public final class RoadProfile {
             deck[i] = (short) Math.round(y[i]);
         }
 
-        byte[] mode = classify(spec, ground, deck);
-        smoothRuns(mode);
+        byte[] mode = classify(spec, ground, deck, wet);
+        boolean[] keep = new boolean[n];
+        for (int i = 0; i < n; i++) {
+            keep[i] = wet[i] == RIVER;
+        }
         for (int k = 0; k + 1 < forcedBridge.length; k += 2) {
             for (int i = Math.max(0, forcedBridge[k]); i <= Math.min(n - 1, forcedBridge[k + 1]); i++) {
                 if (mode[i] == GROUND) {
                     mode[i] = BRIDGE;
                 }
+                keep[i] = true;
             }
         }
-        return new Profile(deck, mode, portals(mode));
+        // A short tunnel too deep to open up stays a tunnel.
+        int open = spec.clearance() + spec.minCover() + OPEN_CUT;
+        for (int i = 0; i < n; i++) {
+            keep[i] |= ground[i] - deck[i] > open;
+        }
+        smoothRuns(mode, keep, spec.tunnelMinLength());
+
+        int[] fromStart = new int[n];
+        int[] toEnd = new int[n];
+        boolean[] truss = new boolean[n];
+        for (int a = 0; a < n; ) {
+            int b = a;
+            int wetCount = 0;
+            while (b < n && mode[b] == mode[a]) {
+                wetCount += wet[b] == RIVER ? 1 : 0;
+                b++;
+            }
+            boolean trussed = mode[a] == BRIDGE && spec.trussLength() > 0 && wetCount >= spec.trussLength();
+            for (int i = a; i < b; i++) {
+                fromStart[i] = i - a;
+                toEnd[i] = b - 1 - i;
+                truss[i] = trussed;
+            }
+            a = b;
+        }
+        return new Profile(deck, mode, fromStart, toEnd, truss);
+    }
+
+    /** Lowest deck the water under a station allows, {@link Double#NEGATIVE_INFINITY} when dry. */
+    static double[] waterFloor(RoadIndex.LinkGeometry geometry) {
+        int n = geometry.stationCount();
+        int[] ground = new int[n];
+        int[] surface = new int[n];
+        for (int i = 0; i < n; i++) {
+            ground[i] = geometry.ground(i);
+            surface[i] = geometry.water(i);
+        }
+        return waterFloor(geometry.spec(), ground, surface, new byte[n]);
     }
 
     private static void interpolate(short[] values, int from, int to) {
@@ -131,21 +183,37 @@ public final class RoadProfile {
         }
     }
 
-    /** Deck lower bound: water surface + clearance; runs >= {@code sea_crossing_length} also >= {@code min_deck_y}. */
-    private static double[] waterFloor(RoadSpec spec, int[] ground, int[] surface) {
+    private static final byte DRY = 0;
+    private static final byte FORD = 1;
+    private static final byte RIVER = 2;
+
+    /**
+     * Deck lower bound per wet run, {@code wet} filled in. Ford (shorter than {@code ford_length}, at most
+     * {@link #FORD_DEPTH} deep): water + 1. Else water + clearance; runs >= {@code sea_crossing_length} also >=
+     * {@code min_deck_y}.
+     */
+    private static double[] waterFloor(RoadSpec spec, int[] ground, int[] surface, byte[] wet) {
         int n = ground.length;
         double[] floor = new double[n];
         Arrays.fill(floor, Double.NEGATIVE_INFINITY);
         int runStart = -1;
+        int depth = 0;
         for (int i = 0; i <= n; i++) {
-            boolean wet = i < n && surface[i] > ground[i];
-            if (wet && runStart < 0) {
-                runStart = i;
-            } else if (!wet && runStart >= 0) {
-                boolean sea = i - runStart >= spec.water().seaCrossingLength();
+            boolean under = i < n && surface[i] > ground[i];
+            if (under) {
+                if (runStart < 0) {
+                    runStart = i;
+                    depth = 0;
+                }
+                depth = Math.max(depth, surface[i] - ground[i]);
+            } else if (runStart >= 0) {
+                int length = i - runStart;
+                boolean ford = length < spec.water().fordLength() && depth <= FORD_DEPTH;
+                boolean sea = length >= spec.water().seaCrossingLength();
                 for (int k = runStart; k < i; k++) {
-                    double required = surface[k] + spec.water().clearance();
+                    double required = surface[k] + (ford ? 1 : spec.water().clearance());
                     floor[k] = sea ? Math.max(required, spec.water().minDeckY()) : required;
+                    wet[k] = ford ? FORD : RIVER;
                 }
                 runStart = -1;
             }
@@ -173,7 +241,9 @@ public final class RoadProfile {
                 slopes.rightOffset += maxRise;
             }
             slopes.addDescending(ground[i], 1.0);
+            slopes.addDescending(ground[i] - DEEP, 1.0);
             slopes.addAscending(ground[i], fillCost);
+            slopes.addAscending(ground[i] + DEEP, fillCost);
             if (floor[i] != Double.NEGATIVE_INFINITY) {
                 slopes.addDescending(floor[i], HARD);
             }
@@ -201,8 +271,8 @@ public final class RoadProfile {
         double rightOffset;
 
         Slopes(int n) {
-            left = new Heap(true, n * 2);
-            right = new Heap(false, n * 2);
+            left = new Heap(true, n * 4);
+            right = new Heap(false, n * 4);
         }
 
         /** + w (a - y)+ */
@@ -370,14 +440,14 @@ public final class RoadProfile {
         }
     }
 
-    private static byte[] classify(RoadSpec spec, int[] ground, short[] deck) {
+    private static byte[] classify(RoadSpec spec, int[] ground, short[] deck, byte[] wet) {
         int n = ground.length;
         byte[] mode = new byte[n];
         int cover = spec.clearance() + spec.minCover();
         for (int i = 0; i < n; i++) {
             if (ground[i] > deck[i] + cover) {
                 mode[i] = TUNNEL;
-            } else if (deck[i] - ground[i] >= spec.bridgeMinHeight()) {
+            } else if (wet[i] == RIVER || deck[i] - ground[i] >= spec.bridgeMinHeight()) {
                 mode[i] = BRIDGE;
             } else {
                 mode[i] = GROUND;
@@ -386,34 +456,34 @@ public final class RoadProfile {
         return mode;
     }
 
-    /** Runs shorter than {@link #MIN_MODE_RUN} take the preceding run's mode (following, for a leading run). */
-    private static void smoothRuns(byte[] mode) {
+    /**
+     * Tunnels shorter than {@code tunnelMinLength} => cutting; bridges shorter than {@link #MIN_MODE_RUN} =>
+     * embankment; unless a {@code keep} station (water, overpass, deep rock) lies on them. Tunnels shorter than
+     * {@link #MIN_MODE_RUN} => cutting regardless. Ground shorter than {@link #MIN_MODE_RUN} between two bridges
+     * => bridge.
+     */
+    private static void smoothRuns(byte[] mode, boolean[] keep, int tunnelMinLength) {
         int n = mode.length;
-        int start = 0;
-        while (start < n) {
-            int end = start;
-            while (end < n && mode[end] == mode[start]) {
-                end++;
+        for (int pass = 0; pass < 2; pass++) {
+            for (int start = 0; start < n; ) {
+                int end = start;
+                boolean kept = false;
+                while (end < n && mode[end] == mode[start]) {
+                    kept |= keep[end];
+                    end++;
+                }
+                int length = end - start;
+                byte m = mode[start];
+                if (m == TUNNEL && (length < MIN_MODE_RUN || (length < tunnelMinLength && !kept))) {
+                    Arrays.fill(mode, start, end, GROUND);
+                } else if (m == BRIDGE && length < MIN_MODE_RUN && !kept && pass == 0) {
+                    Arrays.fill(mode, start, end, GROUND);
+                } else if (m == GROUND && length < MIN_MODE_RUN && pass == 1 && start > 0 && end < n
+                        && mode[start - 1] == BRIDGE && mode[end] == BRIDGE) {
+                    Arrays.fill(mode, start, end, BRIDGE);
+                }
+                start = end;
             }
-            if (end - start < MIN_MODE_RUN) {
-                byte replacement = start > 0 ? mode[start - 1] : (end < n ? mode[end] : mode[start]);
-                Arrays.fill(mode, start, end, replacement);
-            }
-            start = end;
         }
-    }
-
-    private static boolean[] portals(byte[] mode) {
-        int n = mode.length;
-        boolean[] portal = new boolean[n];
-        for (int i = 0; i < n; i++) {
-            if (mode[i] != TUNNEL) {
-                continue;
-            }
-            boolean nearStart = i < PORTAL_STATIONS || mode[i - PORTAL_STATIONS] != TUNNEL;
-            boolean nearEnd = i >= n - PORTAL_STATIONS || mode[i + PORTAL_STATIONS] != TUNNEL;
-            portal[i] = nearStart || nearEnd;
-        }
-        return portal;
     }
 }

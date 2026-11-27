@@ -166,7 +166,8 @@ class RoadIntersectionTest {
     void overpassSpansValleyRoadWithFullHeadroom() {
         RoadWorld world = new RoadWorld((x, z) -> Math.abs(z) < 30 ? 60 : 75, RoadWorld.MIN_Y);
         RoadSpec spec = RoadWorld.road();
-        RoadIndex index = RoadWorld.index(world, paved(spec, -1, -1, -500, 0, 500, 0),
+        RoadSpec lowSpec = RoadWorld.highway();
+        RoadIndex index = RoadWorld.index(world, paved(lowSpec, -1, -1, -500, 0, 500, 0),
                 paved(spec, -1, -1, 0, -300, 0, 300));
         world.rasterize(index);
         RoadIndex.LinkGeometry low = index.link(0);
@@ -174,17 +175,17 @@ class RoadIntersectionTest {
         int lowDeck = low.deck(nearest(low, 0, 0));
         int crossing = nearest(high, 0, 0);
         int highDeck = high.deck(crossing);
-        assertTrue(highDeck - lowDeck >= spec.clearance() + 2, "separation " + (highDeck - lowDeck));
+        assertTrue(highDeck - lowDeck >= lowSpec.clearance() + 2, "separation " + (highDeck - lowDeck));
         assertEquals(RoadProfile.BRIDGE, high.mode(crossing));
 
         for (int x = -12; x <= 12; x++) {
             for (int z = -12; z <= 12; z++) {
                 int upper = high.deck(nearest(high, x + 0.5, z + 0.5));
-                if (Math.abs(z + 0.5) < spec.pavedHalfWidth() - 1e-6) {
+                if (Math.abs(z + 0.5) < lowSpec.pavedHalfWidth() - 1e-6) {
                     assertTrue(paved(world.part(x, lowDeck, z)), "lower deck missing at " + x + "," + z);
                 }
-                if (Math.abs(z + 0.5) < spec.outerHalfWidth() - 1e-6) {
-                    for (int y = lowDeck + 1; y <= lowDeck + spec.clearance(); y++) {
+                if (Math.abs(z + 0.5) < lowSpec.outerHalfWidth() - 1e-6) {
+                    for (int y = lowDeck + 1; y <= lowDeck + lowSpec.clearance(); y++) {
                         assertTrue(world.air(x, y, z), "lower headroom blocked at " + x + "," + y + "," + z
                                 + " by " + world.part(x, y, z));
                     }
@@ -352,7 +353,7 @@ class RoadIntersectionTest {
         world.rasterize(index);
         for (int x = -5; x <= 5; x++) {
             for (int z = -10; z <= 10; z++) {
-                if (Math.abs(z + 0.5) < spec.clearedHalfWidth() - 1) {
+                if (Math.abs(z + 0.5) < spec.outerHalfWidth() + spec.vegetationMargin() - 1) {
                     assertTrue(world.air(x, 72, z) && world.air(x, 73, z), "canopy left at " + x + "," + z);
                 }
             }
@@ -398,13 +399,14 @@ class RoadIntersectionTest {
     }
 
     @Test
-    void setbackReachesClearedBandPlusReach() {
+    void setbackReachesVegetationMarginPlusReach() {
         RoadWorld world = RoadWorld.flat(64);
         RoadSpec spec = RoadWorld.road();
         RoadIndex index = RoadWorld.index(world, paved(spec, -1, -1, -100, 0, 100, 0));
         double reach = 5.0;
-        int inside = (int) Math.floor(spec.clearedHalfWidth() + reach - 1.5);
-        int outside = (int) Math.ceil(spec.clearedHalfWidth() + reach + 0.5);
+        double band = spec.outerHalfWidth() + spec.vegetationMargin();
+        int inside = (int) Math.floor(band + reach - 1.5);
+        int outside = (int) Math.ceil(band + reach + 0.5);
         assertTrue(index.near(0, inside, reach, 65, 97));
         assertTrue(index.near(0, -inside, reach, 65, 97));
         assertFalse(index.near(0, outside, reach, 65, 97));

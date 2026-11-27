@@ -15,7 +15,7 @@ import java.util.function.Function;
 
 /**
  * The road plan, as resolved by {@code worldgen-workspace} and written into the datapack at
- * {@code data/<ns>/wf_road_network/<id>.json}. Pure XZ geometry: junctions, and links whose {@code points} are
+ * {@code data/<ns>/wfcore/road_network/<id>.json}. Pure XZ geometry: junctions, and links whose {@code points} are
  * the filleted centreline the router produced. Nothing here knows about height or blocks — the elevation profile
  * is solved in {@link RoadProfile} against the real terrain this world generates, and the block composition comes
  * from whichever {@link RoadType} claims each link.

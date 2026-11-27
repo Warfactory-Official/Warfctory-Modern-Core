@@ -22,20 +22,22 @@
   "earthworks": {
     "base": "minecraft:stone",
     "base_depth": 3,
-    "embankment": "minecraft:stone",
-    "margin": 5,
-    "batter": 1.0
+    "embankment": "minecraft:dirt",
+    "margin": 12,
+    "batter": 0.67,
+    "cut_batter": 1.0
   },
   "grade": {
-    "max": 0.07,
+    "max": 0.1,
     "smoothing_radius": 6,
     "sample_spacing": 16,
-    "fill_cost": 2.0
+    "fill_cost": 1.3
   },
   "water": {
     "min_deck_y": 90,
     "clearance": 4,
-    "sea_crossing_length": 48
+    "sea_crossing_length": 256,
+    "ford_length": 12
   },
   "bridge": {
     "structure": "minecraft:stone_bricks",
@@ -44,7 +46,8 @@
     "railing_height": 1,
     "pier_spacing": 12,
     "pier_radius": 2,
-    "min_height": 4
+    "min_height": 7,
+    "arch_rise": 5
   },
   "tunnel": {
     "wall": "minecraft:stone_bricks",
@@ -53,7 +56,30 @@
     "light": "minecraft:glowstone",
     "light_spacing": 8,
     "height": 6,
-    "min_cover": 8
+    "min_cover": 8,
+    "min_length": 40
+  },
+  "junction": {
+    "corner_radius": 5
+  },
+  "furniture": {
+    "lamp": {
+      "post": "minecraft:andesite_wall",
+      "light": "minecraft:lantern",
+      "height": 4,
+      "spacing": 0
+    },
+    "guard_rail": {
+      "block": "minecraft:iron_bars",
+      "min_fill": 3
+    },
+    "sign": {
+      "block": "minecraft:oak_sign",
+      "lines": [
+        "",
+        "STOP"
+      ]
+    }
   },
   "themes": [
     {

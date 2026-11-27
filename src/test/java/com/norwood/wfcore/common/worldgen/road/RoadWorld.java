@@ -23,6 +23,7 @@ final class RoadWorld implements RoadProfile.Terrain, RoadRasterizer.Canvas {
     static final byte LEAVES = 3;
     static final byte BEDROCK_ID = 4;
     static final byte STALK = 5;
+    static final byte TURF = 6;
     static final byte PART_BASE = 16;
 
     final IntBinaryOperator ground;
@@ -169,6 +170,14 @@ final class RoadWorld implements RoadProfile.Terrain, RoadRasterizer.Canvas {
         highest.put(column(x, z), Math.max(highest.get(column(x, z)), y));
     }
 
+    @Override
+    public void turf(int x, int y, int z, int fromY, boolean fill, RoadIndex.LinkGeometry link, int station) {
+        long k = key(x, y, z);
+        cells.put(k, TURF);
+        owner.put(k, link);
+        highest.put(column(x, z), Math.max(highest.get(column(x, z)), y));
+    }
+
     /** Snapshot of every override, for determinism comparisons. */
     Long2ByteOpenHashMap snapshot() {
         return new Long2ByteOpenHashMap(cells);
@@ -260,7 +269,7 @@ final class RoadWorld implements RoadProfile.Terrain, RoadRasterizer.Canvas {
         return new Spec();
     }
 
-    /** RoadSpec builder; defaults = wfcore road.json. */
+    /** RoadSpec builder; defaults = wfcore road.json, furniture off. */
     static final class Spec {
 
         int priority = 20;
@@ -272,24 +281,35 @@ final class RoadWorld implements RoadProfile.Terrain, RoadRasterizer.Canvas {
         int dash = 4;
         int gap = 4;
         int baseDepth = 3;
-        int margin = 5;
-        double batter = 1.0;
-        double grade = 0.07;
+        int margin = 12;
+        double batter = 0.67;
+        double cutBatter = 1.0;
+        double grade = 0.10;
         int smoothing = 6;
         int sampleSpacing = 16;
-        double fillCost = 2.0;
+        double fillCost = 1.3;
         int minDeckY = 90;
         int waterClearance = 4;
-        int seaCrossing = 48;
+        int seaCrossing = 256;
+        int ford = 12;
         boolean railing = true;
         int railingHeight = 1;
         int pierSpacing = 12;
         int pierRadius = 2;
-        int bridgeMinHeight = 4;
+        int bridgeMinHeight = 7;
+        int archRise = 5;
+        int trussLength = 0;
         boolean light = true;
         int lightSpacing = 8;
         int tunnelHeight = 6;
         int minCover = 8;
+        int tunnelMinLength = 40;
+        boolean gradeSeparated = false;
+        int cornerRadius = 5;
+        int lampSpacing = 0;
+        int lampHeight = 0;
+        int guardRailFill = 0;
+        boolean stopSign = false;
 
         Spec priority(int v) {
             priority = v;
@@ -333,8 +353,28 @@ final class RoadWorld implements RoadProfile.Terrain, RoadRasterizer.Canvas {
             return this;
         }
 
+        Spec batter(double fill, double cut) {
+            batter = fill;
+            cutBatter = cut;
+            return this;
+        }
+
         Spec vegetation(int v) {
             vegetationMargin = v;
+            return this;
+        }
+
+        Spec water(int clearance, int seaLength, int fordLength) {
+            waterClearance = clearance;
+            seaCrossing = seaLength;
+            ford = fordLength;
+            return this;
+        }
+
+        Spec bridge(int minHeight, int arch, int truss) {
+            bridgeMinHeight = minHeight;
+            archRise = arch;
+            trussLength = truss;
             return this;
         }
 
@@ -344,17 +384,43 @@ final class RoadWorld implements RoadProfile.Terrain, RoadRasterizer.Canvas {
             return this;
         }
 
+        Spec tunnelMinLength(int v) {
+            tunnelMinLength = v;
+            return this;
+        }
+
         Spec piers(int spacing, int radius) {
             pierSpacing = spacing;
             pierRadius = radius;
             return this;
         }
 
+        Spec gradeSeparated() {
+            gradeSeparated = true;
+            return this;
+        }
+
+        Spec corner(int radius) {
+            cornerRadius = radius;
+            return this;
+        }
+
+        Spec furniture(int lampSpacing, int lampHeight, int railFill, boolean sign) {
+            this.lampSpacing = lampSpacing;
+            this.lampHeight = lampHeight;
+            guardRailFill = railFill;
+            stopSign = sign;
+            return this;
+        }
+
         RoadSpec build() {
             return new RoadSpec(priority, width, shoulder, clearance, vegetationMargin, markingWidth, dash, gap,
-                    baseDepth, margin, batter, new RoadType.Grade(grade, smoothing, sampleSpacing, fillCost),
-                    new RoadType.Water(minDeckY, waterClearance, seaCrossing), railing, railingHeight, pierSpacing,
-                    pierRadius, bridgeMinHeight, light, lightSpacing, tunnelHeight, minCover);
+                    baseDepth, margin, batter, cutBatter, new RoadType.Grade(grade, smoothing, sampleSpacing,
+                            fillCost),
+                    new RoadType.Water(minDeckY, waterClearance, seaCrossing, ford), railing, railingHeight,
+                    pierSpacing, pierRadius, bridgeMinHeight, archRise, trussLength, light, lightSpacing,
+                    tunnelHeight, minCover, tunnelMinLength, gradeSeparated, cornerRadius, lampSpacing, lampHeight,
+                    guardRailFill, stopSign);
         }
     }
 
@@ -363,12 +429,12 @@ final class RoadWorld implements RoadProfile.Terrain, RoadRasterizer.Canvas {
     }
 
     static RoadSpec highway() {
-        return spec().priority(30).width(11).shoulder(2).clearance(6).markings(1, 6, 6).grade(0.05).margin(6)
-                .tunnel(7, 10).piers(16, 3).build();
+        return spec().priority(30).width(11).shoulder(2).clearance(6).markings(1, 6, 6).grade(0.07).margin(14)
+                .tunnel(7, 10).tunnelMinLength(48).piers(16, 3).bridge(7, 6, 96).gradeSeparated().corner(6).build();
     }
 
     static RoadSpec track() {
-        return spec().priority(10).width(5).shoulder(1).clearance(4).grade(0.11).margin(3).tunnel(5, 8)
-                .piers(8, 1).build();
+        return spec().priority(10).width(5).shoulder(1).clearance(4).grade(0.14).margin(8).batter(1.0, 1.2)
+                .tunnel(5, 8).tunnelMinLength(32).piers(8, 1).bridge(6, 0, 0).water(3, 256, 16).corner(3).build();
     }
 }

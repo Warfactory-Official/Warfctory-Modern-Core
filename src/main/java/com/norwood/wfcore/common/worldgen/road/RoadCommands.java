@@ -15,7 +15,13 @@ import com.mojang.brigadier.context.CommandContext;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import net.minecraft.util.Mth;
 
-/** {@code /wfcore_road status | info [pos]}: what the generator decided at a column. */
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+/** {@code /wfcore_road status | info [pos] | dump}. */
 public final class RoadCommands {
 
     public static final RoadCommands INSTANCE = new RoadCommands();
@@ -30,6 +36,7 @@ public final class RoadCommands {
         event.getDispatcher().register(Commands.literal("wfcore_road")
                 .requires(source -> source.hasPermission(2))
                 .then(Commands.literal("status").executes(RoadCommands::status))
+                .then(Commands.literal("dump").executes(RoadCommands::dump))
                 .then(Commands.literal("info")
                         .executes(ctx -> info(ctx, new ColumnPos(
                                 Mth.floor(ctx.getSource().getPosition().x),
@@ -53,6 +60,21 @@ public final class RoadCommands {
                 100.0 * modes[RoadProfile.GROUND] / total,
                 100.0 * modes[RoadProfile.BRIDGE] / total,
                 100.0 * modes[RoadProfile.TUNNEL] / total))
+                .withStyle(ChatFormatting.GRAY), false);
+        return index.linkCount();
+    }
+
+    /** Every link's stations to {@code wfcore_road_dump.tsv} in the server directory. Resolves every link. */
+    private static int dump(CommandContext<CommandSourceStack> ctx) {
+        CommandSourceStack source = ctx.getSource();
+        RoadIndex index = RoadIndexManager.get(source.getLevel());
+        Path file = Path.of("wfcore_road_dump.tsv").toAbsolutePath();
+        try (BufferedWriter out = Files.newBufferedWriter(file)) {
+            index.dump(out);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
+        source.sendSuccess(() -> Component.literal(index.linkCount() + " link(s) -> " + file)
                 .withStyle(ChatFormatting.GRAY), false);
         return index.linkCount();
     }

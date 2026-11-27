@@ -13,16 +13,20 @@ import com.mojang.logging.LogUtils;
 
 import org.slf4j.Logger;
 
+import it.unimi.dsi.fastutil.bytes.ByteArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
@@ -30,7 +34,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * Every road in a level: topology + stations bucketed by chunk up front; probe and profile per link on first use.
+ * Every road in a level: topology, nodes + stations bucketed by chunk up front; probe and profile per link on
+ * first use.
  *
  * <p>Link i's final profile depends on its probe, the unpinned profiles of the links sharing its junctions, and
  * the final profiles of lower-indexed links it attaches to or crosses ({@link RoadTopology} order). Acyclic =>
@@ -65,6 +70,8 @@ public final class RoadIndex {
     private final Once[] unpinned;
     private final Once[] resolved;
     private final RoadProfile.Profile[] unpinnedProfile;
+    private final RoadNodes nodes;
+    private final ConcurrentHashMap<Long, Integer> junctionHeights = new ConcurrentHashMap<>();
 
     /** One link's stations; {@code type} indexes the type list given to {@code build}, -1 junction = none. */
     public record Source(int network, int from, int to, RoadSpec spec, int type, double[] xs, double[] zs) {
@@ -110,6 +117,28 @@ public final class RoadIndex {
         this.unpinned = Once.array(n);
         this.resolved = Once.array(n);
         this.unpinnedProfile = new RoadProfile.Profile[n];
+        this.nodes = new RoadNodes(pieces, links, junctionEnds);
+    }
+
+    static long chunkKey(int chunkX, int chunkZ) {
+        return ChunkPos.asLong(chunkX, chunkZ);
+    }
+
+    /** Nodes whose pad can reach into the chunk, null when none. */
+    RoadNodes.Node[] nodesNear(int chunkX, int chunkZ) {
+        return nodes.near(chunkX, chunkZ);
+    }
+
+    List<RoadNodes.Node> nodes() {
+        return nodes.nodes;
+    }
+
+    /** Resolves the link deciding an at-grade crossing; a separated crossing has no pad. */
+    boolean active(RoadNodes.Node node) {
+        if (node.owner >= 0) {
+            resolve(node.owner);
+        }
+        return node.active;
     }
 
     public boolean isEmpty() {
@@ -147,6 +176,24 @@ public final class RoadIndex {
             }
         }
         return counts;
+    }
+
+    /**
+     * Per link {@code L index priority width stations startJunction endJunction startAttach endAttach}, then per
+     * station {@code x z ground water deck mode}.
+     */
+    void dump(Appendable out) throws IOException {
+        for (int i = 0; i < links.size(); i++) {
+            LinkGeometry link = link(i);
+            RoadTopology.Piece piece = pieces.get(i);
+            out.append(String.format(Locale.ROOT, "L %d %d %d %d %d %d %d %d%n", i, link.spec.priority(),
+                    link.spec.width(), link.stationCount(), piece.startJunction, piece.endJunction,
+                    piece.startAttach, piece.endAttach));
+            for (int s = 0; s < link.stationCount(); s++) {
+                out.append(String.format(Locale.ROOT, "%.1f %.1f %d %d %d %d%n", link.x(s), link.z(s),
+                        link.ground(s), link.water(s), link.deck(s), link.mode(s)));
+            }
+        }
     }
 
     /** Per-chunk slices of a link's stations: flat arrays, box + corridor width precomputed for rejection. */
@@ -245,7 +292,7 @@ public final class RoadIndex {
     }
 
     /**
-     * Some above-ground station lies within {@code clearedHalfWidth + reach} of (x, z) with its deck band
+     * Some above-ground station lies within {@code outer + vegetation margin + reach} of (x, z) with its deck band
      * {@code [deck - baseDepth - 1, deck + clearance]} meeting {@code [minY, maxY]}. Resolves only links passing
      * that close.
      */
@@ -271,7 +318,7 @@ public final class RoadIndex {
                     int index = runs.link[run];
                     LinkGeometry geometry = links.get(index);
                     RoadSpec spec = geometry.spec;
-                    double limit = spec.clearedHalfWidth() + reach;
+                    double limit = spec.outerHalfWidth() + spec.vegetationMargin() + reach;
                     limit *= limit;
                     for (int s = runs.first[run], last = runs.last[run]; s <= last; s++) {
                         double dx = geometry.x(s) - cx;
@@ -425,15 +472,86 @@ public final class RoadIndex {
         return unpinnedProfile[index];
     }
 
+    /** Mean of the member ends' unpinned decks, raised over the water under every arm's pad span. */
     private int junctionHeight(long junction) {
-        IntArrayList ends = junctionEnds.get(junction);
-        double sum = 0.0;
-        for (int i = 0; i < ends.size(); i++) {
-            int end = ends.getInt(i);
-            short[] deck = unpinned(end >> 1).deck();
-            sum += (end & 1) == 0 ? deck[0] : deck[deck.length - 1];
+        return junctionHeights.computeIfAbsent(junction, key -> {
+            IntArrayList ends = junctionEnds.get(junction);
+            double sum = 0.0;
+            double floor = Double.NEGATIVE_INFINITY;
+            for (int i = 0; i < ends.size(); i++) {
+                int end = ends.getInt(i);
+                int index = end >> 1;
+                boolean atEnd = (end & 1) != 0;
+                short[] deck = unpinned(index).deck();
+                sum += atEnd ? deck[deck.length - 1] : deck[0];
+                RoadNodes.Node node = atEnd ? nodes.end[index] : nodes.start[index];
+                if (node != null) {
+                    LinkGeometry geometry = links.get(index);
+                    double[] floors = RoadProfile.waterFloor(geometry);
+                    int station = atEnd ? deck.length - 1 : 0;
+                    int span = node.end(geometry, atEnd ? -1 : 1).throat;
+                    for (int k = 0; k <= span; k++) {
+                        floor = Math.max(floor, floors[station + (atEnd ? -k : k)]);
+                    }
+                }
+            }
+            return (int) Math.round(Math.max(sum / ends.size(), floor));
+        });
+    }
+
+    /** Stations of the pad at one end of a junction link, 0 without a pad. */
+    private int padSpan(int index, boolean atEnd) {
+        RoadNodes.Node node = atEnd ? nodes.end[index] : nodes.start[index];
+        return node == null ? 0 : node.end(links.get(index), atEnd ? -1 : 1).throat;
+    }
+
+    private static final int MAX_CONFORM = 96;
+
+    /**
+     * Pins stations from {@code station} (HARD) along {@code dir} (SPAN) to the deck of the nearest {@code other}
+     * station while they lie on its surface.
+     *
+     * @return last station pinned
+     */
+    private static int conform(LinkGeometry geometry, int station, int dir, LinkGeometry other, int guess,
+            Pins pins) {
+        double limit = other.spec.outerHalfWidth() + 1.0;
+        int at = guess;
+        int inner = station;
+        for (int k = 0, s = station; k <= MAX_CONFORM && s >= 0 && s < geometry.stationCount(); k++, s += dir) {
+            at = nearest(other, geometry.x(s), geometry.z(s), at);
+            double dx = other.x(at) - geometry.x(s);
+            double dz = other.z(at) - geometry.z(s);
+            if (k > 0 && dx * dx + dz * dz > limit * limit) {
+                break;
+            }
+            pins.add(s, other.deck(at), k == 0 ? Pins.HARD : Pins.SPAN);
+            inner = s;
         }
-        return (int) Math.round(sum / ends.size());
+        return inner;
+    }
+
+    /** Hill climb from {@code guess}. */
+    static int nearest(LinkGeometry link, double x, double z, int guess) {
+        int at = guess;
+        double best = distanceSquared(link, at, x, z);
+        for (int step = -1; step <= 1; step += 2) {
+            while (at + step >= 0 && at + step < link.stationCount()) {
+                double d = distanceSquared(link, at + step, x, z);
+                if (d >= best) {
+                    break;
+                }
+                best = d;
+                at += step;
+            }
+        }
+        return at;
+    }
+
+    private static double distanceSquared(LinkGeometry link, int station, double x, double z) {
+        double dx = link.x(station) - x;
+        double dz = link.z(station) - z;
+        return dx * dx + dz * dz;
     }
 
     private void resolve(int index) {
@@ -442,16 +560,45 @@ public final class RoadIndex {
             RoadTopology.Piece piece = pieces.get(index);
             probe(index);
             int last = geometry.stationCount() - 1;
+            double maxRise = geometry.spec.grade().max() * RoadCurve.STATION_SPACING;
             Pins pins = new Pins();
+            Pins anchors = new Pins();
+            int startSpan = 0;
+            int endSpan = 0;
             if (piece.startJunction >= 0) {
                 pins.add(0, junctionHeight(piece.startJunction));
+                startSpan = padSpan(index, false);
             } else if (piece.startAttach >= 0) {
-                pins.add(0, link(piece.startAttach).deck(piece.startAttachAt));
+                conform(geometry, 0, 1, link(piece.startAttach), piece.startAttachAt, pins);
             }
             if (piece.endJunction >= 0) {
                 pins.add(last, junctionHeight(piece.endJunction));
+                endSpan = padSpan(index, true);
             } else if (piece.endAttach >= 0) {
-                pins.add(last, link(piece.endAttach).deck(piece.endAttachAt));
+                conform(geometry, last, -1, link(piece.endAttach), piece.endAttachAt, pins);
+            }
+            if (pins.has(0)) {
+                anchors.add(0, pins.valueAt(0));
+            }
+            if (pins.has(last)) {
+                anchors.add(last, pins.valueAt(last));
+            }
+            if (startSpan > 0 && endSpan > 0) {
+                // Two pads on one short link: both give way until the stretch between can ramp.
+                int rise = Math.abs(pins.valueAt(0) - pins.valueAt(last));
+                while (startSpan + endSpan > 0 && rise > maxRise * (last - startSpan - endSpan)) {
+                    if (startSpan >= endSpan) {
+                        startSpan--;
+                    } else {
+                        endSpan--;
+                    }
+                }
+            }
+            for (int k = 1; k <= startSpan; k++) {
+                pins.add(k, pins.valueAt(0), Pins.PAD);
+            }
+            for (int k = 1; k <= endSpan; k++) {
+                pins.add(last - k, pins.valueAt(last), Pins.PAD);
             }
             IntArrayList forced = new IntArrayList();
             int count = piece.crossings.size() / 3;
@@ -470,51 +617,112 @@ public final class RoadIndex {
                     int partner = piece.crossings.getInt(order[c] + 1);
                     int partnerStation = piece.crossings.getInt(order[c] + 2);
                     LinkGeometry other = link(partner);
-                    int slack = endSlack(geometry, other);
                     stations[c] = station;
                     options[c] = crossingOptions(geometry.spec, own.deck()[station], other.spec,
                             other.deck(partnerStation), other.mode(partnerStation),
-                            partnerStation <= slack || partnerStation >= other.stationCount() - 1 - slack);
+                            partnerEnd(geometry, other, partnerStation),
+                            geometry.spec.gradeSeparated() || other.spec.gradeSeparated());
                     skip[c] = SKIP_COST * (pieces.size() - partner);
                 }
-                int[] chosen = chooseCrossings(stations, options, skip, pins.at(), pins.value(),
-                        geometry.spec.grade().max() * RoadCurve.STATION_SPACING);
+                int[] chosen = chooseCrossings(stations, options, skip, anchors.at(), anchors.value(), maxRise);
                 for (int c = 0; c < count; c++) {
                     if (chosen[c] == Integer.MIN_VALUE) {
                         continue;
                     }
-                    pins.add(stations[c], chosen[c]);
                     int partner = piece.crossings.getInt(order[c] + 1);
                     int partnerStation = piece.crossings.getInt(order[c] + 2);
                     LinkGeometry other = link(partner);
+                    RoadNodes.Node node = nodes.crossing[index][order[c] / 3];
+                    if (chosen[c] == other.deck(partnerStation)) {
+                        conform(geometry, stations[c], 1, other, partnerStation, pins);
+                        conform(geometry, stations[c], -1, other, partnerStation, pins);
+                        node.active = true;
+                        continue;
+                    }
+                    // Level across the other road: a sag between abutment and pin eats the headroom.
+                    int reach = overpassReach(geometry, stations[c], other, partnerStation);
+                    pins.add(stations[c], chosen[c]);
+                    for (int at = Math.max(0, stations[c] - reach); at <= Math.min(last, stations[c] + reach); at++) {
+                        pins.add(at, chosen[c], Pins.SPAN);
+                    }
                     if (chosen[c] - other.deck(partnerStation) >= headroom(other.spec, other.mode(partnerStation)) + 2) {
-                        int reach = overpassReach(geometry, stations[c], other, partnerStation);
                         forced.add(stations[c] - reach);
                         forced.add(stations[c] + reach);
                     }
                 }
             }
-            RoadProfile.Profile profile = RoadProfile.solve(geometry, pins.at(), pins.value(), forced.toIntArray());
-            geometry.setProfile(profile.deck(), profile.mode(), profile.portal());
+            pins.yield(maxRise);
+            geometry.setProfile(RoadProfile.solve(geometry, pins.at(), pins.value(), forced.toIntArray()));
         });
     }
 
-    /** Stations ascending; first-added wins on a shared station. */
+    /**
+     * Stations ascending, one pin each. Levels: {@link #HARD} (junction point, partner surface, crossing centre),
+     * {@link #SPAN} (level stretch over / under a crossed road), {@link #PAD} (junction pad). A station keeps its
+     * lowest-level pin, first-added among equals; {@link #yield} drops SPAN / PAD pins some HARD pin cannot reach
+     * within grade, so conflicts open a ramp instead of a step.
+     */
     private static final class Pins {
+
+        static final byte HARD = 0;
+        static final byte SPAN = 1;
+        static final byte PAD = 2;
 
         private final IntArrayList at = new IntArrayList(4);
         private final IntArrayList value = new IntArrayList(4);
+        private final ByteArrayList level = new ByteArrayList(4);
 
-        void add(int station, int height) {
+        private int slot(int station) {
             int i = 0;
             while (i < at.size() && at.getInt(i) < station) {
                 i++;
             }
+            return i;
+        }
+
+        boolean has(int station) {
+            int i = slot(station);
+            return i < at.size() && at.getInt(i) == station;
+        }
+
+        void add(int station, int height) {
+            add(station, height, HARD);
+        }
+
+        void add(int station, int height, byte rank) {
+            int i = slot(station);
             if (i < at.size() && at.getInt(i) == station) {
+                if (rank < level.getByte(i)) {
+                    value.set(i, height);
+                    level.set(i, rank);
+                }
                 return;
             }
             at.add(i, station);
             value.add(i, height);
+            level.add(i, rank);
+        }
+
+        void yield(double maxRise) {
+            for (int i = at.size() - 1; i >= 0; i--) {
+                if (level.getByte(i) == HARD) {
+                    continue;
+                }
+                for (int h = 0; h < at.size(); h++) {
+                    // + 1: whole-block decks step by one between neighbours at any grade.
+                    if (level.getByte(h) == HARD && Math.abs(value.getInt(h) - value.getInt(i))
+                            > maxRise * Math.abs(at.getInt(h) - at.getInt(i)) + 1.0) {
+                        at.removeInt(i);
+                        value.removeInt(i);
+                        level.removeByte(i);
+                        break;
+                    }
+                }
+            }
+        }
+
+        int valueAt(int station) {
+            return value.getInt(at.indexOf(station));
         }
 
         int[] at() {
@@ -535,31 +743,43 @@ public final class RoadIndex {
                 + RoadTopology.SHADOW_GAP);
     }
 
+    /** Crossing at the greater road's end = T. */
+    private static boolean partnerEnd(LinkGeometry geometry, LinkGeometry other, int partnerStation) {
+        int slack = endSlack(geometry, other);
+        return partnerStation <= slack || partnerStation >= other.stationCount() - 1 - slack;
+    }
+
     /** Per-crossing skip cost unit; above any height deviation, scaled by partner importance. */
     static final double SKIP_COST = 1.0e6;
     /** Per block two consecutive pins exceed grade by; between deviation and skip. */
     static final double STEEP_COST = 1.0e5;
     /** Consecutive pins may need at most this x grade; beyond => skip. */
     static final double MAX_STEEPNESS = 3.0;
+    /** Ramping over / under a road that may be met at grade; = 3 blocks of excess steepness. */
+    static final int SEPARATION_COST = 300_000;
+    /** Meeting a grade-separated road at grade: last resort before a skip. */
+    static final int AT_GRADE_COST = 600_000;
 
     /**
-     * Heights the lesser road may take where it crosses the greater one at {@code partner}, as (height, cost =
-     * |height - own|) pairs: at grade, over / under by the lower road's headroom + deck, and its own height when
-     * already that clear. The lesser road's headroom assumes a tunnel: its final mode is unknown until pinned. A
-     * crossing at the greater road's end is a T => at grade only.
+     * Heights the lesser road may take where it crosses the greater one at {@code partner}, as (height, cost)
+     * pairs, cost = |height - own| + penalty: at grade ({@link #AT_GRADE_COST} when {@code separated}); over /
+     * under by the lower road's headroom + deck ({@link #SEPARATION_COST} unless {@code separated}); its own
+     * height when the terrain already keeps it that clear. A crossing at the greater road's end is a T => at
+     * grade only, free. The lesser road's headroom assumes a tunnel: its final mode is unknown until pinned.
      */
     static int[] crossingOptions(RoadSpec spec, int own, RoadSpec partnerSpec, int partner, byte partnerMode,
-            boolean partnerEnd) {
+            boolean partnerEnd, boolean separated) {
         int over = partner + headroom(partnerSpec, partnerMode) + 2;
         int under = partner - Math.max(spec.clearance(), spec.tunnelHeight() + 1) - 2;
         IntArrayList out = new IntArrayList(8);
         out.add(partner);
-        out.add(Math.abs(partner - own));
+        out.add(Math.abs(partner - own) + (separated && !partnerEnd ? AT_GRADE_COST : 0));
         if (!partnerEnd) {
+            int penalty = separated ? 0 : SEPARATION_COST;
             out.add(over);
-            out.add(Math.abs(over - own));
+            out.add(Math.abs(over - own) + penalty);
             out.add(under);
-            out.add(Math.abs(under - own));
+            out.add(Math.abs(under - own) + penalty);
             if (own >= over || own <= under) {
                 out.add(own);
                 out.add(0);
@@ -781,9 +1001,7 @@ public final class RoadIndex {
         private final double[] zs;
         private short[] ground;
         private short[] water;
-        private short[] deck;
-        private byte[] mode;
-        private boolean[] portal;
+        private RoadProfile.Profile profile;
 
         LinkGeometry(RoadSpec spec, int type, double[] xs, double[] zs) {
             this.spec = spec;
@@ -797,10 +1015,8 @@ public final class RoadIndex {
             this.water = water;
         }
 
-        void setProfile(short[] deck, byte[] mode, boolean[] portal) {
-            this.deck = deck;
-            this.mode = mode;
-            this.portal = portal;
+        void setProfile(RoadProfile.Profile profile) {
+            this.profile = profile;
         }
 
         public RoadSpec spec() {
@@ -828,15 +1044,35 @@ public final class RoadIndex {
         }
 
         public int deck(int station) {
-            return deck[station];
+            return profile.deck()[station];
         }
 
         public byte mode(int station) {
-            return mode[station];
+            return profile.mode()[station];
+        }
+
+        /** Stations since / until the ends of the station's ground / bridge / tunnel run. */
+        public int fromStart(int station) {
+            return profile.fromStart()[station];
+        }
+
+        public int toEnd(int station) {
+            return profile.toEnd()[station];
+        }
+
+        public boolean truss(int station) {
+            return profile.truss()[station];
+        }
+
+        /** Mode of the run before / after the station's own, -1 at a link end. */
+        public int neighbourMode(int station, boolean after) {
+            int beyond = after ? station + toEnd(station) + 1 : station - fromStart(station) - 1;
+            return beyond < 0 || beyond >= xs.length ? -1 : profile.mode()[beyond];
         }
 
         public boolean portal(int station) {
-            return portal[station];
+            return mode(station) == RoadProfile.TUNNEL
+                    && Math.min(fromStart(station), toEnd(station)) < RoadProfile.PORTAL_STATIONS;
         }
     }
 

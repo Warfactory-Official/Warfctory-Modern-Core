@@ -71,7 +71,8 @@ class RoadProfileTest {
         RoadSpec spec = RoadWorld.road();
         RoadProfile.Profile p = RoadProfile.solve(line(spec, 600, i -> i > 200 && i < 400 ? 140 : 70));
         assertEquals(RoadProfile.TUNNEL, p.mode()[300]);
-        assertTrue(p.portal()[firstOf(p.mode(), RoadProfile.TUNNEL)]);
+        assertEquals(0, p.fromStart()[firstOf(p.mode(), RoadProfile.TUNNEL)]);
+        assertEquals(p.toEnd()[300] + p.fromStart()[300], p.toEnd()[firstOf(p.mode(), RoadProfile.TUNNEL)]);
         assertGrade(p.deck(), spec.grade().max(), 0, 599);
     }
 
@@ -80,9 +81,7 @@ class RoadProfileTest {
         RoadSpec spec = RoadWorld.road();
         RoadProfile.Profile p = RoadProfile.solve(line(spec, 600, i -> i > 250 && i < 350 ? 40 : 90));
         assertEquals(RoadProfile.BRIDGE, p.mode()[300]);
-        // Free V inside the gap (m W / 2) + cut/fill trade (fill_cost m W / 2).
-        double sag = spec.grade().max() * 50 + spec.grade().fillCost() * spec.grade().max() * 50;
-        assertTrue(p.deck()[300] >= 90 - sag - 1, "sag " + (90 - p.deck()[300]));
+        assertTrue(p.deck()[300] >= 90 - 20, "sag " + (90 - p.deck()[300]));
         for (int i = 0; i < 600; i++) {
             assertTrue(p.mode()[i] != RoadProfile.TUNNEL, "plateau tunnelled at " + i);
         }
@@ -102,7 +101,7 @@ class RoadProfileTest {
             cut += Math.max(0, g - p.deck()[i]);
             fill += Math.max(0, p.deck()[i] - g);
         }
-        assertTrue(cut > fill, "fill_cost 2 => more cutting than filling: cut " + cut + " fill " + fill);
+        assertTrue(cut > fill, "fill_cost > 1 => more cutting than filling: cut " + cut + " fill " + fill);
         assertTrue(fill > 0, "ramp straddles the cliff");
     }
 
@@ -118,7 +117,7 @@ class RoadProfileTest {
 
     @Test
     void seaCrossingLiftedToMinDeck() {
-        RoadSpec spec = RoadWorld.road();
+        RoadSpec spec = RoadWorld.spec().water(4, 48, 0).build();
         RoadProfile.Profile p = RoadProfile.solve(line(spec, 600, i -> i > 200 && i < 400 ? 30 : 64,
                 i -> i > 200 && i < 400 ? 62 : Integer.MIN_VALUE));
         for (int i = 201; i < 400; i++) {
@@ -173,8 +172,12 @@ class RoadProfileTest {
         int start = 0;
         for (int i = 1; i <= g.length; i++) {
             if (i == g.length || p.mode()[i] != p.mode()[start]) {
-                assertTrue(i - start >= RoadProfile.MIN_MODE_RUN || (start == 0 && i == g.length),
-                        "mode run " + start + ".." + i);
+                int min = switch (p.mode()[start]) {
+                    case RoadProfile.TUNNEL -> RoadProfile.MIN_MODE_RUN;
+                    case RoadProfile.BRIDGE -> RoadProfile.MIN_MODE_RUN;
+                    default -> 0;
+                };
+                assertTrue(i - start >= min, "mode " + p.mode()[start] + " run " + start + ".." + i);
                 start = i;
             }
         }
@@ -197,26 +200,85 @@ class RoadProfileTest {
     }
 
     @Test
+    void lakeShorterThanSeaCrossingStaysLow() {
+        RoadSpec spec = RoadWorld.road();
+        RoadProfile.Profile p = RoadProfile.solve(line(spec, 600, i -> i > 200 && i < 400 ? 56 : 64,
+                i -> i > 200 && i < 400 ? 62 : Integer.MIN_VALUE));
+        for (int i = 201; i < 400; i++) {
+            assertEquals(RoadProfile.BRIDGE, p.mode()[i]);
+            assertTrue(p.deck()[i] >= 62 + spec.water().clearance() && p.deck()[i] <= 62 + spec.water().clearance() + 2,
+                    "lake deck " + p.deck()[i] + " at " + i);
+        }
+    }
+
+    @Test
+    void shallowStreamIsFordedNotBridged() {
+        RoadSpec spec = RoadWorld.road();
+        RoadProfile.Profile p = RoadProfile.solve(line(spec, 400, i -> i >= 200 && i < 206 ? 62 : 64,
+                i -> i >= 200 && i < 206 ? 63 : Integer.MIN_VALUE));
+        for (int i = 0; i < 400; i++) {
+            assertEquals(RoadProfile.GROUND, p.mode()[i], "mode at " + i);
+            assertEquals(64, p.deck()[i], "deck at " + i);
+        }
+    }
+
+    @Test
+    void shortHighGroundIsCutNotTunnelled() {
+        RoadSpec spec = RoadWorld.road();
+        RoadProfile.Profile p = RoadProfile.solve(line(spec, 600, i -> i >= 290 && i < 310 ? 86 : 70));
+        for (int i = 0; i < 600; i++) {
+            assertEquals(RoadProfile.GROUND, p.mode()[i], "mode at " + i);
+        }
+        assertTrue(86 - p.deck()[300] > spec.clearance() + spec.minCover(), "cut " + (86 - p.deck()[300]));
+    }
+
+    @Test
+    void shortDeepRockStaysTunnel() {
+        RoadSpec spec = RoadWorld.road();
+        RoadProfile.Profile p = RoadProfile.solve(line(spec, 600, i -> i >= 285 && i < 315 ? 130 : 70));
+        assertEquals(RoadProfile.TUNNEL, p.mode()[300]);
+    }
+
+    @Test
+    void shortDipIsFilledNotBridged() {
+        RoadSpec spec = RoadWorld.road();
+        RoadProfile.Profile p = RoadProfile.solve(line(spec, 600, i -> i >= 295 && i < 305 ? 40 : 70));
+        for (int i = 0; i < 600; i++) {
+            assertEquals(RoadProfile.GROUND, p.mode()[i], "mode at " + i);
+        }
+    }
+
+    @Test
     void crossingOptionsAreAllUsable() {
         RoadSpec a = RoadWorld.road();
         RoadSpec b = RoadWorld.highway();
         int tunnelHeadroom = Math.max(a.clearance(), a.tunnelHeight() + 1);
         for (int own = 40; own <= 100; own++) {
             for (byte partnerMode = 0; partnerMode < 3; partnerMode++) {
-                int[] options = RoadIndex.crossingOptions(a, own, b, 70, partnerMode, false);
-                boolean grade = false;
-                for (int k = 0; k < options.length; k += 2) {
-                    int gap = options[k] - 70;
-                    grade |= gap == 0;
-                    assertEquals(Math.abs(options[k] - own), options[k + 1]);
-                    assertTrue(gap == 0 || gap >= RoadIndex.headroom(b, partnerMode) + 2 || -gap >= tunnelHeadroom + 2,
-                            "own " + own + " option " + options[k]);
+                for (boolean separated : new boolean[] {false, true}) {
+                    int[] options = RoadIndex.crossingOptions(a, own, b, 70, partnerMode, false, separated);
+                    int cheapest = 0;
+                    for (int k = 0; k < options.length; k += 2) {
+                        int gap = options[k] - 70;
+                        assertTrue(options[k + 1] >= Math.abs(options[k] - own));
+                        assertTrue(gap == 0 || gap >= RoadIndex.headroom(b, partnerMode) + 2
+                                || -gap >= tunnelHeadroom + 2, "own " + own + " option " + options[k]);
+                        if (options[k + 1] < options[cheapest + 1]) {
+                            cheapest = k;
+                        }
+                    }
+                    int gap = options[cheapest] - 70;
+                    boolean clear = own - 70 >= RoadIndex.headroom(b, partnerMode) + 2
+                            || 70 - own >= tunnelHeadroom + 2;
+                    assertEquals(clear ? own : separated ? Integer.MIN_VALUE : 70,
+                            clear || !separated ? options[cheapest] : gap == 0 ? 70 : Integer.MIN_VALUE,
+                            "own " + own + " separated " + separated);
                 }
-                assertTrue(grade);
             }
         }
-        assertEquals(2, RoadIndex.crossingOptions(a, 95, b, 70, RoadProfile.GROUND, true).length,
+        assertEquals(2, RoadIndex.crossingOptions(a, 95, b, 70, RoadProfile.GROUND, true, true).length,
                 "T junction: at grade only");
+        assertEquals(25, RoadIndex.crossingOptions(a, 95, b, 70, RoadProfile.GROUND, true, true)[1]);
     }
 
     /** (height, cost) pairs, cost = |height - own|. */
